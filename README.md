@@ -1,4 +1,6 @@
-# ⚓ Anchor, the bot that holds you to your word
+<p align="center"><img src="docs/logo.svg" width="120" alt="Anchor logo"></p>
+
+# Anchor, the bot that holds you to your word
 
 **Anchor is a Telegram accountability partner that remembers you.** You tell it what you'll do and by when. It stores the promise in [Walrus Memory](https://github.com/MystenLabs/MemWal), messages you first when the deadline arrives, records whether you kept it, and gradually learns your patterns: what derails you and what actually works.
 

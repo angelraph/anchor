@@ -17,6 +17,8 @@ export interface ProofData {
   generatedAt: string;
 }
 
+import { logoSvg } from "./logo.js";
+
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 const REPO = "https://github.com/angelraph/anchor";
@@ -50,6 +52,7 @@ export function renderPage(p: ProofData): string {
 <meta name="description" content="Anchor is a Telegram accountability partner that remembers your promises on Walrus Memory, checks in when they're due, and learns what makes you follow through.">
 <meta property="og:title" content="Anchor, keep your word">
 <meta property="og:description" content="The accountability bot that remembers. Long-term memory on Walrus.">
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
@@ -71,7 +74,7 @@ main,header,footer{position:relative;z-index:1}
 /* nav */
 header .wrap{display:flex;align-items:center;justify-content:space-between;height:84px}
 .logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;letter-spacing:-0.01em}
-.logo svg{width:22px;height:22px}
+.logo svg{width:30px;height:30px}
 nav{display:flex;align-items:center;gap:30px}
 nav a.link{font-size:14px;font-weight:600;letter-spacing:.025em;text-transform:uppercase;color:var(--ash);transition:color .2s}
 nav a.link:hover{color:var(--bone)}
@@ -164,7 +167,7 @@ footer a:hover{color:var(--bone)}
 <header>
   <div class="wrap">
     <a class="logo" href="/" aria-label="Anchor home">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8052ff"/><stop offset="1" stop-color="#15846e"/></linearGradient></defs><path d="M12 2 22 20H2Z" fill="url(#lg)"/></svg>
+      ${logoSvg(30, "navGrad")}
       Anchor
     </a>
     <nav>

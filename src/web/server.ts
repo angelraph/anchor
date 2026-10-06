@@ -8,6 +8,7 @@ import { Hono } from "hono";
 import { config } from "../config.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client.js";
+import { logoSvg } from "./logo.js";
 import { renderPage } from "./page.js";
 
 let cache: { at: number; stats: NamespaceStat[] } | undefined;
@@ -45,6 +46,7 @@ export function startWebServer() {
   const app = new Hono();
   app.get("/", async (c) => c.html(renderPage(proofJson(await stats()))));
   app.get("/proof.json", async (c) => c.json(proofJson(await stats())));
+  app.get("/logo.svg", (c) => c.body(logoSvg(512), 200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" }));
   app.get("/health", async (c) => {
     const memory = await memwal.health().then(
       (h) => ({ ok: true, ...h }),

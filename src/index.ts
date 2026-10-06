@@ -23,7 +23,20 @@ async function main() {
   startCheckinScheduler(bot.api);
 
   // Updates run concurrently across users; bot.ts keeps each chat in order.
-  const runner = run(bot);
+  // grammY's runner stops silently on 409 Conflict (another instance polling
+  // the same token, e.g. during a redeploy) — restart it instead of going deaf.
+  let runner = run(bot);
+  const watch = () => {
+    void runner.task()?.catch(async (err: { error_code?: number; description?: string }) => {
+      console.error(`[bot] polling stopped: ${err?.description ?? err}`);
+      if (err?.error_code !== 409) process.exit(1); // let the platform restart us
+      await new Promise((r) => setTimeout(r, 15_000));
+      console.log("[bot] restarting polling after conflict");
+      runner = run(bot);
+      watch();
+    });
+  };
+  watch();
 
   const stop = async () => {
     console.log("Shutting down…");

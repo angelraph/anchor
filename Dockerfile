@@ -7,4 +7,4 @@ COPY src ./src
 COPY scripts ./scripts
 ENV NODE_ENV=production DATA_DIR=/app/data
 EXPOSE 3000
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["node", "--import", "tsx", "src/index.ts"]

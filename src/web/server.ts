@@ -39,6 +39,7 @@ function proofJson(s: NamespaceStat[]) {
     usersWith10PlusMemories: users.filter((u) => u.memories >= 10).length,
     users,
     generatedAt: new Date().toISOString(),
+    checkinTime: `${String(config.CHECKIN_HOUR).padStart(2, "0")}:00 (${config.TIMEZONE})`,
   };
 }
 

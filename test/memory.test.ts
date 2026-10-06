@@ -108,3 +108,21 @@ describe("clock", () => {
     expect(clockIn("Africa/Lagos", new Date("2026-10-06T22:59:00Z"))).toBe("Tuesday 2026-10-06, 23:59 (Africa/Lagos)");
   });
 });
+
+describe("check-in timing", () => {
+  it("round-trips a time of day", () => {
+    const raw = serialize({ kind: "commitment", date: "2026-10-07", id: "cv01", due: "2026-10-07", at: "22:00", text: "Send CV to two companies" });
+    expect(raw).toBe("[commitment] 2026-10-07 id:cv01 due:2026-10-07 at:22:00 | Send CV to two companies");
+    expect(parse(raw)).toMatchObject({ due: "2026-10-07", at: "22:00" });
+  });
+
+  it("asks the next evening when the deadline is after check-in time", async () => {
+    const { checkinDay } = await import("../src/memory/types.js");
+    const late = commitmentStates([recalled("[commitment] 2026-10-07 id:cv01 due:2026-10-07 at:22:00 | Send CV")])[0]!;
+    const early = commitmentStates([recalled("[commitment] 2026-10-07 id:gy01 due:2026-10-08 at:06:00 | Gym")])[0]!;
+    const noTime = commitmentStates([recalled("[commitment] 2026-10-07 id:dk01 due:2026-10-09 | Deck")])[0]!;
+    expect(checkinDay(late, 19)).toBe("2026-10-08");
+    expect(checkinDay(early, 19)).toBe("2026-10-08");
+    expect(checkinDay(noTime, 19)).toBe("2026-10-09");
+  });
+});

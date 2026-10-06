@@ -5,7 +5,7 @@
 import { generateText, type ModelMessage } from "ai";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
-import { withModel } from "../llm/model.js";
+import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { systemPrompt } from "../llm/prompts.js";
 import { recallForTurn, type TurnContext } from "../memory/recall.js";
 import { analyzeFallback, dropDuplicates, extractMemories, storeMemories } from "../memory/write.js";
@@ -74,6 +74,7 @@ export async function generateReply(opts: {
       messages: [...(opts.useHistory === false ? [] : historyFor(opts.userId)), { role: "user", content: opts.message }],
       temperature: 0.6,
       maxRetries: 0,
+      abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     }),
   );
   return { reply: cleanReply(text), context };
@@ -103,7 +104,13 @@ export async function chatTurn(userId: number, firstName: string, message: strin
   void enqueue(`write:${userId}`, async () => {
     let candidates;
     try {
-      candidates = await extractMemories({ userMessage: message, assistantReply: result.reply, commitments: context.commitments });
+      candidates = await extractMemories({
+        userMessage: message,
+        assistantReply: result.reply,
+        commitments: context.commitments,
+        known: context.memories,
+        closed: getUser(userId)?.closed ?? {},
+      });
     } catch (err) {
       console.error(`[memory] Gemini extraction failed for user ${userId}, using Walrus analyze:`, err instanceof Error ? err.message : err);
       await analyzeFallback(userId, message, result.reply).catch((e) =>
@@ -118,6 +125,7 @@ export async function chatTurn(userId: number, firstName: string, message: strin
         const answered = new Set(fresh.flatMap((r) => (r.kind === "outcome" && r.ref ? [r.ref] : [])));
         updateUser(userId, (u) => {
           u.awaitingOutcome = u.awaitingOutcome.filter((id) => !answered.has(id));
+          for (const r of fresh) if (r.kind === "outcome" && r.ref && r.status && r.status !== "moved") (u.closed ??= {})[r.ref] = r.status;
         });
       }
     } catch (err) {

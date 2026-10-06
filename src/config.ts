@@ -11,7 +11,7 @@ const schema = z.object({
   BOT_USERNAME: z.string().default(""),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(10, "GOOGLE_GENERATIVE_AI_API_KEY is required"),
   GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
-  GEMINI_FALLBACK_MODELS: z.string().default("gemini-flash-latest,gemini-3.1-flash-lite"),
+  GEMINI_FALLBACK_MODELS: z.string().default("gemini-3.1-flash-lite,gemini-flash-latest,gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-2.5-flash-lite"),
   MEMWAL_PRIVATE_KEY: z.string().min(32, "MEMWAL_PRIVATE_KEY is required"),
   MEMWAL_ACCOUNT_ID: z.string().startsWith("0x", "MEMWAL_ACCOUNT_ID must be a 0x… object id"),
   MEMWAL_SERVER_URL: z.string().url().default("https://relayer.memory.walrus.xyz"),

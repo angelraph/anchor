@@ -29,6 +29,8 @@ export interface UserState {
   awaitingOutcome: string[];
   /** memory hashes the user asked to forget */
   tombstones: string[];
+  /** commitment id -> outcome status recorded recently, so it is not recorded twice */
+  closed?: Record<string, string>;
   lastTrace?: { at: string; query: string; items: TraceItem[] };
 }
 

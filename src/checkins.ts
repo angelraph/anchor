@@ -6,11 +6,11 @@ import { generateText } from "ai";
 import { InlineKeyboard, type Api } from "grammy";
 import { config } from "./config.js";
 import { hourIn, todayIn, weekdayOf } from "./dates.js";
-import { withModel } from "./llm/model.js";
+import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { checkinPrompt, formatCommitments, formatMemoryBlock } from "./llm/prompts.js";
 import { listUserNamespaces } from "./memory/client.js";
 import { mergeAndFilter, recall, recallCommitments } from "./memory/recall.js";
-import { effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
+import { checkinDay, clause, effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
 import { allUsers, getUser, updateUser } from "./state.js";
 
 export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
@@ -24,8 +24,8 @@ export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
 
 export function dueCommitments(states: CommitmentState[], today: string): CommitmentState[] {
   return states.filter((s) => {
-    const due = effectiveDue(s);
-    return isOpen(s) && !!due && due <= today;
+    const day = checkinDay(s, config.CHECKIN_HOUR);
+    return isOpen(s) && !!day && day <= today;
   });
 }
 
@@ -51,7 +51,10 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
   // Pull memories related to the due promises so the nudge can reference patterns.
   const related = mergeAndFilter(
     userId,
-    ...(await Promise.all(due.slice(0, 3).map((s) => recall(userId, s.commitment.text, { limit: 5, maxDistance: 0.7 })))),
+    ...(await Promise.all([
+      ...due.slice(0, 3).map((s) => recall(userId, s.commitment.text, { limit: 5, maxDistance: 0.7 })),
+      recall(userId, "the user's name and who they are", { limit: 3, maxDistance: 0.8 }),
+    ])),
   );
 
   const { text } = await withModel((model) =>
@@ -61,13 +64,14 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
       prompt: `Promises due:\n${formatCommitments(due, today)}\n\nRelated memories:\n${formatMemoryBlock(related)}`,
       temperature: 0.7,
       maxRetries: 0,
+      abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     }),
   );
   await api.sendMessage(chatId, text.trim());
 
   for (const s of due) {
     const dueDate = effectiveDue(s)!;
-    await api.sendMessage(chatId, `#${s.commitment.id} · ${s.commitment.text}\n(due ${weekdayOf(dueDate)} ${dueDate})`, {
+    await api.sendMessage(chatId, `#${s.commitment.id} · ${clause(s.commitment.text)}\n(due ${weekdayOf(dueDate)} ${dueDate})`, {
       reply_markup: outcomeKeyboard(s.commitment.id!),
     });
   }

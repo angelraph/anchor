@@ -15,6 +15,8 @@ export interface ProofData {
   usersWith10PlusMemories: number;
   users: Array<{ user: string; memories: number; lastActive: string }>;
   generatedAt: string;
+  /** e.g. "19:00 (Africa/Lagos)" */
+  checkinTime: string;
 }
 
 import { logoSvg } from "./logo.js";
@@ -140,6 +142,17 @@ section{padding:clamp(60px,10vw,120px) 0}
 .cmds div{font-weight:200;color:var(--mist)}
 .cmds code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;color:var(--saffron);margin-bottom:6px}
 
+/* faq */
+.faq{margin-top:36px;max-width:860px}
+.faq details{padding:24px 0}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:24px;font-size:clamp(20px,2.2vw,24px);font-weight:400;letter-spacing:-0.02em}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--iris);font-size:28px;line-height:1;transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq summary:focus-visible{outline:2px solid var(--iris);outline-offset:6px;border-radius:6px}
+.faq p{margin-top:12px;font-weight:200;color:var(--mist);max-width:720px}
+.faq a{color:var(--saffron)}
+
 footer{padding:60px 0 48px}
 footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:14px;color:var(--ash)}
 footer a:hover{color:var(--bone)}
@@ -173,6 +186,7 @@ footer a:hover{color:var(--bone)}
     <nav>
       <a class="link" href="#how">How it works</a>
       <a class="link" href="#proof">Proof</a>
+      <a class="link" href="#faq">FAQ</a>
       <a class="link" href="${REPO}">GitHub</a>
       <a class="pill" href="${esc(cta)}">Open in Telegram</a>
     </nav>
@@ -256,6 +270,23 @@ footer a:hover{color:var(--bone)}
         <div><code>/compare</code>Your message answered with and without memory.</div>
         <div><code>/promises</code>Open and kept promises, and your follow-through rate.</div>
         <div><code>/forget</code>Pick a memory and Anchor never uses it again.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <span class="label">FAQ</span>
+      <h2 class="h-sm">Questions people ask first.</h2>
+      <div class="faq">
+        <details><summary>Do I need an account, a wallet or crypto?</summary><p>No. Open Anchor in Telegram and start talking. Your Telegram account is all it uses to know it's you.</p></details>
+        <details><summary>Where is my memory stored, and who can read it?</summary><p>Each person gets their own namespace in Walrus Memory. Memories are encrypted before they are stored on Walrus, and recall never crosses from one person to another. Anchor's server holds the key it needs to read your memories back to you, so treat it like any app you chat with. This page only ever shows anonymised counts.</p></details>
+        <details><summary>When does Anchor check in?</summary><p>Every evening at ${esc(p.checkinTime)}, about promises due that day or earlier. Tap Did it, Partly, Didn't or Move it, or just reply in your own words. You can also send /checkin any time.</p></details>
+        <details><summary>What if I break a promise?</summary><p>Nothing bad happens. Anchor records it honestly, asks what got in the way, and uses that next time. Patterns and wins are the point: they are how it learns what actually works for you.</p></details>
+        <details><summary>Can I make it forget something?</summary><p>Yes. Send /forget and a topic, pick the memory, and Anchor will never use it again. Walrus Memory is append-only, so the encrypted record isn't erased; Anchor stores a tombstone that hides it from every future recall.</p></details>
+        <details><summary>How do I see what it remembers?</summary><p>/memory lists everything, grouped by type. /why shows the exact memories behind its last reply, with Walrus blob IDs. /compare answers your message with and without memory, side by side.</p></details>
+        <details><summary>Which AI runs it?</summary><p>${esc(p.model)} through the Vercel AI SDK, with automatic fallback to other Gemini models when one is busy. Long-term memory is Walrus Memory on mainnet.</p></details>
+        <details><summary>Is it free and open source?</summary><p>Free to use, and MIT-licensed. The code, setup guide and design notes are on <a href="${REPO}">GitHub</a>.</p></details>
       </div>
     </div>
   </section>

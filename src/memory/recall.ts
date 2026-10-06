@@ -1,6 +1,6 @@
 import { getUser } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
-import { commitmentStates, mergeMemories, parse, type CommitmentState, type RecalledMemory } from "./types.js";
+import { commitmentStates, mergeMemories, parse, type CommitmentState, type OutcomeStatus, type RecalledMemory } from "./types.js";
 
 interface RecallOpts {
   limit?: number;
@@ -32,6 +32,24 @@ export function mergeAndFilter(userId: number | string, ...groups: RecalledMemor
   return mergeMemories(groups, getUser(userId)?.tombstones ?? []);
 }
 
+/**
+ * Walrus takes ~30 s to make a new memory recallable. Outcomes recorded in the
+ * last few minutes (button taps) are applied from local state so a promise
+ * never shows as open right after the user closed it.
+ */
+function withRecentOutcomes(userId: number | string, states: CommitmentState[]): CommitmentState[] {
+  const closed = getUser(userId)?.closed ?? {};
+  return states.map((s) => {
+    const status = closed[s.commitment.id ?? ""];
+    if (s.outcome || !status) return s;
+    const outcome: RecalledMemory = {
+      kind: "outcome", date: s.commitment.date, ref: s.commitment.id, status: status as OutcomeStatus,
+      text: `Marked ${status} with the check-in button`, raw: "", blobId: "", distance: 1,
+    };
+    return { ...s, outcome };
+  });
+}
+
 export interface TurnContext {
   memories: RecalledMemory[];
   commitments: CommitmentState[];
@@ -57,7 +75,7 @@ export async function recallForTurn(userId: number | string, message: string): P
   const groups = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   if (groups.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
   const memories = mergeAndFilter(userId, ...groups).sort((a, b) => a.distance - b.distance);
-  return { memories, commitments: commitmentStates(memories) };
+  return { memories, commitments: withRecentOutcomes(userId, commitmentStates(memories)) };
 }
 
 /** Broad sweep of a user's commitments and outcomes (for /promises and check-ins). */
@@ -66,5 +84,5 @@ export async function recallCommitments(userId: number | string): Promise<Commit
     recall(userId, "[commitment] a promise to do something by a due date", { limit: 30, sort: "recent" }),
     recall(userId, "[outcome] whether a promise was kept, broken, partly done or moved", { limit: 30, sort: "recent" }),
   ]);
-  return commitmentStates(mergeAndFilter(userId, commitments, outcomes));
+  return withRecentOutcomes(userId, commitmentStates(mergeAndFilter(userId, commitments, outcomes)));
 }

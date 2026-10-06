@@ -10,6 +10,9 @@ const MODEL_IDS = [config.GEMINI_MODEL, ...config.GEMINI_FALLBACK_MODELS.split("
 );
 const models = MODEL_IDS.map((id) => ({ id, model: google(id) }));
 
+/** Per-model time limit; past it we fail over instead of making the user wait. */
+export const LLM_TIMEOUT_MS = 25_000;
+
 export const MODEL_LABEL = `Google ${config.GEMINI_MODEL}`;
 
 function isRetryable(err: unknown): boolean {
@@ -17,7 +20,7 @@ function isRetryable(err: unknown): boolean {
   const status = e?.statusCode ?? e?.lastError?.statusCode;
   if (status !== undefined) return [404, 408, 429, 500, 502, 503, 504].includes(status);
   if (e?.isRetryable) return true; // e.g. ECONNRESET: no HTTP status, but the SDK marks it retryable
-  return /high demand|overloaded|unavailable|timeout|fetch failed|cannot connect|ECONNRESET|socket hang up|network/i.test(
+  return /high demand|overloaded|unavailable|timeout|timed out|aborted|fetch failed|cannot connect|ECONNRESET|socket hang up|network|quota/i.test(
     e?.message ?? "",
   );
 }

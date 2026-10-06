@@ -6,7 +6,7 @@ import { relativeDay, todayIn, weekdayOf } from "../dates.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces } from "../memory/client.js";
 import { mergeAndFilter, recall, recallCommitments } from "../memory/recall.js";
-import { effectiveDue, isOpen, memoryHash, type MemoryKind, type RecalledMemory } from "../memory/types.js";
+import { clause, effectiveDue, isOpen, memoryHash, type MemoryKind, type RecalledMemory } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
 import { getUser, updateUser, upsertUser } from "../state.js";
 import { chatTurn, enqueue, generateReply } from "./conversation.js";
@@ -119,13 +119,13 @@ export function createBot(): Bot {
         for (const s of open) {
           const due = effectiveDue(s);
           const flag = due && due < today ? " ⚠️ overdue" : due === today ? " ⏰ today" : "";
-          lines.push(`• #${s.commitment.id} ${s.commitment.text}${due ? `, ${weekdayOf(due)} ${due} (${relativeDay(due, today)})${flag}` : ""}`);
+          lines.push(`• #${s.commitment.id} ${clause(s.commitment.text)}${due ? ` (due ${weekdayOf(due)} ${due}, ${relativeDay(due, today)})${flag}` : ""}`);
         }
       }
       if (done.length) {
         const icon = { kept: "✅", partial: "🟡", broken: "❌", moved: "📅" } as const;
         lines.push("", "FINISHED");
-        for (const s of done) lines.push(`${icon[s.outcome!.status ?? "kept"]} #${s.commitment.id} ${s.commitment.text}`);
+        for (const s of done) lines.push(`${icon[s.outcome!.status ?? "kept"]} #${s.commitment.id} ${clause(s.commitment.text)}`);
         const kept = done.filter((s) => s.outcome!.status === "kept").length;
         lines.push("", `Follow-through: ${kept}/${done.length} kept`);
       }
@@ -278,22 +278,24 @@ export function createBot(): Bot {
       await ctx.reply(`I couldn't find promise #${id} anymore.`);
       return;
     }
-    if (!isOpen(state)) {
-      await ctx.reply(`#${id} is already marked as ${state.outcome!.status}.`);
+    if (!isOpen(state) || getUser(userId)?.closed?.[id!]) {
+      await ctx.reply(`#${id} is already marked as ${state.outcome?.status ?? getUser(userId)?.closed?.[id!]}.`);
       return;
     }
     const verb = { kept: "Kept the promise", partial: "Partly kept the promise", broken: "Did not keep the promise" }[status as "kept" | "partial" | "broken"];
+    const promiseText = clause(state.commitment.text);
     const today = todayIn(config.TIMEZONE);
     void enqueue(`write:${userId}`, () =>
       storeMemories(userId, [
-        { kind: "outcome", date: today, ref: id, status: status as "kept" | "partial" | "broken", text: `${verb}: ${state.commitment.text}` },
+        { kind: "outcome", date: today, ref: id, status: status as "kept" | "partial" | "broken", text: `${verb}: ${promiseText}` },
       ]),
     ).catch((err) => console.error(`[memory] background write failed for ${userId}:`, err));
     updateUser(userId, (u) => {
       u.awaitingOutcome = u.awaitingOutcome.filter((x) => x !== id);
+      (u.closed ??= {})[id!] = status!;
     });
     const follow = {
-      kept: `Noted, that's a kept promise${user.firstName ? `, ${user.firstName}` : ""}. 💪 What made it work this time? I'll remember it for next time.`,
+      kept: "Noted, that's a kept promise. 💪 What made it work this time? I'll remember it for next time.",
       partial: "Noted. Partial still counts for something. What did you get done, and what stopped the rest?",
       broken: "Thanks for being honest, I've noted it. What got in the way? Knowing that is how we fix it.",
     }[status as "kept" | "partial" | "broken"];

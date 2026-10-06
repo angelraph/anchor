@@ -33,6 +33,8 @@ export interface MemoryRecord {
   id?: string;
   /** Due date (commitments only). */
   due?: string;
+  /** Optional time of day the promise is due, HH:MM 24h (commitments only). */
+  at?: string;
   /** For outcomes: the commitment id. For retractions: hash of the forgotten memory. */
   ref?: string;
   status?: OutcomeStatus;
@@ -51,11 +53,13 @@ export interface RecalledMemory extends MemoryRecord {
 const HEADER = /^\[([a-z]+)\]\s+(\d{4}-\d{2}-\d{2})((?:\s+[a-z]+:\S+)*)\s+(?:\||\u2014)\s+([\s\S]+)$/;
 const FIELD = /([a-z]+):(\S+)/g;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function serialize(record: MemoryRecord): string {
   const fields: string[] = [];
   if (record.id) fields.push(`id:${record.id}`);
   if (record.due && DATE.test(record.due)) fields.push(`due:${record.due}`);
+  if (record.at && TIME.test(record.at)) fields.push(`at:${record.at}`);
   if (record.ref) fields.push(`ref:${record.ref}`);
   if (record.status) fields.push(`status:${record.status}`);
   const text = record.text.replace(/\s+/g, " ").trim();
@@ -74,6 +78,7 @@ export function parse(raw: string): MemoryRecord {
   for (const [, key, value] of fieldStr!.matchAll(FIELD)) {
     if (key === "id") record.id = value;
     else if (key === "due" && DATE.test(value!)) record.due = value;
+    else if (key === "at" && TIME.test(value!)) record.at = value;
     else if (key === "ref") record.ref = value;
     else if (key === "status" && ["kept", "broken", "partial", "moved"].includes(value!))
       record.status = value as OutcomeStatus;
@@ -89,6 +94,11 @@ export function memoryHash(raw: string): string {
     h = Math.imul(h, 0x01000193);
   }
   return (h >>> 0).toString(36);
+}
+
+/** A memory sentence used mid-line: drop its final period so "by 06:00., Thursday" can't happen. */
+export function clause(text: string): string {
+  return text.trim().replace(/[.!]+$/, "");
 }
 
 export function newCommitmentId(): string {
@@ -132,6 +142,23 @@ function outcomeOrder(m: RecalledMemory): string {
 
 export function isOpen(state: CommitmentState): boolean {
   return !state.outcome || state.outcome.status === "moved";
+}
+
+/**
+ * The day Anchor should ask about a promise: the evening of its due date, or
+ * the following evening when the deadline is later than check-in time (asking
+ * at 19:00 about a 22:00 deadline would be too early).
+ */
+export function checkinDay(state: CommitmentState, checkinHour: number): string | undefined {
+  const due = effectiveDue(state);
+  if (!due) return undefined;
+  const at = state.outcome?.status === "moved" ? state.outcome.at : state.commitment.at;
+  if (at && Number(at.slice(0, 2)) * 60 + Number(at.slice(3)) > checkinHour * 60) {
+    const d = new Date(`${due}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  return due;
 }
 
 /** Effective due date: a "moved" outcome may carry the new due date. */

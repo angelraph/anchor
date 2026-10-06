@@ -7,7 +7,7 @@ Most chatbots treat memory as a nice extra: the bot remembers your name or your 
 Walrus Memory stores text and recalls it by semantic similarity. It has no metadata columns or filters, so Anchor puts structure *inside* the text with a compact header:
 
 ```
-[kind] YYYY-MM-DD key:value … — sentence
+[kind] YYYY-MM-DD key:value … | sentence
 ```
 
 - The sentence dominates the embedding, so semantic recall still works.
@@ -46,3 +46,14 @@ A timer ticks every minute; at `CHECKIN_HOUR` in `TIMEZONE` it:
 2. **No structured metadata or filtering.** Typed memories need text headers, and "all open commitments" has to be approximated with broad semantic sweeps (`limit 30`) instead of a filter like `kind = commitment`.
 3. **`formatUntrustedMemories` isn't exported** from `@mysten-incubation/memwal/ai`. Apps that do their own recall have to copy the prompt-injection defence.
 4. **Append-only + recall means duplicates are on you.** Remembering the same fact twice stores two entries, so dedupe costs an extra recall per candidate.
+5. **`analyze()` resolves weekdays to the wrong date.** Reproduced on 2026-10-07 (a Wednesday) with `analyze("User: ... ship my first Sui contract by Sunday ...", { occurredAt: new Date() })`. The stored fact read "by Sunday, 8 October 2026 (2026-10-08)", but 2026-10-08 is a Thursday; the coming Sunday is 2026-10-11. Anchor only uses `analyze` as a fallback when Gemini extraction fails.
+6. **The 401 does not say what is wrong.** Pasting a Sui wallet address as `MEMWAL_ACCOUNT_ID` returns the same generic `AUTH_REJECTED` as a wrong key. Checking that the ID is a `MemWalAccount` object (and saying so) would have saved an hour.
+
+## Reliability decisions
+- **Recall fails:** Anchor still answers, tells the user its memory is reconnecting, and never pretends to remember.
+- **Save fails:** only jobs Walrus marks `failed` are re-sent (a `timeout` job usually finishes and re-sending would duplicate it). Anything still failing is parked in an on-disk outbox and retried every 10 minutes.
+- **Gemini extraction fails** (quota, outage): Walrus Memory `analyze()` extracts facts from the exchange instead, so the conversation is still remembered.
+- **Gemini model overloaded or connection dropped:** fail over to the next model and skip the failing one for 5 minutes.
+- **Telegram 409 conflict** (two instances during a redeploy): polling restarts instead of silently stopping.
+- **Deadlines:** prompts get the full local clock, so "by 6am" said at 23:59 resolves to the next morning.
+

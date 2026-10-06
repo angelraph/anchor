@@ -89,7 +89,7 @@ async function maybeGeneralCheckin(api: Api, userId: string, today: string): Pro
   if (!activeRecently || seenToday) return 0;
   await api.sendMessage(
     user.chatId,
-    `Evening check-in${user.firstName ? `, ${user.firstName}` : ""}. Nothing is due today — what's one thing you'll get done tomorrow? I'll hold you to it.`,
+    `Evening check-in${user.firstName ? `, ${user.firstName}` : ""}. Nothing is due today, what's one thing you'll get done tomorrow? I'll hold you to it.`,
   );
   updateUser(userId, (u) => {
     u.lastGeneralCheckin = today;

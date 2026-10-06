@@ -8,7 +8,7 @@ import { todayIn } from "../dates.js";
 import { withModel } from "../llm/model.js";
 import { systemPrompt } from "../llm/prompts.js";
 import { recallForTurn, type TurnContext } from "../memory/recall.js";
-import { dropDuplicates, extractMemories, storeMemories } from "../memory/write.js";
+import { analyzeFallback, dropDuplicates, extractMemories, storeMemories } from "../memory/write.js";
 import { getUser, updateUser } from "../state.js";
 
 const HISTORY_TURNS = 8;
@@ -50,7 +50,16 @@ export async function generateReply(opts: {
   useHistory?: boolean;
 }): Promise<TurnResult> {
   const today = todayIn(config.TIMEZONE);
-  const context = opts.withMemory ? await recallForTurn(opts.userId, opts.message) : null;
+  let context: TurnContext | null = null;
+  if (opts.withMemory) {
+    try {
+      context = await recallForTurn(opts.userId, opts.message);
+    } catch (err) {
+      // Walrus unreachable: still answer, honestly, instead of failing the turn.
+      console.error(`[memory] recall failed for user ${opts.userId}:`, err instanceof Error ? err.message : err);
+      context = { memories: [], commitments: [], unavailable: true };
+    }
+  }
   const { text } = await withModel((model) =>
     generateText({
       model,
@@ -60,6 +69,7 @@ export async function generateReply(opts: {
         memories: context?.memories ?? null,
         commitments: context?.commitments ?? [],
         awaiting: opts.withMemory ? (getUser(opts.userId)?.awaitingOutcome ?? []) : [],
+        memoryUnavailable: context?.unavailable,
       }),
       messages: [...(opts.useHistory === false ? [] : historyFor(opts.userId)), { role: "user", content: opts.message }],
       temperature: 0.6,
@@ -91,8 +101,17 @@ export async function chatTurn(userId: number, firstName: string, message: strin
   // per-user queue so a slow Walrus upload never delays the next answer.
   const context = result.context!;
   void enqueue(`write:${userId}`, async () => {
+    let candidates;
     try {
-      const candidates = await extractMemories({ userMessage: message, assistantReply: result.reply, commitments: context.commitments });
+      candidates = await extractMemories({ userMessage: message, assistantReply: result.reply, commitments: context.commitments });
+    } catch (err) {
+      console.error(`[memory] Gemini extraction failed for user ${userId}, using Walrus analyze:`, err instanceof Error ? err.message : err);
+      await analyzeFallback(userId, message, result.reply).catch((e) =>
+        console.error(`[memory] analyze fallback failed for user ${userId}:`, e instanceof Error ? e.message : e),
+      );
+      return;
+    }
+    try {
       const fresh = await dropDuplicates(userId, candidates, context.memories);
       await storeMemories(userId, fresh);
       if (fresh.some((r) => r.kind === "outcome")) {

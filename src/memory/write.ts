@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { withModel } from "../llm/model.js";
 import { extractionPrompt } from "../llm/prompts.js";
+import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
 import { recall } from "./recall.js";
 import { newCommitmentId, normalise, serialize, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
@@ -94,28 +95,70 @@ export async function dropDuplicates(
 
 /** Write records to the user's namespace on Walrus and wait until they are indexed. */
 export async function storeMemories(userId: number | string, records: MemoryRecord[]): Promise<string[]> {
-  if (records.length === 0) return [];
+  return storeRaw(userId, records.map((r) => serialize(r)));
+}
+
+/**
+ * Write already-serialized memories. Only jobs Walrus reports as "failed" are
+ * re-sent: a "timeout" job is usually still finishing, and re-sending it would
+ * store the memory twice (Walrus Memory is append-only). Anything that still
+ * fails, or a relayer that is down entirely, goes to the outbox for later.
+ */
+export async function storeRaw(userId: number | string, raws: string[]): Promise<string[]> {
+  if (raws.length === 0) return [];
   const namespace = namespaceFor(userId);
-  let pending = records.map((r) => serialize(r));
+  let pending = raws;
   const stored: string[] = [];
-  for (let attempt = 1; attempt <= 2 && pending.length; attempt++) {
-    const res = await withRetry("rememberBulkAndWait", () =>
-      memwal.rememberBulkAndWait(
-        pending.map((text) => ({ text, namespace })),
-        { timeoutMs: 120_000 },
-      ),
-    );
-    const failed: string[] = [];
-    res.results.forEach((r, i) => {
-      if (r.status === "done") stored.push(pending[i]!);
-      else {
-        console.warn(`[memwal] remember ${r.status} for user ${userId}: ${r.error ?? "no error message"}`);
-        failed.push(pending[i]!);
-      }
-    });
-    pending = failed;
+  try {
+    for (let attempt = 1; attempt <= 2 && pending.length; attempt++) {
+      const res = await withRetry("rememberBulkAndWait", () =>
+        memwal.rememberBulkAndWait(
+          pending.map((text) => ({ text, namespace })),
+          { timeoutMs: 120_000 },
+        ),
+      );
+      const failed: string[] = [];
+      res.results.forEach((r, i) => {
+        if (r.status === "done") stored.push(pending[i]!);
+        else if (r.status === "timeout") console.warn(`[memwal] remember still processing for user ${userId}; not re-sending`);
+        else {
+          console.warn(`[memwal] remember failed for user ${userId}: ${r.error ?? "no error message"}`);
+          failed.push(pending[i]!);
+        }
+      });
+      pending = failed;
+    }
+  } catch (err) {
+    console.error(`[memwal] relayer unavailable for user ${userId}:`, err instanceof Error ? err.message : err);
   }
-  if (pending.length) console.error(`[memwal] gave up on ${pending.length} memories for user ${userId}`);
+  if (pending.length) {
+    console.error(`[memwal] parking ${pending.length} memories for user ${userId} in the outbox`);
+    addToOutbox(userId, pending);
+  }
   for (const s of stored) console.log(`[memory] user ${userId} += ${s}`);
   return stored;
+}
+
+/**
+ * Backup learning path: when Gemini cannot extract memories (quota, outage),
+ * let Walrus Memory's own server-side extractor (analyze) pull facts from the
+ * exchange so the conversation is still remembered, just without Anchor's types.
+ */
+export async function analyzeFallback(userId: number | string, userMessage: string, assistantReply: string): Promise<number> {
+  const res = await withRetry("analyze", () =>
+    memwal.analyze(`User: ${userMessage}\nAssistant: ${assistantReply}`, {
+      namespace: namespaceFor(userId),
+      occurredAt: new Date(),
+    }),
+  );
+  for (const f of res.facts) console.log(`[memory] user ${userId} += (analyze) ${f.text}`);
+  return res.fact_count;
+}
+
+/** Retry everything parked in the outbox (runs on a timer). */
+export async function drainOutbox(): Promise<void> {
+  for (const [userId, raws] of takeOutbox()) {
+    console.log(`[memwal] retrying ${raws.length} parked memories for user ${userId}`);
+    await storeRaw(userId, raws);
+  }
 }

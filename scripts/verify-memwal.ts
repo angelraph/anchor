@@ -27,7 +27,7 @@ step(`health (${serverUrl})`);
 console.log(await memwal.health());
 
 const marker = `verify-${Date.now()}`;
-const text = `[fact] ${new Date().toISOString().slice(0, 10)} — Anchor verification run ${marker}: the user's favourite study spot is the library at 7am.`;
+const text = `[fact] ${new Date().toISOString().slice(0, 10)} | Anchor verification run ${marker}: the user's favourite study spot is the library at 7am.`;
 step("rememberAndWait");
 let t = Date.now();
 const stored = await memwal.rememberAndWait(text);

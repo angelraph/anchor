@@ -13,10 +13,13 @@ const models = MODEL_IDS.map((id) => ({ id, model: google(id) }));
 export const MODEL_LABEL = `Google ${config.GEMINI_MODEL}`;
 
 function isRetryable(err: unknown): boolean {
-  const e = err as { statusCode?: number; lastError?: { statusCode?: number }; message?: string };
+  const e = err as { statusCode?: number; isRetryable?: boolean; lastError?: { statusCode?: number }; message?: string };
   const status = e?.statusCode ?? e?.lastError?.statusCode;
   if (status !== undefined) return [404, 408, 429, 500, 502, 503, 504].includes(status);
-  return /high demand|overloaded|unavailable|timeout|fetch failed/i.test(e?.message ?? "");
+  if (e?.isRetryable) return true; // e.g. ECONNRESET: no HTTP status, but the SDK marks it retryable
+  return /high demand|overloaded|unavailable|timeout|fetch failed|cannot connect|ECONNRESET|socket hang up|network/i.test(
+    e?.message ?? "",
+  );
 }
 
 /** Models that recently failed are skipped for a while instead of retried on every call. */

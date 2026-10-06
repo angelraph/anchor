@@ -4,9 +4,9 @@
  * Walrus Memory stores plain text and recalls it semantically, so every memory
  * Anchor writes is a single human-readable line with a small typed header:
  *
- *   [commitment] 2026-10-06 id:k3f9 due:2026-10-09 — Send 5 job applications
- *   [outcome] 2026-10-09 ref:k3f9 status:broken — Sent 2; got distracted by…
- *   [pattern] 2026-10-09 — Pushes gym to "next Monday" when work runs late
+ *   [commitment] 2026-10-06 id:k3f9 due:2026-10-09 | Send 5 job applications
+ *   [outcome] 2026-10-09 ref:k3f9 status:broken | Sent 2; got distracted by…
+ *   [pattern] 2026-10-09 | Pushes gym to "next Monday" when work runs late
  *
  * The header keeps the text embeddable (the sentence still dominates the
  * vector) while letting the app parse structure back out after recall.
@@ -47,7 +47,8 @@ export interface RecalledMemory extends MemoryRecord {
   createdAt?: string;
 }
 
-const HEADER = /^\[([a-z]+)\]\s+(\d{4}-\d{2}-\d{2})((?:\s+[a-z]+:\S+)*)\s+—\s+([\s\S]+)$/;
+// Separator is "|"; the legacy em dash (U+2014) is still read so older memories on Walrus parse.
+const HEADER = /^\[([a-z]+)\]\s+(\d{4}-\d{2}-\d{2})((?:\s+[a-z]+:\S+)*)\s+(?:\||\u2014)\s+([\s\S]+)$/;
 const FIELD = /([a-z]+):(\S+)/g;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,7 +59,7 @@ export function serialize(record: MemoryRecord): string {
   if (record.ref) fields.push(`ref:${record.ref}`);
   if (record.status) fields.push(`status:${record.status}`);
   const text = record.text.replace(/\s+/g, " ").trim();
-  return `[${record.kind}] ${record.date}${fields.length ? " " + fields.join(" ") : ""} — ${text}`;
+  return `[${record.kind}] ${record.date}${fields.length ? " " + fields.join(" ") : ""} | ${text}`;
 }
 
 export function parse(raw: string): MemoryRecord {
@@ -80,7 +81,7 @@ export function parse(raw: string): MemoryRecord {
   return record;
 }
 
-/** Stable short hash (FNV-1a, base36) of a memory's text — used by tombstones. */
+/** Stable short hash (FNV-1a, base36) of a memory's text, used by tombstones. */
 export function memoryHash(raw: string): string {
   let h = 0x811c9dc5;
   for (const ch of raw.trim()) {
@@ -142,7 +143,7 @@ export function effectiveDue(state: CommitmentState): string | undefined {
 /**
  * Merge several recalls: dedupe identical text (keeping the closest match),
  * then drop anything the user asked Anchor to forget. Tombstones come from two
- * places — the local cache and any [retracted] memories recalled alongside
+ * places, the local cache and any [retracted] memories recalled alongside
  * (a tombstone embeds the forgotten text, so it is recalled next to it).
  */
 export function mergeMemories(groups: RecalledMemory[][], cachedTombstones: string[] = []): RecalledMemory[] {

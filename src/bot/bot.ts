@@ -16,18 +16,18 @@ const TELEGRAM_LIMIT = 4000;
 
 const HELP = `Here's how I work:
 
-• Tell me what you're going to do and by when — "I'll send 5 job applications by Friday".
+• Tell me what you're going to do and by when, like "I'll send 5 job applications by Friday".
 • I remember it on Walrus, and when it's due I'll message you first and ask how it went.
-• Over time I learn your patterns — what derails you and what actually works — and I use them.
+• Over time I learn your patterns, what derails you and what actually works, and I use them.
 
 Commands
-/promises — your open and finished promises
-/memory — everything I remember about you
-/why — the exact memories behind my last reply
-/compare <message> — see my answer with and without memory
-/forget <topic> — make me forget something
-/checkin — check in on due promises now
-/stats — how much Anchor remembers overall`;
+/promises: your open and finished promises
+/memory: everything I remember about you
+/why: the exact memories behind my last reply
+/compare <message>: see my answer with and without memory
+/forget <topic>: make me forget something
+/checkin: check in on due promises now
+/stats: how much Anchor remembers overall`;
 
 async function sendLong(ctx: Context, text: string, extra?: Parameters<Context["reply"]>[1]) {
   for (let i = 0; i < text.length; i += TELEGRAM_LIMIT) {
@@ -76,7 +76,7 @@ export function createBot(): Bot {
   // A slow Walrus call for one person never blocks another, but each chat stays in order.
   bot.use(sequentialize((ctx) => ctx.chat?.id.toString()));
 
-  // Anchor is a 1:1 accountability partner — ignore groups.
+  // Anchor is a 1:1 accountability partner, ignore groups.
   bot.use(async (ctx, next) => {
     if (ctx.chat && ctx.chat.type !== "private") return;
     if (!ctx.from) return;
@@ -90,11 +90,11 @@ export function createBot(): Bot {
       const open = states.filter(isOpen);
       if (states.length === 0) {
         await ctx.reply(
-          `Hey${user.firstName ? ` ${user.firstName}` : ""}, I'm Anchor — the bot that holds you to your word.\n\nMost chatbots forget you when the chat ends. I don't: everything you tell me is stored as encrypted memory on Walrus, so I can follow up, notice patterns, and remember what actually works for you.\n\nLet's start: what's one thing you keep promising yourself you'll do? Tell me what, and by when.`,
+          `Hey${user.firstName ? ` ${user.firstName}` : ""}, I'm Anchor, the bot that holds you to your word.\n\nMost chatbots forget you when the chat ends. I don't: everything you tell me is stored as encrypted memory on Walrus, so I can follow up, notice patterns, and remember what actually works for you.\n\nLet's start: what's one thing you keep promising yourself you'll do? Tell me what, and by when.`,
         );
       } else {
         await ctx.reply(
-          `Welcome back${user.firstName ? `, ${user.firstName}` : ""}. I still remember ${states.length} promise${states.length === 1 ? "" : "s"} — ${open.length} still open. Want to go through them (/promises) or tell me what's new?`,
+          `Welcome back${user.firstName ? `, ${user.firstName}` : ""}. I still remember ${states.length} promise${states.length === 1 ? "" : "s"}, ${open.length} still open. Want to go through them (/promises) or tell me what's new?`,
         );
       }
     });
@@ -119,7 +119,7 @@ export function createBot(): Bot {
         for (const s of open) {
           const due = effectiveDue(s);
           const flag = due && due < today ? " ⚠️ overdue" : due === today ? " ⏰ today" : "";
-          lines.push(`• #${s.commitment.id} ${s.commitment.text}${due ? ` — ${weekdayOf(due)} ${due} (${relativeDay(due, today)})${flag}` : ""}`);
+          lines.push(`• #${s.commitment.id} ${s.commitment.text}${due ? `, ${weekdayOf(due)} ${due} (${relativeDay(due, today)})${flag}` : ""}`);
         }
       }
       if (done.length) {
@@ -135,7 +135,7 @@ export function createBot(): Bot {
         return d && d <= today;
       });
       for (const s of due) {
-        await ctx.reply(`#${s.commitment.id} is due — how did it go?`, {
+        await ctx.reply(`#${s.commitment.id} is due, how did it go?`, {
           reply_markup: outcomeKeyboard(s.commitment.id!),
         });
       }
@@ -178,11 +178,11 @@ export function createBot(): Bot {
     touch(ctx);
     const trace = getUser(ctx.from!.id)?.lastTrace;
     if (!trace) {
-      await ctx.reply("Send me a message first — then /why shows which memories shaped my reply.");
+      await ctx.reply("Send me a message first, then /why shows which memories shaped my reply.");
       return;
     }
     if (trace.items.length === 0) {
-      await ctx.reply(`For your last message ("${trace.query.slice(0, 80)}") I didn't recall any memories — nothing relevant yet.`);
+      await ctx.reply(`For your last message ("${trace.query.slice(0, 80)}") I didn't recall any memories, nothing relevant yet.`);
       return;
     }
     const lines = [`My last reply was shaped by ${trace.items.length} memories recalled from Walrus for "${trace.query.slice(0, 80)}":`, ""];
@@ -268,7 +268,7 @@ export function createBot(): Bot {
       updateUser(userId, (u) => {
         u.awaitingOutcome = [...new Set([...u.awaitingOutcome, id!])];
       });
-      await ctx.reply(`No problem — when will you do #${id} instead? (And what got in the way?)`);
+      await ctx.reply(`No problem, when will you do #${id} instead? (And what got in the way?)`);
       return;
     }
 
@@ -293,9 +293,9 @@ export function createBot(): Bot {
       u.awaitingOutcome = u.awaitingOutcome.filter((x) => x !== id);
     });
     const follow = {
-      kept: `Noted — that's a kept promise${user.firstName ? `, ${user.firstName}` : ""}. 💪 What made it work this time? I'll remember it for next time.`,
+      kept: `Noted, that's a kept promise${user.firstName ? `, ${user.firstName}` : ""}. 💪 What made it work this time? I'll remember it for next time.`,
       partial: "Noted. Partial still counts for something. What did you get done, and what stopped the rest?",
-      broken: "Thanks for being honest — I've noted it. What got in the way? Knowing that is how we fix it.",
+      broken: "Thanks for being honest, I've noted it. What got in the way? Knowing that is how we fix it.",
     }[status as "kept" | "partial" | "broken"];
     await ctx.reply(follow);
   });
@@ -308,7 +308,7 @@ export function createBot(): Bot {
     const raw = forgetCandidates.get(String(userId))?.get(hash);
     await ctx.answerCallbackQuery();
     if (!raw) {
-      await ctx.reply("That list expired — run /forget again.");
+      await ctx.reply("That list expired, run /forget again.");
       return;
     }
     updateUser(userId, (u) => {
@@ -320,7 +320,7 @@ export function createBot(): Bot {
       ]),
     ).catch((err) => console.error(`[memory] background write failed for ${userId}:`, err));
     await ctx.editMessageReplyMarkup().catch(() => undefined);
-    await ctx.reply("Done — I won't use that memory again.");
+    await ctx.reply("Done, I won't use that memory again.");
   });
 
   bot.on("message:text", async (ctx) => {
@@ -340,7 +340,7 @@ export function createBot(): Bot {
     );
   });
 
-  bot.on("message", (ctx) => ctx.reply("I only understand text for now — type it out and I'll remember it."));
+  bot.on("message", (ctx) => ctx.reply("I only understand text for now, type it out and I'll remember it."));
 
   bot.catch(async (err) => {
     console.error(`[bot] error handling update ${err.ctx.update.update_id}:`, err.error);

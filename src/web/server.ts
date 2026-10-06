@@ -13,9 +13,14 @@ import { renderPage } from "./page.js";
 let cache: { at: number; stats: NamespaceStat[] } | undefined;
 async function stats(): Promise<NamespaceStat[]> {
   if (cache && Date.now() - cache.at < 60_000) return cache.stats;
-  const s = await listUserNamespaces();
-  cache = { at: Date.now(), stats: s };
-  return s;
+  try {
+    const s = await listUserNamespaces();
+    cache = { at: Date.now(), stats: s };
+    return s;
+  } catch (err) {
+    if (cache) return cache.stats; // stale numbers beat an error page
+    throw err;
+  }
 }
 
 const anon = (userId: string) => `user-${createHash("sha256").update(userId).digest("hex").slice(0, 6)}`;
@@ -49,7 +54,7 @@ export function startWebServer() {
   });
   app.onError((err, c) => {
     console.error("[web]", err);
-    return c.text("Temporarily unavailable — Walrus Memory did not respond.", 503);
+    return c.text("Temporarily unavailable, Walrus Memory did not respond.", 503);
   });
   serve({ fetch: app.fetch, port: config.PORT });
   console.log(`[web] proof page on :${config.PORT}`);

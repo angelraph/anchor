@@ -1,5 +1,5 @@
 /**
- * Live end-to-end smoke test of Anchor's memory loop — real Gemini, real
+ * Live end-to-end smoke test of Anchor's memory loop with real Gemini, real
  * Walrus Memory, no Telegram. Uses a separate namespace prefix
  * (anchor:smoke:<id>) so test data never counts as a real user.
  *

@@ -1,7 +1,7 @@
 {
   "name": "anchor",
   "version": "1.0.0",
-  "description": "Anchor — the Telegram accountability bot that holds you to your word, with long-term memory on Walrus Memory.",
+  "description": "Anchor, the Telegram accountability bot that holds you to your word, with long-term memory on Walrus Memory.",
   "type": "module",
   "license": "MIT",
   "engines": {

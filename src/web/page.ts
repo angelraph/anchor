@@ -22,7 +22,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 const REPO = "https://github.com/angelraph/anchor";
 
 function when(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "never";
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60_000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins} min ago`;
@@ -39,16 +39,16 @@ export function renderPage(p: ProofData): string {
           (u) => `<li><span class="id">${esc(u.user)}</span><span class="bar"><i style="width:${Math.min(100, (u.memories / Math.max(10, ...p.users.map((x) => x.memories))) * 100).toFixed(1)}%"></i></span><span class="n">${u.memories}</span><span class="t">${esc(when(u.lastActive))}</span></li>`,
         )
         .join("")
-    : `<li class="empty">No one yet — be the first to make a promise.</li>`;
+    : `<li class="empty">No one yet, be the first to make a promise.</li>`;
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Anchor — keep your word</title>
+<title>Anchor, keep your word</title>
 <meta name="description" content="Anchor is a Telegram accountability partner that remembers your promises on Walrus Memory, checks in when they're due, and learns what makes you follow through.">
-<meta property="og:title" content="Anchor — keep your word">
+<meta property="og:title" content="Anchor, keep your word">
 <meta property="og:description" content="The accountability bot that remembers. Long-term memory on Walrus.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -212,8 +212,8 @@ footer a:hover{color:var(--bone)}
       </div>
       <ol class="steps">
         <li><div><h3>Make a promise</h3><p>"I'll send five job applications by Friday." Anchor turns intentions into a concrete promise with a real date.</p></div></li>
-        <li><div><h3>It's remembered — for real</h3><p>The promise is encrypted and stored in your own Walrus Memory namespace. It survives restarts, devices and weeks of silence.</p></div></li>
-        <li><div><h3>Anchor checks in first</h3><p>When it's due, Anchor messages you. Did it, partly, didn't, or move it — one tap records the outcome.</p></div></li>
+        <li><div><h3>It's remembered, for real</h3><p>The promise is encrypted and stored in your own Walrus Memory namespace. It survives restarts, devices and weeks of silence.</p></div></li>
+        <li><div><h3>Anchor checks in first</h3><p>When it's due, Anchor messages you. Did it, partly, didn't, or move it: one tap records the outcome.</p></div></li>
         <li><div><h3>It learns what works for you</h3><p>Excuses become patterns. Wins become strategy. Next time, Anchor reminds you what actually worked.</p></div></li>
       </ol>
     </div>
@@ -239,7 +239,7 @@ footer a:hover{color:var(--bone)}
     <div class="wrap">
       <span class="label">Memory ledger</span>
       <h2 class="h-sm">Every person, their own encrypted namespace.</h2>
-      <p class="body muted" style="margin-top:18px">Anonymised. Counts come straight from Walrus Memory — no database of ours in between.</p>
+      <p class="body muted" style="margin-top:18px">Anonymised. Counts come straight from Walrus Memory, with no database of ours in between.</p>
       <ul class="ledger">${ledger}</ul>
     </div>
   </section>

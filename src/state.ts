@@ -1,7 +1,7 @@
 /**
  * Small operational state kept on local disk.
  *
- * Nothing here is long-term memory — that all lives on Walrus. This file only
+ * Nothing here is long-term memory, that all lives on Walrus. This file only
  * holds bookkeeping that makes the bot behave well between restarts: which
  * chats exist, which check-ins were already sent today, the trace behind the
  * last reply for /why, and a cache of tombstones. If the file is lost, Anchor
@@ -34,6 +34,8 @@ export interface UserState {
 
 interface StateFile {
   users: Record<string, UserState>;
+  /** Serialized memories Walrus rejected, per user, waiting to be retried. */
+  outbox?: Record<string, string[]>;
 }
 
 const dir = config.DATA_DIR;
@@ -85,4 +87,21 @@ export function updateUser(userId: number | string, fn: (u: UserState) => void) 
 
 export function allUsers(): Array<[string, UserState]> {
   return Object.entries(state.users);
+}
+
+/** Park memories that could not be written so they are retried later, not lost. */
+export function addToOutbox(userId: number | string, raws: string[]) {
+  if (raws.length === 0) return;
+  state.outbox ??= {};
+  const key = String(userId);
+  state.outbox[key] = [...new Set([...(state.outbox[key] ?? []), ...raws])];
+  persist();
+}
+
+/** Take everything waiting in the outbox (the caller re-queues what still fails). */
+export function takeOutbox(): Array<[string, string[]]> {
+  const entries = Object.entries(state.outbox ?? {}).filter(([, raws]) => raws.length > 0);
+  state.outbox = {};
+  persist();
+  return entries;
 }

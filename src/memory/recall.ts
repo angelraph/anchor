@@ -35,13 +35,15 @@ export function mergeAndFilter(userId: number | string, ...groups: RecalledMemor
 export interface TurnContext {
   memories: RecalledMemory[];
   commitments: CommitmentState[];
+  /** True when Walrus could not be reached and Anchor is answering without memory. */
+  unavailable?: boolean;
 }
 
 /**
  * Everything Anchor recalls before answering a message:
- *  1. semantic — memories about what the user is talking about right now
- *  2. recent   — the latest promises and outcomes, regardless of topic
- *  3. profile  — who they are and how they want to be coached
+ *  1. semantic: memories about what the user is talking about right now
+ *  2. recent: the latest promises and outcomes, regardless of topic
+ *  3. profile: who they are and how they want to be coached
  */
 export async function recallForTurn(userId: number | string, message: string): Promise<TurnContext> {
   const settled = await Promise.allSettled([

@@ -1,4 +1,4 @@
-# ⚓ Anchor — the bot that holds you to your word
+# ⚓ Anchor, the bot that holds you to your word
 
 **Anchor is a Telegram accountability partner that remembers you.** You tell it what you'll do and by when. It stores the promise in [Walrus Memory](https://github.com/MystenLabs/MemWal), messages you first when the deadline arrives, records whether you kept it, and gradually learns your patterns: what derails you and what actually works.
 
@@ -11,7 +11,6 @@ Without memory, an accountability bot is just a motivational poster. With memory
 - **Channel:** Telegram (grammY), plus a public proof page
 - **Built for:** Walrus Session 8, "Chatbots That Remember"
 
----
 
 ## What memory does in Anchor
 
@@ -19,15 +18,15 @@ Without memory, an accountability bot is just a motivational poster. With memory
 |---|---|---|
 | You send a message | 3 parallel recalls: **semantic** (what you're talking about), **recent** (latest promises/outcomes, `sort: "recent"`), **profile** (who you are, how you like to be coached) | Gemini extracts typed memories from the exchange: `commitment`, `outcome`, `pattern`, `win`, `fact`, `preference` |
 | A promise is due (daily, 19:00) | Commitments + outcomes → due/overdue promises, plus memories related to each one | Your answer (button or text) becomes an `outcome` memory linked to the promise |
-| You tap ✅ / 🟡 / ❌ / 📅 | — | `outcome` saved; Anchor asks *what made it work* / *what got in the way* → `win` / `pattern` |
+| You tap ✅ / 🟡 / ❌ / 📅 | (none) | `outcome` saved; Anchor asks *what made it work* / *what got in the way* → `win` / `pattern` |
 | `/forget <topic>` | Finds candidate memories | Writes a tombstone (`retracted`); it's filtered out of every future recall |
 
 Memories are stored as single readable lines with a typed header, so they embed well and parse back into structure after recall:
 
 ```
-[commitment] 2026-10-06 id:k3f9 due:2026-10-09 — Promised to send 5 job applications
-[outcome] 2026-10-09 ref:k3f9 status:partial — Sent 2 applications; lost the evening to a family event
-[win] 2026-10-10 — Applications get done when blocked out before work at 7am
+[commitment] 2026-10-06 id:k3f9 due:2026-10-09 | Promised to send 5 job applications
+[outcome] 2026-10-09 ref:k3f9 status:partial | Sent 2 applications; lost the evening to a family event
+[win] 2026-10-10 | Applications get done when blocked out before work at 7am
 ```
 
 ### Commands
@@ -41,7 +40,6 @@ Memories are stored as single readable lines with a typed header, so they embed 
 | `/checkin` | Run the due-promise check-in now |
 | `/stats` | Users and memories across Anchor |
 
----
 
 ## Run it yourself (about 10 minutes)
 
@@ -75,7 +73,6 @@ npx tsx scripts/smoke.ts   # live end-to-end chat loop (real Gemini + Walrus, se
 
 Keep **one replica**: Telegram long polling allows only one consumer per bot token.
 
----
 
 ## Architecture
 

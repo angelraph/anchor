@@ -3,7 +3,7 @@ import { z } from "zod";
 try {
   process.loadEnvFile();
 } catch {
-  // No .env file — rely on the real environment (e.g. Railway variables).
+  // No .env file, rely on the real environment (e.g. Railway variables).
 }
 
 const schema = z.object({
@@ -32,7 +32,7 @@ function load(): Config {
   const parsed = schema.safeParse(env);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((i) => `  - ${i.path.join(".")}: ${i.message}`).join("\n");
-    console.error(`Anchor cannot start — fix your environment:\n${problems}\nSee .env.example.`);
+    console.error(`Anchor cannot start, fix your environment:\n${problems}\nSee .env.example.`);
     process.exit(1);
   }
   return parsed.data;

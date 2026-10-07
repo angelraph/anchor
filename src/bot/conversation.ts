@@ -82,7 +82,10 @@ export async function generateReply(opts: {
 
 /** Gemini sometimes slips in markdown despite instructions; Telegram shows it raw. */
 function cleanReply(text: string): string {
-  return text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "").trim() || "…";
+  return (
+    text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "").trim() ||
+    "Sorry, I lost my words for a second there. Could you say that again in a different way?"
+  );
 }
 
 /** A normal chat turn: reply now, learn in the background. */

@@ -11,7 +11,7 @@ const MODEL_IDS = [config.GEMINI_MODEL, ...config.GEMINI_FALLBACK_MODELS.split("
 const models = MODEL_IDS.map((id) => ({ id, model: google(id) }));
 
 /** Per-model time limit; past it we fail over instead of making the user wait. */
-export const LLM_TIMEOUT_MS = 25_000;
+export const LLM_TIMEOUT_MS = 12_000;
 
 export const MODEL_LABEL = `Google ${config.GEMINI_MODEL}`;
 
@@ -27,7 +27,7 @@ function isRetryable(err: unknown): boolean {
 
 /** Models that recently failed are skipped for a while instead of retried on every call. */
 const cooldownUntil = new Map<string, number>();
-const COOLDOWN_MS = 5 * 60_000;
+const COOLDOWN_MS = 15 * 60_000;
 
 /**
  * Run a Gemini call, failing over to the next model on overload/availability
@@ -47,7 +47,7 @@ export async function withModel<T>(call: (model: LanguageModel) => Promise<T>): 
       lastError = err;
       if (!isRetryable(err)) throw err;
       cooldownUntil.set(id, Date.now() + COOLDOWN_MS);
-      console.warn(`[llm] ${id} unavailable (${(err as Error).message?.slice(0, 80)}); skipping it for 5 min`);
+      console.warn(`[llm] ${id} unavailable (${(err as Error).message?.slice(0, 80)}); skipping it for 15 min`);
     }
   }
   throw lastError;

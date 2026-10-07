@@ -3,6 +3,8 @@
  * (listNamespaces), so anyone can verify real people are using Anchor.
  */
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { config } from "../config.js";
@@ -48,6 +50,16 @@ export function startWebServer() {
   app.get("/", async (c) => c.html(renderPage(proofJson(await stats()))));
   app.get("/proof.json", async (c) => c.json(proofJson(await stats())));
   app.get("/logo.svg", (c) => c.body(logoSvg(512), 200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" }));
+  app.get("/img/:name", async (c) => {
+    const name = c.req.param("name");
+    if (!/^[\w.-]+\.png$/.test(name)) return c.notFound();
+    try {
+      const buf = await readFile(join(process.cwd(), "docs", "img", name));
+      return c.body(new Uint8Array(buf), 200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
+    } catch {
+      return c.notFound();
+    }
+  });
   app.get("/health", async (c) => {
     const memory = await memwal.health().then(
       (h) => ({ ok: true, ...h }),

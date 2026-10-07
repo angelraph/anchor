@@ -57,12 +57,13 @@ export function renderPage(p: ProofData): string {
 <link rel="icon" href="/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --void:#000;--bone:#fff;--ash:#9a9a9a;--mist:#bdbdbd;
   --iris:#8052ff;--saffron:#ffb829;--verdant:#15846e;
   --font:'PPNeueMontreal','Inter',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --max:1280px;--gutter:clamp(16px,4vw,48px);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -153,6 +154,72 @@ section{padding:clamp(60px,10vw,120px) 0}
 .faq p{margin-top:12px;font-weight:200;color:var(--mist);max-width:720px}
 .faq a{color:var(--saffron)}
 
+/* ===== robotic motion layer ===== */
+.mono,.label,.stat span,nav a.link{font-family:var(--mono)}
+.label{letter-spacing:.08em}
+.label::before{content:"// ";color:var(--ash)}
+
+/* boot intro */
+#boot{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center;padding:24px;transition:opacity .6s ease,visibility .6s}
+#boot.done{opacity:0;visibility:hidden}
+#boot pre{font-family:var(--mono);font-size:clamp(12px,1.6vw,15px);line-height:1.7;color:#cfc7ff;max-width:640px;width:100%;white-space:pre-wrap;min-height:14em}
+#boot pre b{color:var(--saffron);font-weight:600}
+#boot pre i{font-style:normal;color:#2fd3b5}
+#boot .caret{display:inline-block;width:.6em;height:1.1em;background:var(--iris);vertical-align:-.2em;animation:blink 1s steps(1) infinite}
+#boot .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+#skip{position:absolute;right:24px;bottom:24px;font-family:var(--mono);font-size:13px;color:var(--ash);background:none;border:0;cursor:pointer;letter-spacing:.06em}
+#skip:hover{color:var(--bone)}
+@keyframes blink{50%{opacity:0}}
+
+/* scramble headline */
+.display .glyph{color:var(--iris)}
+
+/* scroll reveal */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* live replay */
+.replay{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:24px;align-items:stretch}
+.chat{background:#0b0d14;border-radius:24px;padding:18px;min-height:460px;display:flex;flex-direction:column;gap:10px;overflow:hidden;position:relative}
+.chat .bar{display:flex;align-items:center;gap:10px;padding-bottom:10px;font-size:14px;color:var(--mist)}
+.chat .bar svg{width:26px;height:26px}
+.chat .bar small{display:block;font-family:var(--mono);font-size:11px;color:#2fd3b5}
+.bubble{max-width:86%;padding:10px 14px;border-radius:16px;font-size:15px;line-height:1.45;font-weight:400;animation:pop .35s cubic-bezier(.2,.9,.3,1.2) both}
+.bubble.me{align-self:flex-end;background:#2b5278;border-bottom-right-radius:6px}
+.bubble.bot{align-self:flex-start;background:#182030;border-bottom-left-radius:6px}
+.bubble .chip{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:12px;color:var(--saffron)}
+.bubble .btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+.bubble .btns span{font-size:13px;text-align:center;padding:6px;border-radius:8px;background:#22304a}
+.bubble .btns span.hit{background:var(--iris)}
+.typing{align-self:flex-start;background:#182030;border-radius:16px;padding:12px 16px;display:flex;gap:5px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--mist);animation:bounce 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.96)}}
+@keyframes bounce{50%{transform:translateY(-4px);opacity:.5}}
+.vault{border-radius:24px;padding:18px;background:radial-gradient(120% 80% at 50% 0%,rgba(128,82,255,.18),transparent 60%),#06070b;display:flex;flex-direction:column;gap:8px;min-height:460px}
+.vault h3{font-family:var(--mono);font-size:12px;letter-spacing:.12em;color:var(--ash);font-weight:600;display:flex;justify-content:space-between}
+.vault h3 b{color:#2fd3b5;font-weight:600}
+.mem{font-family:var(--mono);font-size:12.5px;line-height:1.5;color:#cfd3e6;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.03);animation:drop .6s cubic-bezier(.2,.8,.2,1) both}
+.mem em{font-style:normal;color:var(--saffron)}
+.mem.recall{outline:1px solid var(--iris);box-shadow:0 0 18px rgba(128,82,255,.45)}
+@keyframes drop{from{opacity:0;transform:translateX(-30px) scale(.97);filter:blur(4px)}}
+
+/* screenshot frames */
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px;perspective:1200px}
+.shot{border-radius:24px;overflow:hidden;background:#0b0d14;transform-style:preserve-3d;transition:transform .25s ease;will-change:transform}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{font-family:var(--mono);font-size:12px;color:var(--ash);padding:12px 14px;letter-spacing:.04em}
+
+@media (max-width:900px){
+  .replay{grid-template-columns:1fr}
+  .chat,.vault{min-height:auto}
+  .shots{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .bubble,.mem{animation:none}
+}
+
 footer{padding:60px 0 48px}
 footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:14px;color:var(--ash)}
 footer a:hover{color:var(--bone)}
@@ -175,6 +242,7 @@ footer a:hover{color:var(--bone)}
 </style>
 </head>
 <body>
+<div id="boot" data-users="${p.totalUsers}" data-memories="${p.totalMemories}" aria-hidden="true"><div class="scan"></div><pre></pre><button id="skip" type="button">skip intro ›</button></div>
 <canvas id="field" aria-hidden="true"></canvas>
 
 <header>
@@ -184,6 +252,7 @@ footer a:hover{color:var(--bone)}
       Anchor
     </a>
     <nav>
+      <a class="link" href="#replay">Demo</a>
       <a class="link" href="#how">How it works</a>
       <a class="link" href="#proof">Proof</a>
       <a class="link" href="#faq">FAQ</a>
@@ -206,6 +275,22 @@ footer a:hover{color:var(--bone)}
         </div>
       </div>
       <canvas class="stage" id="anchor" aria-label="A constellation of particles forming an anchor"></canvas>
+    </div>
+  </section>
+
+  <section id="replay">
+    <div class="wrap">
+      <span class="label">Watch it remember</span>
+      <h2 class="h-lg">A real conversation, replayed.</h2>
+      <p class="body muted" style="margin:24px 0 48px">Lines from real chats with Anchor. Left: what you see in Telegram. Right: what gets written to Walrus Memory, and what is pulled back out when it matters.</p>
+      <div class="replay">
+        <div class="chat" id="chat" aria-live="polite">
+          <div class="bar">${logoSvg(26, "chatGrad")}<div>Anchor<small>● remembering on Walrus</small></div></div>
+        </div>
+        <div class="vault" id="vault">
+          <h3><span>WALRUS MEMORY · ENCRYPTED</span><b id="vaultCount">0 stored</b></h3>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -270,6 +355,18 @@ footer a:hover{color:var(--bone)}
         <div><code>/compare</code>Your message answered with and without memory.</div>
         <div><code>/promises</code>Open and kept promises, and your follow-through rate.</div>
         <div><code>/forget</code>Pick a memory and Anchor never uses it again.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="shots">
+    <div class="wrap">
+      <span class="label">Real screenshots</span>
+      <h2 class="h-sm">Not a mockup. This is the bot.</h2>
+      <div class="shots">
+        <figure class="shot"><img src="/img/03-compare-with-without-memory.png" alt="Anchor /compare: answer without memory vs with Walrus Memory" loading="lazy"><figcaption>/compare · without vs with memory</figcaption></figure>
+        <figure class="shot"><img src="/img/02-checkin-kept-followthrough.png" alt="Anchor check-in, kept promise and follow-through score" loading="lazy"><figcaption>/checkin · kept · follow-through 1/1</figcaption></figure>
+        <figure class="shot"><img src="/img/04-memory-list.png" alt="Anchor /memory list grouped by type" loading="lazy"><figcaption>/memory · what it knows</figcaption></figure>
       </div>
     </div>
   </section>
@@ -386,6 +483,153 @@ footer a:hover{color:var(--bone)}
       requestAnimationFrame(step);
     }), { threshold: 0.4 });
     document.querySelectorAll("[data-count]").forEach((el) => io.observe(el));
+  }
+
+  // ===== robotic motion layer =====
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Boot intro: once per visit, skippable, off for reduced motion.
+  (async () => {
+    const boot = document.getElementById("boot");
+    if (!boot) return;
+    let seen = false;
+    try { seen = sessionStorage.getItem("anchorBoot") === "1"; sessionStorage.setItem("anchorBoot", "1"); } catch (e) {}
+    const finish = () => { boot.classList.add("done"); document.body.style.overflow = ""; };
+    if (reduce || seen) { boot.remove(); return; }
+    document.body.style.overflow = "hidden";
+    document.getElementById("skip").onclick = finish;
+    boot.addEventListener("click", finish);
+    const pre = boot.querySelector("pre");
+    const d = boot.dataset;
+    const lines = [
+      "<b>ANCHOR</b> v1.0 // accountability unit",
+      "booting memory core ............ <i>ok</i>",
+      "connecting to Walrus Memory .... <i>mainnet</i>",
+      "decrypting namespaces .......... <i>" + d.users + " people</i>",
+      "indexing memories .............. <i>" + d.memories + " online</i>",
+      "loading promises, patterns, wins <i>ok</i>",
+      "",
+      "> I remember. Do you keep your word?",
+    ];
+    let out = "";
+    for (const line of lines) {
+      for (let i = 0; i <= line.length; i++) {
+        if (boot.classList.contains("done")) return;
+        const part = line.slice(0, i);
+        // don't render half-written tags
+        if (/<[^>]*$/.test(part)) continue;
+        pre.innerHTML = out + part + '<span class="caret"></span>';
+        await sleep(line.startsWith(">") ? 28 : 9);
+      }
+      out += line + "\\n";
+      await sleep(120);
+    }
+    await sleep(650);
+    finish();
+  })();
+
+  // Scramble-decode the headline.
+  const h1 = document.querySelector("h1.display");
+  if (h1 && !reduce) {
+    const target = h1.textContent, chars = "▓▒░<>/\\|#*01ΛΞΣ";
+    let frame = 0;
+    const tick = () => {
+      frame++;
+      let html = "";
+      for (let i = 0; i < target.length; i++) {
+        const c = target[i];
+        if (c === " " || frame > i * 2.2 + 10) html += c;
+        else html += '<span class="glyph">' + chars[(Math.random() * chars.length) | 0] + "</span>";
+      }
+      h1.innerHTML = html;
+      if (frame < target.length * 2.2 + 12) requestAnimationFrame(tick); else h1.textContent = target;
+    };
+    setTimeout(() => requestAnimationFrame(tick), document.getElementById("boot") ? 2600 : 200);
+  }
+
+  // Reveal sections on scroll.
+  const secs = [...document.querySelectorAll("main section:not(.hero)")];
+  if ("IntersectionObserver" in window && !reduce) {
+    secs.forEach((s) => s.classList.add("reveal"));
+    const ro = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); ro.unobserve(e.target); } }), { threshold: 0.12 });
+    secs.forEach((s) => ro.observe(s));
+  }
+
+  // Live replay of a real conversation.
+  const chat = document.getElementById("chat"), vault = document.getElementById("vault"), vc = document.getElementById("vaultCount");
+  const SCRIPT = [
+    ["me", "I will submit the clock build today, by 6am"],
+    ["bot", "Got it. 6am tomorrow morning, then. I'll check in with you that evening."],
+    ["mem", "[commitment] due:2026-10-07 at:06:00 | Angel will submit the clock build"],
+    ["me", "My phone distracts me when I code at night. I focus best in the morning."],
+    ["mem", "[pattern] Phone at night distracts Angel while coding"],
+    ["mem", "[preference] Angel codes best in the morning"],
+    ["bot", "Noted. Mornings are your power hours, so let's plan around them and keep the phone away at night.", "⚓ 4 memories · /why"],
+    ["pause"],
+    ["bot", "Hi Angel, did you get the clock build submitted?", null, ["✅ Did it", "🟡 Partly", "❌ Didn't", "📅 Move it"]],
+    ["mem", "[outcome] status:kept | Kept the promise: clock build"],
+    ["me", "/compare I want to finish my project this week"],
+    ["recall", "[preference] Angel codes best in the morning"],
+    ["recall", "[outcome] status:kept | Kept the promise: clock build"],
+    ["bot", "Great job getting that clock build submitted this morning, Angel. Since you focus best in the morning, let's lock in a concrete plan for your project.", "⚓ WITH Walrus Memory · 6 memories recalled"],
+  ];
+  const esc2 = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  let stored = 0, playing = false;
+  async function play() {
+    if (playing || !chat) return;
+    playing = true;
+    for (;;) {
+      chat.querySelectorAll(".bubble,.typing").forEach((n) => n.remove());
+      vault.querySelectorAll(".mem").forEach((n) => n.remove());
+      stored = 0; vc.textContent = "0 stored";
+      for (const [kind, text, chip, btns] of SCRIPT) {
+        if (kind === "pause") { await sleep(900); continue; }
+        if (kind === "mem" || kind === "recall") {
+          let el = [...vault.querySelectorAll(".mem")].find((m) => m.dataset.t === text);
+          if (!el) {
+            el = document.createElement("div"); el.className = "mem"; el.dataset.t = text;
+            const cut = text.indexOf("]") + 1;
+            el.innerHTML = "<em>" + esc2(text.slice(0, cut)) + "</em>" + esc2(text.slice(cut));
+            vault.appendChild(el); stored++; vc.textContent = stored + " stored";
+          }
+          if (kind === "recall") { el.classList.add("recall"); setTimeout(() => el.classList.remove("recall"), 2600); }
+          await sleep(reduce ? 0 : 700);
+          continue;
+        }
+        if (kind === "bot" && !reduce) {
+          const t = document.createElement("div"); t.className = "typing"; t.innerHTML = "<i></i><i></i><i></i>";
+          chat.appendChild(t); await sleep(1100); t.remove();
+        }
+        const b = document.createElement("div");
+        b.className = "bubble " + kind;
+        b.innerHTML = esc2(text) + (chip ? '<span class="chip">' + esc2(chip) + "</span>" : "") +
+          (btns ? '<div class="btns">' + btns.map((x) => "<span>" + x + "</span>").join("") + "</div>" : "");
+        chat.appendChild(b);
+        while (chat.scrollHeight > chat.clientHeight + 4 && chat.querySelectorAll(".bubble").length > 3) chat.querySelector(".bubble").remove();
+        if (btns && !reduce) { await sleep(1200); b.querySelector(".btns span").classList.add("hit"); }
+        await sleep(reduce ? 0 : kind === "me" ? 900 : 1400);
+      }
+      if (reduce) return;
+      await sleep(5000);
+    }
+  }
+  if (chat) {
+    if ("IntersectionObserver" in window) {
+      const po = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { play(); po.disconnect(); } }), { threshold: 0.3 });
+      po.observe(chat);
+    } else play();
+  }
+
+  // Tilt the screenshot frames toward the pointer.
+  if (!reduce && matchMedia("(hover:hover)").matches) {
+    document.querySelectorAll(".shot").forEach((card) => {
+      card.addEventListener("pointermove", (e) => {
+        const r = card.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+        card.style.transform = "rotateY(" + (x * 10).toFixed(2) + "deg) rotateX(" + (-y * 10).toFixed(2) + "deg) translateZ(10px)";
+      });
+      card.addEventListener("pointerleave", () => { card.style.transform = ""; });
+    });
   }
 })();
 </script>

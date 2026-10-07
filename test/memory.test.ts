@@ -126,3 +126,12 @@ describe("check-in timing", () => {
     expect(checkinDay(noTime, 19)).toBe("2026-10-09");
   });
 });
+
+describe("duplicate detection without extra recalls", () => {
+  it("treats rewordings of the same fact as duplicates", async () => {
+    const { similarity } = await import("../src/memory/types.js");
+    expect(similarity("The user's name is Tunde.", "User name is Tunde")).toBeGreaterThanOrEqual(0.7);
+    expect(similarity("Angel codes best in the morning", "Angel prefers to code in the morning")).toBeGreaterThanOrEqual(0.5);
+    expect(similarity("Tunde works as a frontend developer", "Tunde skips the gym when up late")).toBeLessThan(0.7);
+  });
+});

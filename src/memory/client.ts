@@ -32,7 +32,9 @@ export async function withRetry<T>(label: string, fn: () => Promise<T>, attempts
     } catch (err) {
       lastError = err;
       const msg = err instanceof Error ? err.message : String(err);
-      const permanent = /\b(400|401|403|404)\b/.test(msg);
+      // 4xx are permanent; an exhausted hourly account limit won't clear in seconds,
+      // and retrying it only spends more of the budget.
+      const permanent = /\b(400|401|403|404)\b/.test(msg) || /account_sustained/.test(msg);
       console.warn(`[memwal] ${label} failed (attempt ${i + 1}/${attempts}): ${msg}`);
       if (permanent || i === attempts - 1) break;
       await new Promise((r) => setTimeout(r, 800 * 2 ** i));

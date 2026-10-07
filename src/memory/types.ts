@@ -105,6 +105,17 @@ export function newCommitmentId(): string {
   return Math.random().toString(36).slice(2, 6);
 }
 
+/** Word-overlap similarity (0..1) between two memory sentences, for duplicate checks. */
+export function similarity(a: string, b: string): number {
+  const stop = new Set(["the", "a", "an", "is", "to", "of", "and", "user", "user's", "s", "their", "his", "her", "when", "that", "in", "on", "at", "for", "with"]);
+  const words = (t: string) => new Set(normalise(t).split(" ").filter((w) => w.length > 1 && !stop.has(w)));
+  const A = words(a), B = words(b);
+  if (A.size === 0 || B.size === 0) return 0;
+  let inter = 0;
+  for (const w of A) if (B.has(w)) inter++;
+  return inter / Math.min(A.size, B.size);
+}
+
 /** Normalised text used for cheap exact-duplicate detection. */
 export function normalise(text: string): string {
   return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();

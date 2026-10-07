@@ -7,7 +7,7 @@ import { extractionPrompt } from "../llm/prompts.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
 import { notePending, recall } from "./recall.js";
-import { newCommitmentId, normalise, serialize, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
+import { newCommitmentId, normalise, serialize, similarity, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
 
 const extractionSchema = z.object({
   memories: z.array(
@@ -91,9 +91,10 @@ export async function dropDuplicates(
     if (seen.has(key)) continue;
     seen.add(key);
     // Outcomes are events: two similar outcomes on different days are both real.
+    // Everything else is checked against the memories already loaded this turn
+    // (which include the user's profile and habits), at no extra Walrus cost.
     if (c.kind !== "outcome" && c.kind !== "commitment") {
-      const near = await recall(userId, c.text, { limit: 3, maxDistance: 0.3 }).catch(() => []);
-      if (near.some((n) => n.kind === c.kind)) continue;
+      if (alreadyRecalled.some((m) => m.kind === c.kind && similarity(m.text, c.text) >= 0.7)) continue;
     }
     kept.push(c);
   }

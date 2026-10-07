@@ -20,6 +20,23 @@ function pendingFor(userId: number | string): RecalledMemory[] {
     .map((p) => ({ ...parse(p.raw), raw: p.raw, blobId: "", distance: 0.4, createdAt: new Date(p.at).toISOString() }));
 }
 
+/** Profile and habit recalls change slowly; reuse them for a while to save Walrus requests. */
+const STABLE_MS = 10 * 60_000;
+const stableCache = new Map<string, { at: number; memories: RecalledMemory[] }>();
+
+async function stableRecall(userId: number | string): Promise<RecalledMemory[]> {
+  const key = String(userId);
+  const hit = stableCache.get(key);
+  if (hit && Date.now() - hit.at < STABLE_MS) return hit.memories;
+  const [profile, habits] = await Promise.all([
+    recall(userId, "who the user is: name, work, goals, people in their life, how they want to be coached", { limit: 5, maxDistance: 0.8 }),
+    recall(userId, "what distracts or derails the user, what helps them follow through, when and how they work best", { limit: 6, maxDistance: 0.8 }),
+  ]);
+  const memories = [...profile, ...habits];
+  stableCache.set(key, { at: Date.now(), memories });
+  return memories;
+}
+
 interface RecallOpts {
   limit?: number;
   maxDistance?: number;
@@ -85,14 +102,7 @@ export async function recallForTurn(userId: number | string, message: string): P
   const settled = await Promise.allSettled([
     recall(userId, message, { limit: 8, maxDistance: 0.75 }),
     recall(userId, "promises, commitments, deadlines and whether they were kept or broken", { limit: 8, sort: "recent" }),
-    recall(userId, "who the user is: name, work, goals, people in their life, how they want to be coached", {
-      limit: 5,
-      maxDistance: 0.8,
-    }),
-    recall(userId, "what distracts or derails the user, what helps them follow through, when and how they work best", {
-      limit: 6,
-      maxDistance: 0.8,
-    }),
+    stableRecall(userId),
   ]);
   const groups = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   if (groups.length === 0) throw (settled[0] as PromiseRejectedResult).reason;

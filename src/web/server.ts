@@ -3,6 +3,7 @@
  * (listNamespaces), so anyone can verify real people are using Anchor.
  */
 import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
@@ -13,17 +14,47 @@ import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client
 import { logoSvg } from "./logo.js";
 import { renderPage } from "./page.js";
 
+// Numbers refresh at most every 5 minutes (each refresh costs Walrus requests),
+// and the last good snapshot is kept on disk so the page never shows an error,
+// even right after a redeploy while Walrus is busy.
+const SNAPSHOT = join(config.DATA_DIR, "stats.json");
 let cache: { at: number; stats: NamespaceStat[] } | undefined;
+try {
+  cache = { ...JSON.parse(readFileSync(SNAPSHOT, "utf8")), at: 0 };
+} catch {
+  // no snapshot yet
+}
+let refreshing: Promise<void> | undefined;
+
+function refresh(): Promise<void> {
+  refreshing ??= listUserNamespaces()
+    .then((s) => {
+      cache = { at: Date.now(), stats: s };
+      try {
+        mkdirSync(config.DATA_DIR, { recursive: true });
+        writeFileSync(SNAPSHOT, JSON.stringify({ stats: s }));
+      } catch {
+        // snapshot is best-effort
+      }
+    })
+    .catch((err) => console.warn("[web] stats refresh failed:", err instanceof Error ? err.message.slice(0, 120) : err))
+    .finally(() => {
+      refreshing = undefined;
+    });
+  return refreshing;
+}
+
+/** Read through a function so TypeScript doesn't keep the pre-await narrowing. */
+const snapshot = (): NamespaceStat[] => cache?.stats ?? [];
+
 async function stats(): Promise<NamespaceStat[]> {
-  if (cache && Date.now() - cache.at < 60_000) return cache.stats;
-  try {
-    const s = await listUserNamespaces();
-    cache = { at: Date.now(), stats: s };
-    return s;
-  } catch (err) {
-    if (cache) return cache.stats; // stale numbers beat an error page
-    throw err;
+  if (cache && Date.now() - cache.at < 5 * 60_000) return cache.stats;
+  if (cache) {
+    void refresh(); // serve the last numbers now, update in the background
+    return cache.stats;
   }
+  await refresh();
+  return snapshot();
 }
 
 const anon = (userId: string) => `user-${createHash("sha256").update(userId).digest("hex").slice(0, 6)}`;
@@ -69,7 +100,9 @@ export function startWebServer() {
   });
   app.onError((err, c) => {
     console.error("[web]", err);
-    return c.text("Temporarily unavailable, Walrus Memory did not respond.", 503);
+    // Never show visitors a bare error: fall back to the page with no live numbers.
+    if (c.req.path === "/") return c.html(renderPage(proofJson([])), 200);
+    return c.text("Temporarily unavailable, please try again in a minute.", 503);
   });
   serve({ fetch: app.fetch, port: config.PORT });
   console.log(`[web] proof page on :${config.PORT}`);

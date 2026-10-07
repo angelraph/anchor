@@ -30,6 +30,10 @@ Walrus Memory stores text, encrypts it, and recalls it by meaning. Each Telegram
 [win] 2026-10-07 | Putting the phone in another room helps him finish tasks
 ```
 
+Here's what Anchor had learned about me after one day, from `/memory`:
+
+![/memory: what Anchor remembers, grouped by type](img/04-memory-list.png)
+
 **When it is recalled.** Every message triggers three recalls in parallel: one on what you just said, one for your latest promises (`sort: "recent"`), and one for who you are and how you like to be coached. Every evening a scheduler recalls promises that are due and messages you first, with ✅ 🟡 ❌ 📅 buttons.
 
 **How it shapes replies.** Recalled memories go into the prompt as clearly marked untrusted data, next to a computed list of open, overdue and finished promises. `/why` shows the exact memories behind any reply, with their Walrus blob IDs.

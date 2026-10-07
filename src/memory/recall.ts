@@ -13,7 +13,7 @@ export function notePending(userId: number | string, raws: string[]) {
   pending.set(key, [...kept, ...raws.map((raw) => ({ raw, at: now }))].slice(-30));
 }
 
-function pendingFor(userId: number | string): RecalledMemory[] {
+export function pendingFor(userId: number | string): RecalledMemory[] {
   const now = Date.now();
   return (pending.get(String(userId)) ?? [])
     .filter((p) => now - p.at < PENDING_MS)

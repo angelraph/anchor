@@ -5,7 +5,7 @@ import { config } from "../config.js";
 import { relativeDay, todayIn, weekdayOf } from "../dates.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces } from "../memory/client.js";
-import { mergeAndFilter, recall, recallCommitments } from "../memory/recall.js";
+import { mergeAndFilter, pendingFor, recall, recallCommitments } from "../memory/recall.js";
 import { clause, effectiveDue, isOpen, memoryHash, type MemoryKind, type RecalledMemory } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
 import { getUser, updateUser, upsertUser } from "../state.js";
@@ -152,7 +152,7 @@ export function createBot(): Bot {
         ]),
         listUserNamespaces().catch(() => []),
       ]);
-      const memories = mergeAndFilter(userId, ...sweeps);
+      const memories = mergeAndFilter(userId, ...sweeps, pendingFor(userId)); // include what was just learned
       const total = stats.find((s) => s.userId === String(userId))?.memoryCount;
       if (memories.length === 0) {
         await ctx.reply("I don't remember anything about you yet. Tell me something you're working on!");

@@ -6,7 +6,7 @@ import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { extractionPrompt } from "../llm/prompts.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
-import { recall } from "./recall.js";
+import { notePending, recall } from "./recall.js";
 import { newCommitmentId, normalise, serialize, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
 
 const extractionSchema = z.object({
@@ -113,6 +113,7 @@ export async function storeMemories(userId: number | string, records: MemoryReco
  */
 export async function storeRaw(userId: number | string, raws: string[]): Promise<string[]> {
   if (raws.length === 0) return [];
+  notePending(userId, raws); // usable right away, before Walrus finishes indexing
   const namespace = namespaceFor(userId);
   let pending = raws;
   const stored: string[] = [];

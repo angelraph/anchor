@@ -2,6 +2,24 @@ import { getUser } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
 import { commitmentStates, mergeMemories, parse, type CommitmentState, type OutcomeStatus, type RecalledMemory } from "./types.js";
 
+/** Memories written recently, usable before Walrus finishes indexing them (~30 s). */
+const PENDING_MS = 5 * 60_000;
+const pending = new Map<string, Array<{ raw: string; at: number }>>();
+
+export function notePending(userId: number | string, raws: string[]) {
+  const key = String(userId);
+  const now = Date.now();
+  const kept = (pending.get(key) ?? []).filter((p) => now - p.at < PENDING_MS);
+  pending.set(key, [...kept, ...raws.map((raw) => ({ raw, at: now }))].slice(-30));
+}
+
+function pendingFor(userId: number | string): RecalledMemory[] {
+  const now = Date.now();
+  return (pending.get(String(userId)) ?? [])
+    .filter((p) => now - p.at < PENDING_MS)
+    .map((p) => ({ ...parse(p.raw), raw: p.raw, blobId: "", distance: 0.4, createdAt: new Date(p.at).toISOString() }));
+}
+
 interface RecallOpts {
   limit?: number;
   maxDistance?: number;
@@ -71,10 +89,14 @@ export async function recallForTurn(userId: number | string, message: string): P
       limit: 5,
       maxDistance: 0.8,
     }),
+    recall(userId, "what distracts or derails the user, what helps them follow through, when and how they work best", {
+      limit: 6,
+      maxDistance: 0.8,
+    }),
   ]);
   const groups = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   if (groups.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
-  const memories = mergeAndFilter(userId, ...groups).sort((a, b) => a.distance - b.distance);
+  const memories = mergeAndFilter(userId, ...groups, pendingFor(userId)).sort((a, b) => a.distance - b.distance);
   return { memories, commitments: withRecentOutcomes(userId, commitmentStates(memories)) };
 }
 
@@ -84,5 +106,5 @@ export async function recallCommitments(userId: number | string): Promise<Commit
     recall(userId, "[commitment] a promise to do something by a due date", { limit: 30, sort: "recent" }),
     recall(userId, "[outcome] whether a promise was kept, broken, partly done or moved", { limit: 30, sort: "recent" }),
   ]);
-  return withRecentOutcomes(userId, commitmentStates(mergeAndFilter(userId, commitments, outcomes)));
+  return withRecentOutcomes(userId, commitmentStates(mergeAndFilter(userId, commitments, outcomes, pendingFor(userId))));
 }

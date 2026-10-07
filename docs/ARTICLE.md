@@ -69,7 +69,8 @@ The next morning I sent `/checkin`. Anchor recalled the promise from Walrus, ask
 - **A wallet address is not an account ID.** I pasted my Sui wallet address as the Walrus Memory account ID and got a generic `401 AUTH_REJECTED`. I only found the cause by looking the ID up on-chain.
 - **Walrus Memory is append-only.** There's no delete, so `/forget` writes a "tombstone" memory that hides the original from every future recall.
 - **Saves take about 30 seconds**, so a button tap followed by a quick message could record the same outcome twice. Anchor now tracks just-closed promises locally until Walrus catches up.
-- **Gemini's free tier ran out of quota mid-test.** Anchor now fails over across several Gemini models, with a 25-second limit per model.
+- **Gemini kept moving under me.** `gemini-2.5-flash` turned out to be closed to new API keys, and later `gemini-2.5-flash-lite` too. The newer models hit "high demand" (503), free-tier quota limits and timeouts during testing, and once every model failed at the same moment and a real user got an error. Anchor now ranks the Gemini models by how fast they've actually been answering, skips a struggling one for 15 minutes, retries the whole list once, and if it still can't answer, it saves what the user said through Walrus Memory's own `analyze()` so nothing is lost.
+- **Walrus Memory has an hourly request budget** (1,000 weighted requests per account). My own end-to-end tests used it up and the proof page went down for a while. Anchor now caches slow-changing recalls, dedupes without extra lookups, and the page serves its last saved numbers instead of an error.
 - **A real Walrus bug:** `analyze()` saved "by Sunday" as Thursday 8 October. Reported as a bug bounty issue.
 
 ## Results
@@ -91,5 +92,7 @@ Joseph's chat also found three bugs I had missed: Anchor once said "we've talked
 - **LLM:** Google Gemini (`gemini-3.8-flash`, with Gemini fallbacks) via the Vercel AI SDK. Not Claude or OpenAI.
 - **Memory:** Walrus Memory TypeScript SDK (`@mysten-incubation/memwal`) on the mainnet relayer.
 - **Bot:** grammY on Node.js, deployed on Railway.
+
+Because memory lives on Walrus rather than in the app, it follows people across devices too: Telegram on a phone or a laptop talks to the same memory.
 
 If you're building a chatbot that should remember people, start with this question: *what would my bot do differently if it remembered?* If the answer is "say their name", keep going until memory changes what the bot actually does.

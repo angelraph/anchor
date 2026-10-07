@@ -27,6 +27,8 @@ function isRetryable(err: unknown): boolean {
 
 /** Models that recently failed are skipped for a while instead of retried on every call. */
 const cooldownUntil = new Map<string, number>();
+/** Smoothed response time per model (ms), learned from real calls. */
+const speed = new Map<string, number>();
 const COOLDOWN_MS = 15 * 60_000;
 
 /**
@@ -55,11 +57,21 @@ async function tryChain<T>(call: (model: LanguageModel) => Promise<T>, all: bool
   const now = Date.now();
   const healthy = models.filter((m) => (cooldownUntil.get(m.id) ?? 0) <= now);
   // On the second pass, or if every model is cooling down, try them all.
-  const order = all || !healthy.length ? models : healthy;
+  // Fastest known healthy model first. Untried models count as 4 s (the
+  // primary as 0 s, so it is tried first until we learn otherwise).
+  const order = (all || !healthy.length ? models : healthy)
+    .map((m, i) => ({ m, i, ms: speed.get(m.id) ?? (i === 0 ? 0 : 4_000) }))
+    .sort((a, b) => a.ms - b.ms || a.i - b.i)
+    .map((x) => x.m);
   let lastError: unknown;
   for (const { id, model } of order) {
+    const started = Date.now();
     try {
-      return await call(model);
+      const result = await call(model);
+      const ms = Date.now() - started;
+      const prev = speed.get(id);
+      speed.set(id, prev === undefined ? ms : prev * 0.7 + ms * 0.3);
+      return result;
     } catch (err) {
       lastError = err;
       if (!isRetryable(err)) throw err;

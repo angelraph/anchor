@@ -48,7 +48,13 @@ My first real promise to Anchor was at 23:59: "I will submit the clock build tod
 
 `/why` showed it had remembered the promise and stored it on Walrus (here's the [blob](https://walruscan.com/mainnet/blob/yQaf0nFnugvWUazWSpT66yj2yiTuU4l3MDtm3tJDMsc)), but with the wrong day and the wrong time. The cause was simple: I only ever gave the model today's *date*, never the *time*. Now every prompt includes the local clock, deadlines keep their time of day, and Anchor checks in on the right evening. Replaying the same messages now gives "6am tomorrow morning", due the next day.
 
-**[Add your screenshot here: a real check-in, the ✅ tap, and Anchor referencing something from an earlier day]**
+![The first real promise: "by 6am" heard as "6 PM", and /why showing the memories on Walrus](img/01-first-promise-6am-bug.png)
+
+The next morning I sent `/checkin`. Anchor recalled the promise from Walrus, asked whether I'd done it, and recorded the ✅ as kept:
+
+![Check-in, kept promise, and /promises showing "Follow-through: 1/1 kept"](img/02-checkin-kept-followthrough.png)
+
+**[Add one more screenshot: Anchor bringing up something from an earlier day]**
 
 ## What else broke
 

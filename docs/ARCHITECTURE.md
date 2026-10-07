@@ -46,8 +46,8 @@ A timer ticks every minute; at `CHECKIN_HOUR` in `TIMEZONE` it:
 2. **No structured metadata or filtering.** Typed memories need text headers, and "all open commitments" has to be approximated with broad semantic sweeps (`limit 30`) instead of a filter like `kind = commitment`.
 3. **`formatUntrustedMemories` isn't exported** from `@mysten-incubation/memwal/ai`. Apps that do their own recall have to copy the prompt-injection defence.
 4. **Append-only + recall means duplicates are on you.** Remembering the same fact twice stores two entries, so dedupe costs an extra recall per candidate.
-5. **`analyze()` resolves weekdays to the wrong date.** Reproduced on 2026-10-07 (a Wednesday) with `analyze("User: ... ship my first Sui contract by Sunday ...", { occurredAt: new Date() })`. The stored fact read "by Sunday, 8 October 2026 (2026-10-08)", but 2026-10-08 is a Thursday; the coming Sunday is 2026-10-11. Anchor only uses `analyze` as a fallback when Gemini extraction fails.
-6. **The 401 does not say what is wrong.** Pasting a Sui wallet address as `MEMWAL_ACCOUNT_ID` returns the same generic `AUTH_REJECTED` as a wrong key. Checking that the ID is a `MemWalAccount` object (and saying so) would have saved an hour.
+5. **`analyze()` resolves weekdays to the wrong date.** Reproduced on 2026-10-07 (a Wednesday) with `analyze("User: ... ship my first Sui contract by Sunday ...", { occurredAt: new Date() })`. The stored fact read "by Sunday, 8 October 2026 (2026-10-08)", but 2026-10-08 is a Thursday; the coming Sunday is 2026-10-11. Anchor only uses `analyze` as a fallback when Gemini extraction fails. Filed as [MystenLabs/MemWal#1131](https://github.com/MystenLabs/MemWal/issues/1131).
+6. **The 401 does not say what is wrong.** Pasting a Sui wallet address as `MEMWAL_ACCOUNT_ID` returns the same generic `AUTH_REJECTED` as a wrong key. Checking that the ID is a `MemWalAccount` object (and saying so) would have saved an hour. Filed as [MystenLabs/MemWal#1132](https://github.com/MystenLabs/MemWal/issues/1132).
 
 ## Reliability decisions
 - **Recall fails:** Anchor still answers, tells the user its memory is reconnecting, and never pretends to remember.

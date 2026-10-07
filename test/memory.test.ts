@@ -135,3 +135,15 @@ describe("duplicate detection without extra recalls", () => {
     expect(similarity("Tunde works as a frontend developer", "Tunde skips the gym when up late")).toBeLessThan(0.7);
   });
 });
+
+describe("asking at the right time", () => {
+  it("waits until a same-day deadline time has passed", async () => {
+    const { deadlinePassed } = await import("../src/memory/types.js");
+    const insp = commitmentStates([recalled("[commitment] 2026-10-07 id:i7dz due:2026-10-07 at:15:00 | Site inspection")])[0]!;
+    const noTime = commitmentStates([recalled("[commitment] 2026-10-07 id:ch01 due:2026-10-07 | Buy a charger")])[0]!;
+    expect(deadlinePassed(insp, "2026-10-07", "12:53")).toBe(false);
+    expect(deadlinePassed(insp, "2026-10-07", "15:00")).toBe(true);
+    expect(deadlinePassed(insp, "2026-10-08", "09:00")).toBe(true);
+    expect(deadlinePassed(noTime, "2026-10-07", "08:00")).toBe(true);
+  });
+});

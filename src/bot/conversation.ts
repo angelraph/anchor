@@ -90,6 +90,12 @@ function cleanReply(text: string): string {
 
 /** A normal chat turn: reply now, learn in the background. */
 export async function chatTurn(userId: number, firstName: string, message: string): Promise<TurnResult> {
+  const before = historyFor(userId);
+  const prevUser = before.at(-2), prevBot = before.at(-1);
+  const previous =
+    prevUser?.role === "user" && prevBot?.role === "assistant" && typeof prevUser.content === "string" && typeof prevBot.content === "string"
+      ? { user: prevUser.content, assistant: prevBot.content }
+      : undefined;
   const result = await generateReply({ userId, firstName, message, withMemory: true });
   pushHistory(userId, message, result.reply);
 
@@ -113,6 +119,7 @@ export async function chatTurn(userId: number, firstName: string, message: strin
         commitments: context.commitments,
         known: context.memories,
         closed: getUser(userId)?.closed ?? {},
+        previous,
       });
     } catch (err) {
       console.error(`[memory] Gemini extraction failed for user ${userId}, using Walrus analyze:`, err instanceof Error ? err.message : err);

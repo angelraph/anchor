@@ -5,12 +5,12 @@
 import { generateText } from "ai";
 import { InlineKeyboard, type Api } from "grammy";
 import { config } from "./config.js";
-import { hourIn, todayIn, weekdayOf } from "./dates.js";
+import { hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { checkinPrompt, formatCommitments, formatMemoryBlock } from "./llm/prompts.js";
 import { listUserNamespaces } from "./memory/client.js";
 import { mergeAndFilter, recall, recallCommitments } from "./memory/recall.js";
-import { checkinDay, clause, effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
+import { checkinDay, clause, deadlinePassed, effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
 import { allUsers, getUser, updateUser } from "./state.js";
 
 export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
@@ -22,10 +22,10 @@ export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
     .text("📅 Move it", `o:${commitmentId}:moved`);
 }
 
-export function dueCommitments(states: CommitmentState[], today: string): CommitmentState[] {
+export function dueCommitments(states: CommitmentState[], today: string, now = timeIn(config.TIMEZONE)): CommitmentState[] {
   return states.filter((s) => {
     const day = checkinDay(s, config.CHECKIN_HOUR);
-    return isOpen(s) && !!day && day <= today;
+    return isOpen(s) && !!day && day <= today && deadlinePassed(s, today, now);
   });
 }
 

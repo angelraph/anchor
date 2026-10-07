@@ -31,13 +31,18 @@ export async function extractMemories(opts: {
   commitments: CommitmentState[];
   known?: RecalledMemory[];
   closed?: Record<string, string>;
+  /** The exchange before this one, for context ("Today at 2pm" answers a question). */
+  previous?: { user: string; assistant: string };
 }): Promise<MemoryRecord[]> {
   const today = todayIn(config.TIMEZONE);
   const { output } = await withModel((model) =>
     generateText({
       model,
       system: extractionPrompt({ today, commitments: opts.commitments, known: (opts.known ?? []).map((m) => m.text), closed: opts.closed ?? {} }),
-      prompt: `USER: ${opts.userMessage}\n\nANCHOR: ${opts.assistantReply}`,
+      prompt:
+        (opts.previous
+          ? `EARLIER EXCHANGE (context only; its memories are already stored):\nUSER: ${opts.previous.user}\nANCHOR: ${opts.previous.assistant}\n\nLATEST EXCHANGE (extract from this, using the earlier one to understand it):\n`
+          : "") + `USER: ${opts.userMessage}\n\nANCHOR: ${opts.assistantReply}`,
       output: Output.object({ schema: extractionSchema }),
       temperature: 0,
       maxRetries: 0,

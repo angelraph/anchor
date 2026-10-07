@@ -33,6 +33,11 @@ export function relativeDay(isoDate: string, today: string): string {
   return n > 0 ? `in ${n} days` : `${-n} days ago`;
 }
 
+/** Local time of day, "HH:MM" (24h). */
+export function timeIn(timeZone: string, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+}
+
 /** "Tuesday 2026-10-06, 23:59 (Africa/Lagos)", the full local clock, for prompts. */
 export function clockIn(timeZone: string, now = new Date()): string {
   const date = todayIn(timeZone, now);

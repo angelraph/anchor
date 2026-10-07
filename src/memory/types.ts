@@ -172,6 +172,18 @@ export function checkinDay(state: CommitmentState, checkinHour: number): string 
   return due;
 }
 
+/**
+ * Has the deadline passed? A promise due today with a time (e.g. 15:00) only
+ * counts once that time is reached; one with no time counts all day.
+ */
+export function deadlinePassed(state: CommitmentState, today: string, nowHHMM: string): boolean {
+  const due = effectiveDue(state);
+  if (!due) return false;
+  if (due !== today) return due < today;
+  const at = state.outcome?.status === "moved" ? state.outcome.at : state.commitment.at;
+  return !at || at <= nowHHMM;
+}
+
 /** Effective due date: a "moved" outcome may carry the new due date. */
 export function effectiveDue(state: CommitmentState): string | undefined {
   if (state.outcome?.status === "moved" && state.outcome.due) return state.outcome.due;

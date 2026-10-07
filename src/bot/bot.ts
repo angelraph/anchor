@@ -1,6 +1,6 @@
 import { sequentialize } from "@grammyjs/runner";
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
-import { checkInUser, outcomeKeyboard } from "../checkins.js";
+import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
 import { config } from "../config.js";
 import { relativeDay, todayIn, weekdayOf } from "../dates.js";
 import { MODEL_LABEL } from "../llm/model.js";
@@ -55,7 +55,7 @@ function touch(ctx: Context) {
 }
 
 function shortBlob(blobId: string) {
-  return blobId ? `${blobId.slice(0, 8)}…` : "pending";
+  return blobId ? `blob ${blobId.slice(0, 8)}…` : "saving to Walrus (just learned)";
 }
 
 const KIND_LABEL: Record<MemoryKind | "note", string> = {
@@ -132,10 +132,7 @@ export function createBot(): Bot {
         lines.push("", `Follow-through: ${kept}/${done.length} kept`);
       }
       await sendLong(ctx, lines.join("\n"));
-      const due = open.filter((s) => {
-        const d = effectiveDue(s);
-        return d && d <= today;
-      });
+      const due = dueCommitments(open, today);
       for (const s of due) {
         await ctx.reply(`#${s.commitment.id} is due, how did it go?`, {
           reply_markup: outcomeKeyboard(s.commitment.id!),
@@ -190,7 +187,7 @@ export function createBot(): Bot {
     const lines = [`My last reply was shaped by ${trace.items.length} memories recalled from Walrus for "${trace.query.slice(0, 80)}":`, ""];
     trace.items.forEach((m, i) => {
       lines.push(`${i + 1}. ${m.raw}`);
-      lines.push(`   relevance ${(1 - m.distance).toFixed(2)} · blob ${shortBlob(m.blobId)}${m.blobId ? ` ${WALRUSCAN}${m.blobId}` : ""}`);
+      lines.push(`   relevance ${(1 - m.distance).toFixed(2)} · ${shortBlob(m.blobId)}${m.blobId ? ` ${WALRUSCAN}${m.blobId}` : ""}`);
     });
     await sendLong(ctx, lines.join("\n"), { link_preview_options: { is_disabled: true } });
   });

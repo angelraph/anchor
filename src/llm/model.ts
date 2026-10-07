@@ -35,10 +35,27 @@ const COOLDOWN_MS = 15 * 60_000;
  */
 
 export async function withModel<T>(call: (model: LanguageModel) => Promise<T>): Promise<T> {
+  try {
+    return await tryChain(call, false);
+  } catch (err) {
+    if (!isRetryable(err)) throw err;
+    // Every model failed at once: Google demand spikes usually clear in seconds.
+    console.warn("[llm] all models busy; retrying the whole chain in 3 s");
+    await new Promise((r) => setTimeout(r, 3_000));
+    return tryChain(call, true);
+  }
+}
+
+/** True for errors caused by provider load or availability rather than our request. */
+export function isOverloadError(err: unknown): boolean {
+  return isRetryable(err);
+}
+
+async function tryChain<T>(call: (model: LanguageModel) => Promise<T>, all: boolean): Promise<T> {
   const now = Date.now();
   const healthy = models.filter((m) => (cooldownUntil.get(m.id) ?? 0) <= now);
-  // If every model is cooling down, try them all anyway rather than fail.
-  const order = healthy.length ? healthy : models;
+  // On the second pass, or if every model is cooling down, try them all.
+  const order = all || !healthy.length ? models : healthy;
   let lastError: unknown;
   for (const { id, model } of order) {
     try {

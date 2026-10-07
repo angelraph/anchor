@@ -9,6 +9,8 @@ import { mergeAndFilter, recall, recallCommitments } from "../memory/recall.js";
 import { clause, effectiveDue, isOpen, memoryHash, type MemoryKind, type RecalledMemory } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
 import { getUser, updateUser, upsertUser } from "../state.js";
+import { isOverloadError } from "../llm/model.js";
+import { analyzeFallback } from "../memory/write.js";
 import { chatTurn, enqueue, generateReply } from "./conversation.js";
 
 const WALRUSCAN = "https://walruscan.com/mainnet/blob/";
@@ -202,10 +204,17 @@ export function createBot(): Bot {
     }
     await withTyping(ctx, async () => {
       const args = { userId: ctx.from!.id, firstName: user.firstName, message, useHistory: false };
-      const [without, withMem] = await Promise.all([
+      const [r1, r2] = await Promise.allSettled([
         generateReply({ ...args, withMemory: false }),
         generateReply({ ...args, withMemory: true }),
       ]);
+      if (r1.status === "rejected" || r2.status === "rejected") {
+        const err = r1.status === "rejected" ? r1.reason : (r2 as PromiseRejectedResult).reason;
+        if (!isOverloadError(err)) throw err;
+        await ctx.reply("My AI brain (Google Gemini) is overloaded right now, so I can't run the comparison. Please try /compare again in a minute.");
+        return;
+      }
+      const without = r1.value, withMem = r2.value;
       const n = withMem.context?.memories.length ?? 0;
       await sendLong(
         ctx,
@@ -334,10 +343,26 @@ export function createBot(): Bot {
     const userId = ctx.from.id;
     await enqueue(`turn:${userId}`, () =>
       withTyping(ctx, async () => {
-        const { reply, context } = await chatTurn(userId, user.firstName, ctx.message.text);
-        const n = context?.memories.length ?? 0;
+        let turn;
+        try {
+          turn = await chatTurn(userId, user.firstName, ctx.message.text);
+        } catch (err) {
+          if (!isOverloadError(err)) throw err;
+          // Google's AI is overloaded: no reply possible, but don't lose what they said.
+          console.error(`[bot] no model available for user ${userId}; saving the message via Walrus analyze`);
+          void enqueue(`write:${userId}`, () =>
+            analyzeFallback(userId, ctx.message.text, "").catch((e) =>
+              console.error(`[memory] analyze fallback failed for user ${userId}:`, e instanceof Error ? e.message : e),
+            ),
+          );
+          await ctx.reply(
+            "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I did save what you just told me to memory. Please send me another message in a minute.",
+          );
+          return;
+        }
+        const n = turn.context?.memories.length ?? 0;
         const footer = n > 0 ? `\n\n⚓ ${n} memor${n === 1 ? "y" : "ies"} · /why` : "";
-        await sendLong(ctx, reply + footer);
+        await sendLong(ctx, turn.reply + footer);
       }),
     );
   });
@@ -348,7 +373,7 @@ export function createBot(): Bot {
     console.error(`[bot] error handling update ${err.ctx.update.update_id}:`, err.error);
     if (err.error instanceof GrammyError && err.error.error_code === 403) return; // user blocked the bot
     await err.ctx
-      .reply("Something went wrong on my side (my memory service may be slow). Please try again in a moment.")
+      .reply("Something went wrong on my side. Please send that again in a minute; your memories are safe.")
       .catch(() => undefined);
   });
 

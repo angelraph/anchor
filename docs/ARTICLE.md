@@ -74,9 +74,17 @@ The next morning I sent `/checkin`. Anchor recalled the promise from Walrus, ask
 
 ## Results
 
-**[Fill in from the proof page: X people, Y memories, Z with 10+ memories]**
+By the afternoon of the first full day, **6 people had stored 56 memories, and 3 of them had passed 10 memories each**. The live counts come straight from Walrus Memory on the [proof page](https://anchor-production-6bb4.up.railway.app). **[Update these numbers before publishing]**
 
-**[Add 2 or 3 quotes or screenshots from friends, especially a moment where Anchor remembered something that mattered]**
+My friend Joseph, an engineer in the UK, told Anchor his plans for the day, that chatting distracts him, that music helps him focus on site, that he has the most energy in the morning, and that his wife pushes him to do better. Within minutes Anchor was using all of it:
+
+![Joseph's chat: Anchor uses his morning energy and his wife's motivation in its advice](img/05-joseph-uses-what-he-said.jpeg)
+
+His `/compare` shows the difference in one screen. Without memory, Anchor just repeats his plan back. With memory, it remembers that walking helps him start the day and that chatting is the distraction he named, and it keeps track of everything he has promised, from today's site inspection to starting his farm at the end of October:
+
+![Joseph's /compare and his open promises](img/06-joseph-compare-and-promises.jpeg)
+
+Joseph's chat also found three bugs I had missed: Anchor once said "we've talked about this before" about something he'd only just mentioned, it asked how a 3pm inspection went at 12:53, and it filed "Today at 2pm" as a preference instead of a promise. All three were fixed the same afternoon. Real users find things tests don't.
 
 ## Stack
 

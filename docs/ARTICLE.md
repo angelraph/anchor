@@ -36,11 +36,15 @@ Walrus Memory stores text, encrypts it, and recalls it by meaning. Each Telegram
 
 ## Before and after
 
-Same message, same model. These are real outputs from Anchor's `/compare` command:
+Same message, same model. This is Anchor's `/compare` command on my own account, the morning after I kept my first promise:
 
-> **Without memory:** "Right now, I don't have anything saved about you or your exam plan yet. Tell me what exam you are preparing for…"
+![/compare: without memory vs with Walrus Memory](img/03-compare-with-without-memory.png)
+
+> **Without memory:** "To make this a concrete promise, what specific day and time before the end of the week will you have the project finished?"
 >
-> **With Walrus Memory:** "I know you are a nursing student prepping for your pharmacology exam, and that you tend to procrastinate and get distracted by your phone when you try studying at home. You focus much better when you go to the library. As for your plan, you promised to revise two chapters by tomorrow evening."
+> **With Walrus Memory:** "Great job getting that clock build submitted this morning, Angel. Since you focus best in the morning, let's lock in a concrete plan for your project."
+
+The first answer could be for anyone. The second knows I kept my last promise and when I work best, and plans around it.
 
 ## The first real conversation, and the bug it exposed
 

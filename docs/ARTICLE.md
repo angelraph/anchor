@@ -62,7 +62,15 @@ The next morning I sent `/checkin`. Anchor recalled the promise from Walrus, ask
 
 ![Check-in, kept promise, and /promises showing "Follow-through: 1/1 kept"](img/02-checkin-kept-followthrough.png)
 
-**[Add one more screenshot: Anchor bringing up something from an earlier day]**
+The moment that sold it for me came from a tester who trades on City Index. On day one he told Anchor he trades best at midnight, goes to the gym on Tuesdays and Thursdays at 16:00, spends weekends on his art, and promised two things: a 20x trading return by 18:00, and a deal sealed by 8am the next morning.
+
+At 7:01 PM Anchor messaged him first, unprompted, and used what it knew. The next morning, in a brand new session, it remembered all of it: yesterday's win, his gym day, his weekends, and the deal that was due an hour earlier.
+
+![Next day: the evening check-in, then Anchor recalling yesterday's win, his routine, and the deal due that morning](img/07-next-day-recall.jpeg)
+
+He answered "Yes", and Anchor closed the promise and reminded him about his 16:00 gym session, because it was Thursday:
+
+![The deal marked done, and the gym reminder](img/08-next-day-deal-done.jpeg)
 
 ## What else broke
 
@@ -75,7 +83,7 @@ The next morning I sent `/checkin`. Anchor recalled the promise from Walrus, ask
 
 ## Results
 
-By the afternoon of the first full day, **6 people had stored 56 memories, and 3 of them had passed 10 memories each**. The live counts come straight from Walrus Memory on the [proof page](https://anchor-production-6bb4.up.railway.app). **[Update these numbers before publishing]**
+After two days, **11 people had stored 103 memories, and 7 of them had passed 10 memories each**. The live counts come straight from Walrus Memory on the [proof page](https://anchor-production-6bb4.up.railway.app).
 
 My friend Joseph, an engineer in the UK, told Anchor his plans for the day, that chatting distracts him, that music helps him focus on site, that he has the most energy in the morning, and that his wife pushes him to do better. Within minutes Anchor was using all of it:
 

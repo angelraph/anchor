@@ -14,6 +14,25 @@ Without memory, an accountability bot is just a motivational poster. With memory
 - **Built for:** Walrus Session 8, "Chatbots That Remember"
 
 
+## Vision
+
+People don't lack goals; they lack follow-through, and nothing remembers their promises with them. Friends forget, reminder apps get swiped away, and every AI chat starts from zero.
+
+Anchor's aim is an accountability partner anyone can afford, inside the messaging app they already use, that **gets better the longer you use it**: it remembers every promise, notices which ones you keep, and learns *your* patterns (what derails you, what works for you) instead of handing out generic advice. Your memory lives encrypted on Walrus, in your own namespace, not in a database we own.
+
+### What's live now
+- Promises with real dates and times, stored on Walrus
+- **Reminders at the exact deadline time** ("by 3pm" means a message at 15:00), plus an evening check-in for anything still open
+- **Weekly follow-through summary** every Sunday (and `/week` any time): kept, partly kept, missed, your follow-through %, what's open, and one insight from memory
+- Pattern and win tracking, `/why`, `/compare`, `/forget`
+
+### Roadmap
+1. **WhatsApp**, where most of our first users already live (needs a Meta Business account and number)
+2. **Accountability buddies**: let a friend see your follow-through and nudge you, with your permission
+3. **Streaks and monthly reflections** built from long-term memory
+4. **Bring your own memory**: connect your own Walrus Memory account so your data is fully yours, portable to other apps
+5. **Voice notes**: make a promise by talking, Anchor transcribes and remembers it
+
 ## What memory does in Anchor
 
 | Moment | Recall | Store |
@@ -40,6 +59,7 @@ Memories are stored as single readable lines with a typed header, so they embed 
 | `/compare <msg>` | The same message answered **without** and **with** memory, side by side |
 | `/forget <topic>` | Pick a memory to forget |
 | `/checkin` | Run the due-promise check-in now |
+| `/week` | Your follow-through this week |
 | `/stats` | Users and memories across Anchor |
 
 

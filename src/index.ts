@@ -5,6 +5,8 @@ import { config } from "./config.js";
 import { MODEL_LABEL } from "./llm/model.js";
 import { memwal } from "./memory/client.js";
 import { drainOutbox } from "./memory/write.js";
+import { runDeadlineReminders, runWeekly } from "./reminders.js";
+import { hourIn, todayIn } from "./dates.js";
 import { flush } from "./state.js";
 import { startWebServer } from "./web/server.js";
 
@@ -23,6 +25,18 @@ async function main() {
   startWebServer();
   startCheckinScheduler(bot.api);
   setInterval(() => void drainOutbox().catch((err) => console.error("[memwal] outbox drain failed:", err)), 10 * 60_000);
+
+  // Exact-time deadline reminders (local state only) and the Sunday weekly summary.
+  let weeklyRan = "";
+  setInterval(() => {
+    void runDeadlineReminders(bot.api).catch((err) => console.error("[remind] failed:", err));
+    const today = todayIn(config.TIMEZONE);
+    const isSunday = new Date(`${today}T12:00:00Z`).getUTCDay() === 0;
+    if (isSunday && hourIn(config.TIMEZONE) === config.CHECKIN_HOUR && weeklyRan !== today) {
+      weeklyRan = today;
+      void runWeekly(bot.api).catch((err) => console.error("[weekly] failed:", err));
+    }
+  }, 60_000);
 
   // Updates run concurrently across users; bot.ts keeps each chat in order.
   // grammY's runner stops silently on 409 Conflict (another instance polling

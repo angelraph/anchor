@@ -1,6 +1,7 @@
 import { sequentialize } from "@grammyjs/runner";
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
 import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
+import { weeklySummary } from "../reminders.js";
 import { config } from "../config.js";
 import { relativeDay, todayIn, weekdayOf } from "../dates.js";
 import { MODEL_LABEL } from "../llm/model.js";
@@ -29,6 +30,7 @@ Commands
 /compare <message>: see my answer with and without memory
 /forget <topic>: make me forget something
 /checkin: check in on due promises now
+/week: your follow-through this week
 /stats: how much Anchor remembers overall`;
 
 async function sendLong(ctx: Context, text: string, extra?: Parameters<Context["reply"]>[1]) {
@@ -250,6 +252,13 @@ export function createBot(): Bot {
     await withTyping(ctx, () => checkInUser(ctx.api, String(ctx.from!.id), { force: true }));
   });
 
+  bot.command("week", async (ctx) => {
+    touch(ctx);
+    await withTyping(ctx, async () => {
+      await sendLong(ctx, await weeklySummary(ctx.from!.id));
+    });
+  });
+
   bot.command("stats", async (ctx) => {
     touch(ctx);
     await withTyping(ctx, async () => {
@@ -384,6 +393,7 @@ export const BOT_COMMANDS = [
   { command: "compare", description: "Answer with vs without memory" },
   { command: "forget", description: "Make Anchor forget something" },
   { command: "checkin", description: "Check in on due promises now" },
+  { command: "week", description: "Your follow-through this week" },
   { command: "stats", description: "How much Anchor remembers overall" },
   { command: "help", description: "How Anchor works" },
 ];

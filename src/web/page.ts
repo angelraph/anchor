@@ -255,6 +255,7 @@ footer a:hover{color:var(--bone)}
       <a class="link" href="#replay">Demo</a>
       <a class="link" href="#how">How it works</a>
       <a class="link" href="#proof">Proof</a>
+      <a class="link" href="#vision">Vision</a>
       <a class="link" href="#faq">FAQ</a>
       <a class="link" href="${REPO}">GitHub</a>
       <a class="pill" href="${esc(cta)}">Open in Telegram</a>
@@ -355,7 +356,24 @@ footer a:hover{color:var(--bone)}
         <div><code>/compare</code>Your message answered with and without memory.</div>
         <div><code>/promises</code>Open and kept promises, and your follow-through rate.</div>
         <div><code>/forget</code>Pick a memory and Anchor never uses it again.</div>
+        <div><code>/week</code>Your follow-through this week: kept, missed, and what's still open.</div>
       </div>
+    </div>
+  </section>
+
+  <section id="vision">
+    <div class="wrap split">
+      <div>
+        <span class="label">Where Anchor is going</span>
+        <h2 class="h-lg">A partner that gets better the longer you use it.</h2>
+        <p class="body muted" style="margin-top:24px">People don't lack goals. They lack follow-through, and nothing remembers their promises with them. Anchor is an accountability partner anyone can afford, in the app they already use, with memory that belongs to them.</p>
+      </div>
+      <ol class="steps">
+        <li><div><h3>Live: exact-time reminders</h3><p>"By 3pm" means Anchor messages you at 15:00, then checks in that evening on anything still open.</p></div></li>
+        <li><div><h3>Live: weekly follow-through</h3><p>Every Sunday: kept, partly kept, missed, your follow-through %, and one insight from memory. Or send /week any time.</p></div></li>
+        <li><div><h3>Next: WhatsApp and accountability buddies</h3><p>Anchor where most people already chat, and an optional friend who sees your follow-through and nudges you.</p></div></li>
+        <li><div><h3>Next: memory you own</h3><p>Connect your own Walrus Memory account so your promises and patterns travel with you to any app.</p></div></li>
+      </ol>
     </div>
   </section>
 
@@ -378,7 +396,7 @@ footer a:hover{color:var(--bone)}
       <div class="faq">
         <details><summary>Do I need an account, a wallet or crypto?</summary><p>No. Open Anchor in Telegram and start talking. Your Telegram account is all it uses to know it's you.</p></details>
         <details><summary>Where is my memory stored, and who can read it?</summary><p>Each person gets their own namespace in Walrus Memory. Memories are encrypted before they are stored on Walrus, and recall never crosses from one person to another. Anchor's server holds the key it needs to read your memories back to you, so treat it like any app you chat with. This page only ever shows anonymised counts.</p></details>
-        <details><summary>When does Anchor check in?</summary><p>Every evening at ${esc(p.checkinTime)}, about promises due that day or earlier. Tap Did it, Partly, Didn't or Move it, or just reply in your own words. You can also send /checkin any time.</p></details>
+        <details><summary>When does Anchor check in?</summary><p>If your promise has a time ("by 3pm"), Anchor messages you right at that time. Every evening at ${esc(p.checkinTime)} it also checks in on anything due that day or earlier that's still open, and every Sunday it sends your weekly follow-through summary. Tap Did it, Partly, Didn't or Move it, or just reply in your own words. You can also send /checkin or /week any time.</p></details>
         <details><summary>What if I break a promise?</summary><p>Nothing bad happens. Anchor records it honestly, asks what got in the way, and uses that next time. Patterns and wins are the point: they are how it learns what actually works for you.</p></details>
         <details><summary>Can I make it forget something?</summary><p>Yes. Send /forget and a topic, pick the memory, and Anchor will never use it again. Walrus Memory is append-only, so the encrypted record isn't erased; Anchor stores a tombstone that hides it from every future recall.</p></details>
         <details><summary>How do I see what it remembers?</summary><p>/memory lists everything, grouped by type. /why shows the exact memories behind its last reply, with Walrus blob IDs. /compare answers your message with and without memory, side by side.</p></details>

@@ -17,6 +17,13 @@ export interface TraceItem {
   distance: number;
 }
 
+/** A promise with a time of day, mirrored locally for exact-time reminders. */
+export interface TimedPromise {
+  text: string;
+  due: string; // YYYY-MM-DD
+  at: string; // HH:MM
+}
+
 export interface UserState {
   firstName: string;
   chatId: number;
@@ -31,6 +38,10 @@ export interface UserState {
   tombstones: string[];
   /** commitment id -> outcome status recorded recently, so it is not recorded twice */
   closed?: Record<string, string>;
+  /** open promises with a time of day, for reminders at the exact deadline */
+  timed?: Record<string, TimedPromise>;
+  /** date the last weekly summary was sent */
+  lastWeekly?: string;
   lastTrace?: { at: string; query: string; items: TraceItem[] };
 }
 

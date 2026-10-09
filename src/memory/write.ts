@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { extractionPrompt } from "../llm/prompts.js";
+import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
 import { notePending, recall } from "./recall.js";
@@ -108,6 +109,7 @@ export async function dropDuplicates(
 
 /** Write records to the user's namespace on Walrus and wait until they are indexed. */
 export async function storeMemories(userId: number | string, records: MemoryRecord[]): Promise<string[]> {
+  trackRecords(userId, records); // timed promises get an exact-time reminder
   return storeRaw(userId, records.map((r) => serialize(r)));
 }
 

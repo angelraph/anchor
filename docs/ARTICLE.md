@@ -72,6 +72,12 @@ My friend Joseph, an engineer in the UK, said chatting distracts him, music help
 
 After two days, **11 people had stored 103 memories, and 7 had passed 10 each**, counted live from Walrus Memory on the [proof page](https://anchor-production-6bb4.up.railway.app). Telegram on a phone or a laptop reaches the same memory, so it follows people across devices.
 
+## What's next
+
+Two features from the roadmap are already live. Promises with a time get a heads-up 30 minutes before and a check at the exact deadline ("by 3pm" means 14:30 and 15:00), and every Sunday Anchor sends a weekly follow-through summary: kept, partly kept, missed, your follow-through percentage, what's still open, and one insight from memory. Send `/week` to see yours any time.
+
+Next: WhatsApp, where most of my testers already live; accountability buddies, so a friend can see your follow-through and nudge you; and connecting your own Walrus Memory account, so your promises and patterns travel with you to any app. The goal stays the same: a partner that gets better the longer you use it.
+
 ## Stack
 
 - **LLM:** Google Gemini (`gemini-3.8-flash` with Gemini fallbacks) via the Vercel AI SDK. Not Claude or OpenAI.

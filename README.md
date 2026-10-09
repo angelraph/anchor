@@ -22,7 +22,7 @@ Anchor's aim is an accountability partner anyone can afford, inside the messagin
 
 ### What's live now
 - Promises with real dates and times, stored on Walrus
-- **Reminders at the exact deadline time** ("by 3pm" means a message at 15:00), plus an evening check-in for anything still open
+- **Deadline reminders**: a heads-up 30 minutes before a timed promise ("by 3pm" means 14:30) and a check at the exact deadline (15:00), plus an evening check-in for anything still open
 - **Weekly follow-through summary** every Sunday (and `/week` any time): kept, partly kept, missed, your follow-through %, what's open, and one insight from memory
 - Pattern and win tracking, `/why`, `/compare`, `/forget`
 

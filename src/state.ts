@@ -42,6 +42,8 @@ export interface UserState {
   timed?: Record<string, TimedPromise>;
   /** date the last weekly summary was sent */
   lastWeekly?: string;
+  /** commitment id -> date its 30-minute heads-up was sent */
+  warned?: Record<string, string>;
   lastTrace?: { at: string; query: string; items: TraceItem[] };
 }
 

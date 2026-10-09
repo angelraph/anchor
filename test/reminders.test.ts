@@ -7,7 +7,7 @@ process.env.MEMWAL_PRIVATE_KEY ??= "0".repeat(64);
 process.env.MEMWAL_ACCOUNT_ID ??= "0x" + "0".repeat(64);
 process.env.DATA_DIR = "./data/unit-test";
 
-const { dueNow, weekStats, formatWeek } = await import("../src/reminders.js");
+const { dueNow, headsUpAt, headsUpNow, weekStats, formatWeek } = await import("../src/reminders.js");
 const { commitmentStates, memoryHash, parse } = await import("../src/memory/types.js");
 
 const mem = (raw: string) => ({ ...parse(raw), raw, blobId: `b-${memoryHash(raw)}`, distance: 0.3 });
@@ -30,6 +30,29 @@ describe("exact-time deadline reminders", () => {
 
   it("waits for the right day", () => {
     expect(dueNow(timed, "2026-10-10", "08:00", {}, {}).map(([id]) => id)).toEqual(["read"]);
+  });
+});
+
+describe("30-minute heads-up", () => {
+  const timed = { insp: { text: "Site inspection", due: "2026-10-09", at: "15:00" } };
+
+  it("is due 30 minutes before the deadline", () => {
+    expect(headsUpAt(timed.insp)).toEqual(["2026-10-09", "14:30"]);
+    expect(headsUpNow(timed, "2026-10-09", "14:29", {}, {})).toHaveLength(0);
+    expect(headsUpNow(timed, "2026-10-09", "14:30", {}, {}).map(([id]) => id)).toEqual(["insp"]);
+  });
+
+  it("is sent once, never after the deadline, never for answered promises", () => {
+    expect(headsUpNow(timed, "2026-10-09", "14:40", { insp: "2026-10-09" }, {})).toHaveLength(0);
+    expect(headsUpNow(timed, "2026-10-09", "15:00", {}, {})).toHaveLength(0);
+    expect(headsUpNow(timed, "2026-10-09", "14:45", {}, { insp: "kept" })).toHaveLength(0);
+  });
+
+  it("goes out the evening before for a deadline just after midnight", () => {
+    const late = { night: { text: "Submit", due: "2026-10-10", at: "00:15" } };
+    expect(headsUpAt(late.night)).toEqual(["2026-10-09", "23:45"]);
+    expect(headsUpNow(late, "2026-10-09", "23:45", {}, {}).map(([id]) => id)).toEqual(["night"]);
+    expect(headsUpNow(late, "2026-10-10", "00:05", {}, {}).map(([id]) => id)).toEqual(["night"]);
   });
 });
 

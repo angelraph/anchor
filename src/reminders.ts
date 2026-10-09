@@ -1,6 +1,7 @@
 /**
  * Beyond the evening check-in:
- *  - Deadline reminders at the exact time a promise is due ("by 3pm" -> 15:00).
+ *  - A heads-up 30 minutes before a timed promise is due, then a check at the
+ *    exact deadline time ("by 3pm" -> 14:30 heads-up, 15:00 check).
  *  - A weekly follow-through summary every Sunday evening (and /week on demand).
  *
  * Timed promises are mirrored in local state as they are written to Walrus, so
@@ -47,7 +48,39 @@ export function dueNow(
   return Object.entries(timed).filter(([id, p]) => p.due === today && p.at <= now && nudged[id] !== today && !closed[id]);
 }
 
-/** Send exact-time deadline reminders. Reads local state only (no Walrus calls). */
+export const HEADS_UP_MINUTES = 30;
+
+const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/** When the heads-up for a promise is due: [date, "HH:MM"], 30 minutes before (may be the day before). */
+export function headsUpAt(p: TimedPromise): [string, string] {
+  let m = toMin(p.at) - HEADS_UP_MINUTES;
+  let date = p.due;
+  if (m < 0) {
+    m += 24 * 60;
+    date = addDays(p.due, -1);
+  }
+  return [date, `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`];
+}
+
+/** Timed promises whose 30-minute heads-up should go out now. */
+export function headsUpNow(
+  timed: Record<string, TimedPromise>,
+  today: string,
+  now: string,
+  warned: Record<string, string>,
+  closed: Record<string, string>,
+): Array<[string, TimedPromise]> {
+  return Object.entries(timed).filter(([id, p]) => {
+    if (closed[id] || warned[id] === p.due) return false;
+    const [date, at] = headsUpAt(p);
+    // Window: from the heads-up time until the deadline itself.
+    const deadlinePassed = p.due < today || (p.due === today && p.at <= now);
+    return !deadlinePassed && (date < today || (date === today && at <= now));
+  });
+}
+
+/** Send heads-ups and exact-time deadline reminders. Reads local state only (no Walrus calls). */
 export async function runDeadlineReminders(api: Api): Promise<void> {
   const today = todayIn(config.TIMEZONE);
   const now = timeIn(config.TIMEZONE);
@@ -56,6 +89,17 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     // Drop promises whose day has passed; the evening check-in owns them now.
     const stale = Object.keys(timed).filter((id) => timed[id]!.due < addDays(today, -1));
     if (stale.length) updateUser(userId, (u) => stale.forEach((id) => delete u.timed![id]));
+    for (const [id, p] of headsUpNow(timed, today, now, user.warned ?? {}, user.closed ?? {})) {
+      try {
+        await api.sendMessage(user.chatId, `⏳ ${HEADS_UP_MINUTES} minutes left.\n#${id} · ${clause(p.text)} (due ${p.at})\nYou've got this. I'll check in at ${p.at}.`);
+        console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
+      } catch (err) {
+        console.warn(`[remind] heads-up user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
+      }
+      updateUser(userId, (u) => {
+        (u.warned ??= {})[id] = p.due;
+      });
+    }
     for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {})) {
       try {
         await api.sendMessage(user.chatId, `⏰ It's ${p.at}, deadline time.\n#${id} · ${clause(p.text)}\nDid you do it?`, {

@@ -376,7 +376,10 @@ export function createBot(): Bot {
   bot.on("message", (ctx) => ctx.reply("I only understand text for now, type it out and I'll remember it."));
 
   bot.catch(async (err) => {
-    console.error(`[bot] error handling update ${err.ctx.update.update_id}:`, err.error);
+    console.error(
+      `[bot] error handling update ${err.ctx.update.update_id}:`,
+      String(err.error instanceof Error ? (err.error.stack ?? err.error.message) : err.error).split(config.TELEGRAM_BOT_TOKEN).join("<token>"),
+    );
     if (err.error instanceof GrammyError && err.error.error_code === 403) return; // user blocked the bot
     await err.ctx
       .reply("Something went wrong on my side. Please send that again in a minute; your memories are safe.")

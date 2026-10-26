@@ -40,7 +40,10 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
   const firstName = user?.firstName ?? "";
 
   const states = await recallCommitments(userId);
-  const due = dueCommitments(states, today).filter((s) => opts.force || user?.nudged[s.commitment.id!] !== today);
+  // Money promises still being watched on Sui are closed by the chain, not by asking.
+  const due = dueCommitments(states, today).filter(
+    (s) => (opts.force || user?.nudged[s.commitment.id!] !== today) && !user?.chain?.[s.commitment.id!],
+  );
 
   if (due.length === 0) {
     if (!opts.force) return maybeGeneralCheckin(api, userId, today);

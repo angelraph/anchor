@@ -17,6 +17,19 @@ export interface ProofData {
   generatedAt: string;
   /** e.g. "19:00 (Africa/Lagos)" */
   checkinTime: string;
+  /** Anchor's Sui address (signs reports, holds stakes), when configured. */
+  anchorAddress?: string | null;
+  /** The learning loop in numbers (counted since the Total Recall build). */
+  learning?: {
+    since: string;
+    replies: number;
+    shapedPct: number;
+    memoriesWritten: Record<string, number>;
+    chainVerified: { kept: number; broken: number };
+    reportsPublished: number;
+    stakes: { held: number; refunded: number; forfeited: number };
+    agentPayments: number;
+  };
 }
 
 import { logoSvg } from "./logo.js";
@@ -37,6 +50,9 @@ function when(iso: string): string {
 
 export function renderPage(p: ProofData): string {
   const cta = p.bot ?? REPO;
+  const l = p.learning;
+  const learned = (k: string) => l?.memoriesWritten[k] ?? 0;
+  const verified = (l?.chainVerified.kept ?? 0) + (l?.chainVerified.broken ?? 0);
   const ledger = p.users.length
     ? p.users
         .map(
@@ -137,6 +153,7 @@ section{padding:clamp(60px,10vw,120px) 0}
 .ledger .n{text-align:right;font-variant-numeric:tabular-nums}
 .ledger .t{color:var(--ash);font-size:14px;text-align:right}
 .ledger .empty{display:block;color:var(--ash);font-weight:200}
+pre.x402{font-family:var(--mono);font-size:13px;line-height:1.7;color:var(--mist);background:#07080c;border-radius:18px;padding:20px;overflow:auto;white-space:pre-wrap;word-break:break-word}
 
 /* commands */
 .cmds{display:grid;grid-template-columns:repeat(2,1fr);gap:24px 60px;margin-top:36px}
@@ -254,6 +271,7 @@ footer a:hover{color:var(--bone)}
     <nav>
       <a class="link" href="#replay">Demo</a>
       <a class="link" href="#how">How it works</a>
+      <a class="link" href="#chain">On-chain</a>
       <a class="link" href="#proof">Proof</a>
       <a class="link" href="#vision">Vision</a>
       <a class="link" href="#faq">FAQ</a>
@@ -322,6 +340,59 @@ footer a:hover{color:var(--bone)}
     </div>
   </section>
 
+  <section id="chain">
+    <div class="wrap split">
+      <div>
+        <span class="label">Sui · read through Tatum</span>
+        <h2 class="h-lg">Promises the chain can verify.</h2>
+        <p class="body muted" style="margin-top:24px">"I'll save 50 USDC by Friday." "I'll pay Tobi back 20 USDC." For money promises, your word isn't the evidence: your wallet is. Anchor reads Sui through Tatum's RPC gateway and closes the promise itself, with the transaction as proof.</p>
+      </div>
+      <ol class="steps">
+        <li><div><h3>Link a wallet, prove it's yours</h3><p><code style="color:var(--saffron)">/wallet you.sui</code> resolves your SuiNS name on-chain. Sign one free message and it's verified. Anchor can read your money, never move it.</p></div></li>
+        <li><div><h3>Promise in plain words</h3><p>Anchor recognises save, keep, pay and spending-cap promises in SUI, USDC or WAL, records your starting balance, and finds the recipient's address in memory or SuiNS.</p></div></li>
+        <li><div><h3>The chain reports, not you</h3><p>A payment that lands closes the promise early. At the deadline Anchor reads the final balance or transfers, and stores the verdict on Walrus with the Sui transaction digest.</p></div></li>
+        <li><div><h3>Optional: put money on it</h3><p><code style="color:var(--saffron)">/stake #id 5 friend.sui</code>. Pay with x402 on Sui. Keep the promise and the USDC comes back. Miss it and it goes to the person you chose. Anchor never keeps it.</p></div></li>
+        <li><div><h3>Signed reports on Walrus</h3><p><code style="color:var(--saffron)">/report</code> signs your week with Anchor's Sui key and publishes it to Walrus through Tatum's Storage API. Portable proof of follow-through that anyone can verify.</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="learning">
+    <div class="wrap">
+      <span class="label">The learning loop, live</span>
+      <h2 class="h-lg">Memory that changes what Anchor does.</h2>
+      <p class="body muted" style="margin:24px 0 0">Counted on the live bot${l ? ` since ${esc(l.since.slice(0, 10))}` : ""}. A reply counts as "shaped by learning" when Anchor recalled a pattern or win it learned about that person before answering.</p>
+      <div class="stats">
+        <div class="stat"><b data-count="${l?.shapedPct ?? 0}">${l?.shapedPct ?? 0}</b><span>% of replies shaped by a learned pattern or win</span></div>
+        <div class="stat"><b data-count="${learned("pattern") + learned("win")}">${learned("pattern") + learned("win")}</b><span>Patterns and wins learned</span></div>
+        <div class="stat"><b data-count="${verified}">${verified}</b><span>Promises verified on Sui</span></div>
+      </div>
+      <div class="stats" style="margin-top:36px">
+        <div class="stat"><b data-count="${learned("outcome")}">${learned("outcome")}</b><span>Outcomes recorded</span></div>
+        <div class="stat"><b data-count="${l?.reportsPublished ?? 0}">${l?.reportsPublished ?? 0}</b><span>Signed reports on Walrus</span></div>
+        <div class="stat"><b data-count="${l?.stakes.held ?? 0}">${l?.stakes.held ?? 0}</b><span>Promises with money staked</span></div>
+      </div>
+      <p class="body muted" style="margin-top:36px">In the chat, <code style="color:var(--saffron)">/learning</code> shows your own timeline: what Anchor learned about you each week, and how your follow-through moved.</p>
+    </div>
+  </section>
+
+  <section id="agents">
+    <div class="wrap split">
+      <div>
+        <span class="label">For AI agents · x402 on Sui</span>
+        <h2 class="h-sm">A follow-through record agents can pay to read.</h2>
+        <p class="body muted" style="margin-top:18px">If you opt in (<code style="color:var(--saffron)">/record on</code>), any agent you send there can buy your signed record, for example a lender's agent, a coach or a hiring tool. It pays per read over x402, settled in USDC on Sui, and only gets counts and on-chain proofs, never your messages.</p>
+      </div>
+      <pre class="x402">GET /x402/record/{suiAddress}
+&rarr; 402  PAYMENT-REQUIRED   exact &middot; sui:mainnet &middot; USDC
+GET  + PAYMENT-SIGNATURE  signed USDC transfer
+&rarr; 200  PAYMENT-RESPONSE   settled tx digest
+     { record: { report, signature } }
+
+GET /.well-known/x402${p.anchorAddress ? `\npayTo ${esc(p.anchorAddress.slice(0, 10))}&hellip;` : ""}</pre>
+    </div>
+  </section>
+
   <section>
     <div class="wrap split">
       <div>
@@ -357,6 +428,9 @@ footer a:hover{color:var(--bone)}
         <div><code>/promises</code>Open and kept promises, and your follow-through rate.</div>
         <div><code>/forget</code>Pick a memory and Anchor never uses it again.</div>
         <div><code>/week</code>Your follow-through this week: kept, missed, and what's still open.</div>
+        <div><code>/learning</code>What Anchor learned about you each week, and how your follow-through moved.</div>
+        <div><code>/money</code>Your balances and money promises in progress, read from Sui through Tatum.</div>
+        <div><code>/report</code>A signed follow-through report, published to Walrus.</div>
       </div>
     </div>
   </section>
@@ -371,6 +445,7 @@ footer a:hover{color:var(--bone)}
       <ol class="steps">
         <li><div><h3>Live: deadline reminders</h3><p>"By 3pm" means a heads-up at 14:30 and a check at 15:00, then an evening check-in on anything still open.</p></div></li>
         <li><div><h3>Live: weekly follow-through</h3><p>Every Sunday: kept, partly kept, missed, your follow-through %, and one insight from memory. Or send /week any time.</p></div></li>
+        <li><div><h3>Live: promises the chain verifies</h3><p>Money promises close themselves from Sui evidence, stakes are paid with x402, and weekly reports are signed and stored on Walrus.</p></div></li>
         <li><div><h3>Next: WhatsApp and accountability buddies</h3><p>Anchor where most people already chat, and an optional friend who sees your follow-through and nudges you.</p></div></li>
         <li><div><h3>Next: memory you own</h3><p>Connect your own Walrus Memory account so your promises and patterns travel with you to any app.</p></div></li>
       </ol>
@@ -394,7 +469,8 @@ footer a:hover{color:var(--bone)}
       <span class="label">FAQ</span>
       <h2 class="h-sm">Questions people ask first.</h2>
       <div class="faq">
-        <details><summary>Do I need an account, a wallet or crypto?</summary><p>No. Open Anchor in Telegram and start talking. Your Telegram account is all it uses to know it's you.</p></details>
+        <details><summary>Do I need an account, a wallet or crypto?</summary><p>No. Open Anchor in Telegram and start talking. Your Telegram account is all it uses to know it's you. A Sui wallet is optional: link one (/wallet) only if you want money promises verified on-chain or want to stake on a promise.</p></details>
+        <details><summary>Can Anchor move my money?</summary><p>No. Linking a wallet only lets Anchor read it through Tatum's Sui RPC. Proving it's yours means signing a message, not a transaction. The only money Anchor ever touches is a stake you choose to pay, and that goes back to you or to the person you named, in a Sui transaction linked in the chat.</p></details>
         <details><summary>Where is my memory stored, and who can read it?</summary><p>Each person gets their own namespace in Walrus Memory. Memories are encrypted before they are stored on Walrus, and recall never crosses from one person to another. Anchor's server holds the key it needs to read your memories back to you, so treat it like any app you chat with. This page only ever shows anonymised counts.</p></details>
         <details><summary>When does Anchor check in?</summary><p>If your promise has a time ("by 3pm"), Anchor sends a heads-up 30 minutes before and messages you right at that time. Every evening at ${esc(p.checkinTime)} it also checks in on anything due that day or earlier that's still open, and every Sunday it sends your weekly follow-through summary. Tap Did it, Partly, Didn't or Move it, or just reply in your own words. You can also send /checkin or /week any time.</p></details>
         <details><summary>What if I break a promise?</summary><p>Nothing bad happens. Anchor records it honestly, asks what got in the way, and uses that next time. Patterns and wins are the point: they are how it learns what actually works for you.</p></details>

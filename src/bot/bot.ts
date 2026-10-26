@@ -13,6 +13,8 @@ import { getUser, updateUser, upsertUser } from "../state.js";
 import { isOverloadError } from "../llm/model.js";
 import { analyzeFallback } from "../memory/write.js";
 import { chatTurn, enqueue, generateReply } from "./conversation.js";
+import { CHAIN_COMMANDS, CHAIN_HELP, registerChainCommands } from "./chain-commands.js";
+import { metrics } from "../state.js";
 
 const WALRUSCAN = "https://walruscan.com/mainnet/blob/";
 const TELEGRAM_LIMIT = 4000;
@@ -22,6 +24,7 @@ const HELP = `Here's how I work:
 • Tell me what you're going to do and by when, like "I'll send 5 job applications by Friday".
 • I remember it on Walrus, and when it's due I'll message you first and ask how it went.
 • Over time I learn your patterns, what derails you and what actually works, and I use them.
+• Money promises in USDC, SUI or WAL can be verified on your Sui wallet, so the chain reports them, not you.
 
 Commands
 /promises: your open and finished promises
@@ -31,7 +34,8 @@ Commands
 /forget <topic>: make me forget something
 /checkin: check in on due promises now
 /week: your follow-through this week
-/stats: how much Anchor remembers overall`;
+/stats: how much Anchor remembers overall
+${CHAIN_HELP}`;
 
 async function sendLong(ctx: Context, text: string, extra?: Parameters<Context["reply"]>[1]) {
   for (let i = 0; i < text.length; i += TELEGRAM_LIMIT) {
@@ -68,6 +72,7 @@ const KIND_LABEL: Record<MemoryKind | "note", string> = {
   fact: "👤 About you",
   preference: "⚙️ Preferences",
   retracted: "🗑 Forgotten",
+  report: "🧾 Signed reports",
   note: "📝 Notes",
 };
 
@@ -162,7 +167,7 @@ export function createBot(): Bot {
       }
       const groups = new Map<string, RecalledMemory[]>();
       for (const m of memories) groups.set(m.kind, [...(groups.get(m.kind) ?? []), m]);
-      const order: Array<MemoryKind | "note"> = ["fact", "preference", "commitment", "outcome", "pattern", "win", "note"];
+      const order: Array<MemoryKind | "note"> = ["fact", "preference", "commitment", "outcome", "pattern", "win", "report", "note"];
       const lines = [`What I remember about you${total !== undefined ? ` (${total} memories stored on Walrus)` : ""}:`];
       for (const kind of order) {
         const items = groups.get(kind);
@@ -265,8 +270,10 @@ export function createBot(): Bot {
       const stats = await listUserNamespaces();
       const total = stats.reduce((n, s) => n + s.memoryCount, 0);
       const mine = stats.find((s) => s.userId === String(ctx.from!.id))?.memoryCount ?? 0;
+      const m = metrics();
+      const shaped = m.replies ? Math.round((m.repliesShapedByLearning / m.replies) * 100) : 0;
       await ctx.reply(
-        `Anchor right now:\n• ${stats.length} people\n• ${total} memories on Walrus\n• ${mine} of them are yours\n\nModel: ${MODEL_LABEL} · Memory: Walrus Memory (mainnet)`,
+        `Anchor right now:\n• ${stats.length} people\n• ${total} memories on Walrus\n• ${mine} of them are yours\n• ${shaped}% of replies used a learned pattern or win\n• ${m.chainVerified.kept + m.chainVerified.broken} promises verified on Sui\n\nModel: ${MODEL_LABEL} · Memory: Walrus Memory (mainnet) · Chain: Sui via Tatum`,
       );
     });
   });
@@ -340,6 +347,8 @@ export function createBot(): Bot {
     await ctx.reply("Done, I won't use that memory again.");
   });
 
+  registerChainCommands(bot, withTyping);
+
   bot.on("message:text", async (ctx) => {
     if (ctx.message.text.startsWith("/")) {
       await ctx.reply("I don't know that command. /help lists what I can do.");
@@ -351,7 +360,9 @@ export function createBot(): Bot {
       withTyping(ctx, async () => {
         let turn;
         try {
-          turn = await chatTurn(userId, user.firstName, ctx.message.text);
+          turn = await chatTurn(userId, user.firstName, ctx.message.text, (text) =>
+            ctx.reply(text, { link_preview_options: { is_disabled: true } }),
+          );
         } catch (err) {
           if (!isOverloadError(err)) throw err;
           // Google's AI is overloaded: no reply possible, but don't lose what they said.
@@ -398,5 +409,6 @@ export const BOT_COMMANDS = [
   { command: "checkin", description: "Check in on due promises now" },
   { command: "week", description: "Your follow-through this week" },
   { command: "stats", description: "How much Anchor remembers overall" },
+  ...CHAIN_COMMANDS,
   { command: "help", description: "How Anchor works" },
 ];

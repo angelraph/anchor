@@ -18,6 +18,18 @@ const schema = z.object({
   MEMWAL_NAMESPACE_PREFIX: z.string().default("anchor:tg:"),
   /** Comma-separated Telegram ids to leave out of stats and check-ins (e.g. test runs). */
   HIDDEN_USER_IDS: z.string().default(""),
+  /** Tatum mainnet API key: Sui RPC (GraphQL) and the Walrus Storage API. */
+  TATUM_API_KEY: z.string().default(""),
+  TATUM_SUI_GRAPHQL_URL: z.string().url().default("https://sui-mainnet.gateway.tatum.io/graphql"),
+  TATUM_API_URL: z.string().url().default("https://api.tatum.io"),
+  /** Anchor's own Sui key (suiprivkey…): signs weekly reports, receives and returns stakes. */
+  ANCHOR_SUI_PRIVATE_KEY: z.string().default(""),
+  /** Public base URL of this server, for wallet-link and stake pages. */
+  PUBLIC_URL: z.string().default(""),
+  /** Largest stake Anchor will hold on one promise, in USDC. */
+  STAKE_MAX_USDC: z.coerce.number().positive().default(20),
+  /** Price an agent pays (x402) to read one public follow-through record, in USDC. */
+  AGENT_PRICE_USDC: z.coerce.number().positive().default(0.01),
   TIMEZONE: z.string().default("Africa/Lagos"),
   CHECKIN_HOUR: z.coerce.number().int().min(0).max(23).default(19),
   PORT: z.coerce.number().int().default(3000),

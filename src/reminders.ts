@@ -100,7 +100,8 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
         (u.warned ??= {})[id] = p.due;
       });
     }
-    for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {})) {
+    // Chain-verified promises get their deadline verdict from Sui instead (chain/promises.ts).
+    for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {}).filter(([id]) => !user.chain?.[id])) {
       try {
         await api.sendMessage(user.chatId, `⏰ It's ${p.at}, deadline time.\n#${id} · ${clause(p.text)}\nDid you do it?`, {
           reply_markup: outcomeKeyboard(id),
@@ -201,6 +202,22 @@ export async function runWeekly(api: Api): Promise<void> {
       console.log(`[weekly] sent to ${userId}`);
     } catch (err) {
       console.warn(`[weekly] user ${userId} failed:`, err instanceof Error ? err.message : err);
+    }
+    // Learn from the wallet's week on Sui, and publish the signed report if they asked for it.
+    if (user.wallet) {
+      const { learnMoneyPattern } = await import("./learning.js");
+      await learnMoneyPattern(userId).catch((err) => console.warn(`[weekly] money pattern for ${userId} failed:`, err instanceof Error ? err.message : err));
+    }
+    if (user.reportAuto) {
+      const { publishReport, reportPageUrl, reportsEnabled } = await import("./chain/report.js");
+      if (reportsEnabled()) {
+        try {
+          const { job } = await publishReport(userId, { publicTexts: false });
+          await api.sendMessage(user.chatId, `🧾 This week's signed report is on Walrus: ${reportPageUrl(job.jobId)}`, { link_preview_options: { is_disabled: true } });
+        } catch (err) {
+          console.warn(`[weekly] report for ${userId} failed:`, err instanceof Error ? err.message : err);
+        }
+      }
     }
     updateUser(userId, (u) => {
       u.lastWeekly = today;

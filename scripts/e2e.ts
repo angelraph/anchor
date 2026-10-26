@@ -89,7 +89,8 @@ if (outcome) {
   await settle();
 } else console.log("\n(no due promise yet, so no outcome buttons: expected unless due today)");
 // A promise due today, so the check-in has something to ask about.
-await say("Also I will send my CV to two companies today before 6pm.");
+// No time of day, so the deadline has passed whatever time the test runs.
+await say("Also I will send my CV to two companies today.");
 await settle();
 await say("/checkin");
 const kept = lastButtons().find((b) => b.includes(":kept"));
@@ -114,6 +115,24 @@ if (forget) {
   const mem = sent.filter((s) => s.method === "sendMessage").at(-1)?.text ?? "";
   if (mem.includes(forgotten)) failures.push(`/forget: "${forgotten}" still shown in /memory`);
 }
+// On-chain: real Tatum Sui mainnet reads. Keyless Tatum allows 5 requests a minute, so pace it.
+const pace = () => (process.env.TATUM_API_KEY ? Promise.resolve() : new Promise((r) => setTimeout(r, 65_000)));
+await say("/wallet walrus.sui");
+if (!/Linked walrus\.sui/.test(sent.filter((s) => s.method === "sendMessage").at(-1)?.text ?? "")) failures.push("/wallet: walrus.sui did not resolve via Tatum");
+await pace();
+await say("I'll save 5 USDC by Friday");
+await settle();
+const chainNote = sent.filter((s) => s.method === "sendMessage").find((s) => /^⛓ #/.test(s.text ?? ""));
+if (!chainNote) failures.push("money promise: Gemini did not produce a chain check (no ⛓ confirmation)");
+else console.log(`\n   chain confirmation: ${chainNote.text}`);
+await pace();
+await say("/money");
+await pace();
+await say("/verify");
+await say("/learning");
+await say("/stake");
+await say("/report");
+await say("/connect");
 await say("/stats");
 await say("/help");
 await say("/nonsense");

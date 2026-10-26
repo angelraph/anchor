@@ -16,8 +16,9 @@ async function politeFetch(input: Parameters<typeof fetch>[0], init?: RequestIni
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(input, init);
     if (res.status !== 429 || attempt >= 4) return res;
-    const wait = Number(res.headers.get("retry-after")) * 1000 || 400 * 2 ** attempt;
-    await new Promise((r) => setTimeout(r, Math.min(wait, 8_000)));
+    const wait = Number(res.headers.get("retry-after")) * 1000 || (config.TATUM_API_KEY ? 400 * 2 ** attempt : 61_000);
+    // Keyless access is 5 requests per minute: waiting out the window beats failing.
+    await new Promise((r) => setTimeout(r, Math.min(wait, config.TATUM_API_KEY ? 8_000 : 61_000)));
   }
 }
 

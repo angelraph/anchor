@@ -147,6 +147,7 @@ npm install
 cp .env.example .env        # paste the three credentials
 npm run verify:memwal       # real remember → recall round trip on Walrus
 npx tsx scripts/verify-tatum.ts   # chain id, coin decimals, SuiNS, balances, transfers, Storage API, all via Tatum
+npx tsx scripts/verify-report.ts  # sign → upload to Walrus via Tatum → certified → download → signature verified
 npm start                   # bot + proof page on http://localhost:3000
 ```
 

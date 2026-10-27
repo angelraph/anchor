@@ -47,6 +47,10 @@ function load(): Config {
     console.error(`Anchor cannot start, fix your environment:\n${problems}\nSee .env.example.`);
     process.exit(1);
   }
+  // On Railway the service's own domain is always provided; use it when PUBLIC_URL isn't set.
+  if (!parsed.data.PUBLIC_URL && process.env.RAILWAY_PUBLIC_DOMAIN) {
+    parsed.data.PUBLIC_URL = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
   return parsed.data;
 }
 

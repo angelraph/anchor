@@ -35,7 +35,7 @@ import {
 } from "../chain/x402.js";
 import { config } from "../config.js";
 import { clause } from "../memory/types.js";
-import { allUsers, bump, consumeLinkToken, getStake, peekLinkToken, updateUser } from "../state.js";
+import { allUsers, bump, consumeLinkToken, getStake, peekLinkToken, updateStake, updateUser } from "../state.js";
 import { logoSvg } from "./logo.js";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -241,6 +241,7 @@ ${
     if (!s) return c.json({ error: "stake not found" }, 404);
     if (s.status !== "awaiting_payment") return c.json({ error: `stake is ${s.status.replace("_", " ")}` }, 409);
     return x402(c, stakeRequirements(s), `Stake ${s.amount} USDC on promise #${s.commitmentId}`, async (payer, digest) => {
+      updateStake(s.token, (x) => delete x.payExact); // paid the plain amount through x402
       await markStakePaid(getApi(), s.token, payer, digest);
       return { staked: true, amount: s.amount, promise: s.commitmentId };
     });

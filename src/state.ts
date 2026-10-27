@@ -73,6 +73,8 @@ export interface UserState {
   reportAuto?: boolean;
   /** Let agents read this user's signed follow-through record (x402, paid). */
   publicRecord?: boolean;
+  /** Pending proof of ownership by transfer: send exactly `amount` (SUI base units) to Anchor after `since`. */
+  walletProof?: { amount: string; since: number };
   /** Last money pattern learned from the wallet (so it is stored once, not weekly). */
   moneyPattern?: string;
   /** SHA-256 of the personal API token for portable memory (MCP / other tools). */
@@ -99,6 +101,8 @@ export interface Stake {
   createdAt: string;
   payer?: string;
   payDigest?: string;
+  /** Exact USDC amount (base units) that pays this stake by direct transfer from the linked wallet. */
+  payExact?: string;
   payoutDigest?: string;
   note?: string;
 }

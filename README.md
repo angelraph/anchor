@@ -16,7 +16,7 @@
 - **Memory:** Walrus Memory (`@mysten-incubation/memwal`, mainnet relayer). Every user has an isolated, encrypted namespace.
 - **Chain:** Sui mainnet through [Tatum's RPC gateway](https://docs.tatum.io/reference/rpc-sui) (GraphQL): balances, transfer history, SuiNS, transaction simulation and execution
 - **Storage:** signed reports on Walrus mainnet through [Tatum's Storage API](https://docs.tatum.io/reference/storageupload)
-- **Payments:** x402 v2, scheme `exact` on `sui:mainnet` (USDC), verified and settled by Anchor through Tatum
+- **Payments:** x402 v2, scheme `exact` on `sui:mainnet` (USDC), verified and settled by Anchor through Tatum; stakes in USDC or USDsui, by x402 or by exact transfer
 - **Portable memory:** an MCP server (`scripts/anchor-mcp.ts`) and a personal API
 - **Channel:** Telegram (grammY), plus a public proof page
 - **Built for:** Walrus Session 8, "Chatbots That Remember" (🥉 3rd), and now **Total Recall** (Tatum × Walrus), track **Smart Agents for Real Life**. 🥉 **Won 3rd place.**
@@ -78,6 +78,8 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 - **Portable memory**: `/connect` + MCP server, so promises made in Claude Code are followed up in Telegram.
 
 Full list with file pointers: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md).
+
+**Live on Sui mainnet (2026-10-27):** a wallet proven by exact transfer ([tx](https://suiscan.xyz/mainnet/tx/9z5jWhjcwdME7w11u1WPcLz8DurANNncvQF4qrCZPbrn)), a 1 USDC stake on "save 1 USDsui by Friday" ([tx](https://suiscan.xyz/mainnet/tx/MusNBtgHF3KDMoNXMatgm1Lf2bQXJX9UnnRwV4AiAUM)), an AI agent paying 0.01 USDC over x402 for a signed record ([tx](https://suiscan.xyz/mainnet/tx/5kE6mngkpmvSAEo7azBMHBKduGqmNw2scUfY9N8VD5s6)), and a signed report certified on Walrus via Tatum ([tx](https://suiscan.xyz/mainnet/tx/5q3cfsPn1mC5JgX8nko3WyunFVvGwDnbMb1JYJNDEb8K)). Details in [Live evidence](docs/TOTAL_RECALL.md#live-evidence-on-sui-mainnet-2026-10-27).
 
 ### Roadmap
 1. **WhatsApp**, where most of our first users already live (needs a Meta Business account and number)

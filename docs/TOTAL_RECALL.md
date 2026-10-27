@@ -27,6 +27,23 @@ For money promises it doesn't anymore. "Save 50 USDC by Friday", "pay Tobi back 
 | **Tests** | 20 new unit tests (45 total), including x402 verify and settle against real signed Sui transactions, replay protection, forged signatures and underpayment. | `test/chain.test.ts` |
 | **Live check script** | `scripts/verify-tatum.ts` runs these checks through Tatum: chain id, USDC/WAL decimals, SuiNS, balances, transfers, Storage API. | `scripts/verify-tatum.ts` |
 
+| **Proof by exact transfer** | Wallet scanners block brand-new "connect your wallet" pages on shared hosting domains, so `/wallet verify` and `/stake` also work with no website: send an exact odd amount from the wallet app, and Anchor matches it on Sui through Tatum. | `src/chain/transfers.ts` |
+| **USDsui** | Sui's native dollar stablecoin (issued by Bridge, a Stripe company) works for money promises and stakes alongside USDC. | `src/chain/sui.ts` |
+
+## Live evidence on Sui mainnet (2026-10-27)
+
+Every link below is a real transaction from the live bot ([t.me/Anchor_daBot](https://t.me/Anchor_daBot)), read and settled through Tatum:
+
+| What happened | Transaction |
+|---|---|
+| A signed weekly report uploaded through Tatum's Storage API and **registered on Walrus** | [2FYRCTCB…](https://suiscan.xyz/mainnet/tx/2FYRCTCBkFF7SxWJwiZQPqaq5SsSLv8ESxkkAxau2frJ) |
+| …and **certified on Walrus**, then downloaded back and its signature verified | [5q3cfsPn…](https://suiscan.xyz/mainnet/tx/5q3cfsPn1mC5JgX8nko3WyunFVvGwDnbMb1JYJNDEb8K) |
+| A user **proved wallet ownership** by exact transfer (0.001639 SUI), detected through Tatum | [9z5jWhjc…](https://suiscan.xyz/mainnet/tx/9z5jWhjcwdME7w11u1WPcLz8DurANNncvQF4qrCZPbrn) |
+| A user **staked 1 USDC** on "save 1 USDsui by Friday" (#prc2); Anchor holds it until the chain decides | [MusNBtgH…](https://suiscan.xyz/mainnet/tx/MusNBtgHF3KDMoNXMatgm1Lf2bQXJX9UnnRwV4AiAUM) |
+| An **AI agent paid 0.01 USDC over x402** for that user's signed follow-through record: 402 → PAYMENT-SIGNATURE → verified (simulated via Tatum) → settled (executed via Tatum) → 200 + PAYMENT-RESPONSE | [5kE6mngk…](https://suiscan.xyz/mainnet/tx/5kE6mngkpmvSAEo7azBMHBKduGqmNw2scUfY9N8VD5s6) |
+
+Live endpoints: [/health](https://anchor-production-6bb4.up.railway.app/health) (Walrus Memory + Sui via Tatum), [/.well-known/x402](https://anchor-production-6bb4.up.railway.app/.well-known/x402), [proof page](https://anchor-production-6bb4.up.railway.app).
+
 ## Judging criteria → where to look
 
 | Criterion | Weight | Evidence |
@@ -38,11 +55,12 @@ For money promises it doesn't anymore. "Save 50 USDC by Friday", "pay Tobi back 
 
 ## Submission checklist
 
-- [ ] `TATUM_API_KEY` (mainnet) set on Railway; `npx tsx scripts/verify-tatum.ts` all green
-- [ ] `ANCHOR_SUI_PRIVATE_KEY` set, the address funded with a little SUI for gas; `PUBLIC_URL` set
-- [ ] Deployed, and `/health` shows `memory.ok` and `chain.ok`
-- [ ] Walrus Memory writing on mainnet: ✅ already live (107+ memories, 8 people with 10+)
-- [ ] A real chain-verified promise, a real `/report` (certified on Walrus) and a real stake, captured for the video
+- [x] `TATUM_API_KEY` (mainnet) set on Railway; `npx tsx scripts/verify-tatum.ts` all green
+- [x] `ANCHOR_SUI_PRIVATE_KEY` set, the address funded with a little SUI for gas; `PUBLIC_URL` set
+- [x] Deployed, and `/health` shows `memory.ok` and `chain.ok`
+- [x] Walrus Memory writing on mainnet (169+ memories, 15 people)
+- [x] Live on mainnet: wallet proof, a real stake, an x402 agent payment and a certified Walrus report (see Live evidence)
+- [ ] Screen-record those flows for the video
 - [ ] Blog post published: [BLOG_TOTAL_RECALL.md](BLOG_TOTAL_RECALL.md)
 - [ ] 2–3 minute demo video: [DEMO_SCRIPT.md](DEMO_SCRIPT.md)
 - [ ] X and LinkedIn posts tagging @Tatum_io and @WalrusFoundation: [LAUNCH_POSTS.md](LAUNCH_POSTS.md)

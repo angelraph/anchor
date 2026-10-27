@@ -235,7 +235,17 @@ export function createBot(): Bot {
       return;
     }
     await withTyping(ctx, async () => {
-      const hits = mergeAndFilter(ctx.from!.id, await recall(ctx.from!.id, topic, { limit: 5, maxDistance: 0.7 })).slice(0, 4);
+      const userId = ctx.from!.id;
+      // A one-word topic ("hospital") is a weak semantic query, so also look for the words themselves
+      // in recent memories; exact-word matches come first.
+      const [semantic, recent] = await Promise.all([
+        recall(userId, topic, { limit: 8, maxDistance: 0.85 }),
+        recall(userId, "everything about this user: promises, outcomes, facts, patterns, wins", { limit: 30, sort: "recent" }),
+      ]);
+      const words = topic.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+      const hasWord = (m: RecalledMemory) => words.some((w) => m.text.toLowerCase().includes(w));
+      const all = mergeAndFilter(userId, semantic, recent.filter(hasWord));
+      const hits = [...all.filter(hasWord), ...all.filter((m) => !hasWord(m) && m.distance < 0.7)].slice(0, 4);
       if (hits.length === 0) {
         await ctx.reply("I couldn't find anything I remember about that.");
         return;

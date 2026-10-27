@@ -28,7 +28,7 @@ vi.mock("../src/chain/sui.js", async (orig) => {
 });
 
 const { judge, parseCheck, serializeCheck, describeCheck } = await import("../src/chain/checks.js");
-const { COINS, fromUnits, toUnits } = await import("../src/chain/sui.js");
+const { COINS, coinLabel, fromUnits, isStakeCoin, toUnits } = await import("../src/chain/sui.js");
 const { parse, serialize } = await import("../src/memory/types.js");
 const { paysEnough, requirements, sameRequirements, settlePayment, verifyPayment } = await import("../src/chain/x402.js");
 const { canonical, signReport, verifyReport } = await import("../src/chain/report.js");
@@ -255,6 +255,16 @@ describe("proof and stakes by exact transfer", () => {
     const a = stakeTransferAmount("1");
     expect(a > usdc("1") && a < usdc("1.01")).toBe(true);
     expect(a % 100n).toBe(0n);
+  });
+
+  it("USDsui works like USDC: 6 decimals, its own coin type, stakeable", () => {
+    expect(toUnits("1.5", "USDSUI")).toBe(1_500_000n);
+    expect(COINS.USDSUI.type).toMatch(/::usdsui::USDSUI$/);
+    expect(isStakeCoin("USDSUI") && isStakeCoin("USDC") && !isStakeCoin("SUI")).toBe(true);
+    expect(parseCheck("save~USDSUI~5")).toEqual({ kind: "save", coin: "USDSUI", amount: "5" });
+    const a = stakeTransferAmount("2", "USDSUI");
+    expect(a > toUnits("2", "USDSUI") && a < toUnits("2.01", "USDSUI")).toBe(true);
+    expect(coinLabel("USDSUI")).toBe("USDsui");
   });
 
   it("shows the exact amount to type", () => {

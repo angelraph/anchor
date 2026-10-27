@@ -24,7 +24,7 @@ const HELP = `Here's how I work:
 • Tell me what you're going to do and by when, like "I'll send 5 job applications by Friday".
 • I remember it on Walrus, and when it's due I'll message you first and ask how it went.
 • Over time I learn your patterns, what derails you and what actually works, and I use them.
-• Money promises in USDC, SUI or WAL can be verified on your Sui wallet, so the chain reports them, not you.
+• Money promises in USDC, USDsui, SUI or WAL can be verified on your Sui wallet, so the chain reports them, not you.
 
 Commands
 /promises: your open and finished promises

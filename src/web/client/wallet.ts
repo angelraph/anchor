@@ -110,9 +110,10 @@ async function stake(w: Wallet, account: WalletAccount) {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ sender: account.address, accepted }),
   }).then((r) => r.json());
-  if (!built.transaction) throw new Error(built.error ?? "couldn't build the payment (enough USDC and a little SUI for gas?)");
+  if (!built.transaction) throw new Error(built.error ?? "couldn't build the payment (enough stablecoin and a little SUI for gas?)");
   // 3. Your wallet signs it. Nothing is sent until Anchor verifies and settles it.
-  status(`Approve ${Number(accepted.amount) / 1e6} USDC in ${w.name}…`);
+  const symbol = String(accepted.asset).split("::").pop() === "USDSUI" ? "USDsui" : "USDC";
+  status(`Approve ${Number(accepted.amount) / 1e6} ${symbol} in ${w.name}…`);
   const sign = w.features["sui:signTransaction"];
   if (!sign) throw new Error(`${w.name} can't sign transactions`);
   const signed = await sign.signTransaction({ transaction: Transaction.from(built.transaction), account, chain: CHAIN });

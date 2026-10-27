@@ -93,15 +93,17 @@ export interface Stake {
   text: string;
   due: string;
   at?: string;
-  /** USDC, human amount. */
+  /** Human amount, in `coin`. */
   amount: string;
+  /** Stablecoin the stake is paid in (USDC when absent, for stakes made before USDsui). */
+  coin?: "USDC" | "USDSUI";
   forfeitTo: string;
   forfeitName?: string;
   status: StakeStatus;
   createdAt: string;
   payer?: string;
   payDigest?: string;
-  /** Exact USDC amount (base units) that pays this stake by direct transfer from the linked wallet. */
+  /** Exact amount (base units of `coin`) that pays this stake by direct transfer from the linked wallet. */
   payExact?: string;
   payoutDigest?: string;
   note?: string;

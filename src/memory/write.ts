@@ -25,12 +25,12 @@ const extractionSchema = z.object({
       chain: z
         .object({
           kind: z.enum(["save", "hold", "pay", "cap"]),
-          coin: z.enum(["SUI", "USDC", "WAL"]),
+          coin: z.enum(["SUI", "USDC", "USDSUI", "WAL"]).describe("USDSUI is USDsui, the Sui Dollar"),
           amount: z.string().describe("Plain number, e.g. 50 or 12.5"),
           recipient: z.string().nullable().describe("pay only: who, exactly as the user said it (name, name.sui or 0x address)"),
         })
         .nullable()
-        .describe("For commitments about SUI, USDC or WAL that a Sui wallet can prove, else null"),
+        .describe("For commitments about SUI, USDC, USDsui or WAL that a Sui wallet can prove, else null"),
     }),
   ),
 });

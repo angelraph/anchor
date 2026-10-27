@@ -17,7 +17,7 @@ import { publishReport, reportPageUrl, reportsEnabled } from "../chain/report.js
 import { anchorAddress } from "../chain/signer.js";
 import { createStake, stakesEnabled, stakeUrl } from "../chain/stakes.js";
 import { exactUnits, newProofAmount, stakeTransferAmount } from "../chain/transfers.js";
-import { balanceOf, COINS, explorerAddr, fromUnits, resolveRecipient, shortAddr } from "../chain/sui.js";
+import { balanceOf, coinLabel, COINS, explorerAddr, fromUnits, isStakeCoin, resolveRecipient, shortAddr, type StakeCoin } from "../chain/sui.js";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { learnMoneyPattern, learningTimeline } from "../learning.js";
@@ -129,7 +129,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       const lines = [`💰 ${w.name ?? shortAddr(w.address)} on Sui (read through Tatum)`];
       for (const coin of Object.keys(COINS) as Array<keyof typeof COINS>) {
         const b = await balanceOf(w.address, coin).catch(() => undefined);
-        lines.push(`  ${coin}: ${b === undefined ? "unavailable" : fromUnits(b, coin)}`);
+        lines.push(`  ${coinLabel(coin)}: ${b === undefined ? "unavailable" : fromUnits(b, coin)}`);
       }
       const open = Object.entries(user.chain ?? {});
       if (open.length) {
@@ -137,7 +137,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
         for (const [id, p] of open) {
           const v = await evaluate(userId, p, false).catch(() => undefined);
           const stake = p.stake ? allStakes().find((s) => s.token === p.stake && s.status === "held") : undefined;
-          lines.push(`  #${id} ${clause(p.text)} (due ${p.due}${p.at ? ` ${p.at}` : ""})${stake ? ` 🔒 ${stake.amount} USDC staked` : ""}`);
+          lines.push(`  #${id} ${clause(p.text)} (due ${p.due}${p.at ? ` ${p.at}` : ""})${stake ? ` 🔒 ${stake.amount} ${coinLabel(stake.coin ?? "USDC")} staked` : ""}`);
           if (v) lines.push(`     ${v.status === "kept" ? "✅ " : ""}${v.evidence}`);
         }
       }
@@ -152,7 +152,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
     touch(ctx);
     await withTyping(ctx, async () => {
       const lines = await runChainChecks(ctx.api, { userId: String(ctx.from!.id), force: true });
-      await ctx.reply(lines.length ? `Checked Sui just now:\n${lines.join("\n")}` : "No money promises being watched. Link a wallet (/wallet) and promise something in USDC, SUI or WAL.");
+      await ctx.reply(lines.length ? `Checked Sui just now:\n${lines.join("\n")}` : "No money promises being watched. Link a wallet (/wallet) and promise something in USDC, USDsui, SUI or WAL.");
     });
   });
 
@@ -161,7 +161,10 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
     const userId = ctx.from!.id;
     const user = getUser(userId);
     const chain = Object.entries(user?.chain ?? {});
-    const [rawId, rawAmount, ...rest] = ctx.match.trim().split(/\s+/).filter(Boolean);
+    const [rawId, rawAmount, ...afterAmount] = ctx.match.trim().split(/\s+/).filter(Boolean);
+    // Optional coin after the amount: /stake #id 5 usdsui friend.sui
+    const named = afterAmount[0]?.toUpperCase();
+    const rest = named && isStakeCoin(named) ? afterAmount.slice(1) : afterAmount;
     if (!stakesEnabled()) {
       await ctx.reply("Stakes aren't switched on for this Anchor yet (it needs its own Sui wallet and a public URL).");
       return;
@@ -169,7 +172,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
     if (!rawId || !rawAmount || rest.length === 0) {
       const list = chain.map(([id, p]) => `  #${id} ${clause(p.text)}`).join("\n");
       await ctx.reply(
-        `Put money on a promise. Keep it and the USDC comes back to you. Miss it and it goes to someone you choose: a friend, a charity, the person you'd least like to pay.\n\nUsage: /stake #id <USDC, max ${config.STAKE_MAX_USDC}> <who gets it if you miss: name.sui or 0x…>\nExample: /stake #${chain[0]?.[0] ?? "k3f9"} 5 tobi.sui\n\n${list ? `Promises the chain can judge:\n${list}` : "First make a money promise the chain can check (link a wallet with /wallet)."}`,
+        `Put money on a promise. Keep it and the money comes back to you. Miss it and it goes to someone you choose: a friend, a charity, the person you'd least like to pay.\n\nUsage: /stake #id <amount, max ${config.STAKE_MAX_USDC}> [usdc|usdsui] <who gets it if you miss: name.sui or 0x…>\nExample: /stake #${chain[0]?.[0] ?? "k3f9"} 5 tobi.sui (USDC)\nor: /stake #${chain[0]?.[0] ?? "k3f9"} 5 usdsui tobi.sui\n\n${list ? `Promises the chain can judge:\n${list}` : "First make a money promise the chain can check (link a wallet with /wallet)."}`,
       );
       return;
     }
@@ -185,7 +188,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
     }
     const amount = Number(rawAmount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > config.STAKE_MAX_USDC || !/^\d+(\.\d{1,6})?$/.test(rawAmount)) {
-      await ctx.reply(`The stake has to be between 0 and ${config.STAKE_MAX_USDC} USDC.`);
+      await ctx.reply(`The stake has to be between 0 and ${config.STAKE_MAX_USDC} (USDC or USDsui).`);
       return;
     }
     if (p.due < todayIn(config.TIMEZONE)) {
@@ -203,6 +206,9 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
         await ctx.reply("The money has to go to someone else if you miss, otherwise it isn't at stake.");
         return;
       }
+      // Coin: named in the command, else the promise's own stablecoin, else USDC.
+      const promised = parseCheck(p.chk)?.coin;
+      const coin: StakeCoin = named && isStakeCoin(named) ? named : promised && isStakeCoin(promised) ? promised : "USDC";
       const stake = createStake({
         userId: String(userId),
         commitmentId: id,
@@ -212,14 +218,15 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
         amount: rawAmount,
         forfeitTo: r.address,
         forfeitName: r.name ?? who,
-        payExact: user?.wallet ? stakeTransferAmount(rawAmount).toString() : undefined,
+        coin,
+        payExact: user?.wallet ? stakeTransferAmount(rawAmount, coin).toString() : undefined,
       });
       const check = parseCheck(p.chk);
       const direct = stake.payExact
-        ? `\n\nOr pay straight from your wallet app, no website: send exactly\n${exactUnits(stake.payExact, "USDC")} USDC\nfrom ${shortAddr(user!.wallet!.address)} to Anchor's address:\n${anchorAddress}\nPay one way only. I'll see it on Sui within a minute.`
+        ? `\n\nOr pay straight from your wallet app, no website: send exactly\n${exactUnits(stake.payExact, coin)} ${coinLabel(coin)}\nfrom ${shortAddr(user!.wallet!.address)} to Anchor's address:\n${anchorAddress}\nPay one way only. I'll see it on Sui within a minute.`
         : "";
       await ctx.reply(
-        `🔒 Stake ${rawAmount} USDC on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\nPay from your Sui wallet (x402, settled on Sui): ${stakeUrl(stake.token)}${direct}`,
+        `🔒 Stake ${rawAmount} ${coinLabel(coin)} on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\nPay from your Sui wallet (x402, settled on Sui): ${stakeUrl(stake.token)}${direct}`,
         noPreview,
       );
     });
@@ -324,7 +331,7 @@ export const CHAIN_COMMANDS = [
   { command: "wallet", description: "Link your Sui wallet" },
   { command: "money", description: "Balances and money promises (on Sui)" },
   { command: "verify", description: "Check money promises on Sui now" },
-  { command: "stake", description: "Put USDC on a promise" },
+  { command: "stake", description: "Put USDC or USDsui on a promise" },
   { command: "report", description: "Publish a signed report to Walrus" },
   { command: "record", description: "Let agents read your record (x402)" },
   { command: "learning", description: "How Anchor has learned you" },
@@ -337,7 +344,7 @@ On-chain (Sui, read through Tatum)
 /wallet verify: prove it's yours with a tiny transfer (no website)
 /money: balances, money promises in progress, money patterns I've learned
 /verify: check money promises on Sui right now
-/stake #id <USDC> <name.sui>: money back if you keep it, theirs if you don't
+/stake #id <amount> [usdsui] <name.sui>: money back if you keep it, theirs if you don't
 /report: publish a signed follow-through report to Walrus
 /record on: let AI agents read your signed record (they pay per read)
 /learning: how I've learned you, week by week

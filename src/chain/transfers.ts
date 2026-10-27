@@ -12,8 +12,8 @@
 import type { Api } from "grammy";
 import { allStakes, allUsers, getUser, updateUser } from "../state.js";
 import { anchorAddress } from "./signer.js";
-import { markStakePaid } from "./stakes.js";
-import { COINS, explorerTx, sentSince, shortAddr, toUnits, type CoinSymbol, type Transfer } from "./sui.js";
+import { markStakePaid, stakeCoin } from "./stakes.js";
+import { COINS, explorerTx, sentSince, shortAddr, toUnits, type CoinSymbol, type StakeCoin, type Transfer } from "./sui.js";
 
 /** How long Anchor watches for a verification transfer. */
 export const PROOF_TTL_MS = 2 * 60 * 60_000;
@@ -41,9 +41,9 @@ export function newProofAmount(): bigint {
   return exactAmount(toUnits("0.001", "SUI"), 1_000n, 999);
 }
 
-/** Stake amount: the stake plus 0.0001 to 0.0099 USDC. */
-export function stakeTransferAmount(amount: string): bigint {
-  return exactAmount(toUnits(amount, "USDC"), 100n, 99);
+/** Stake amount: the stake plus 0.0001 to 0.0099 (USDC and USDsui both have 6 decimals). */
+export function stakeTransferAmount(amount: string, coin: StakeCoin = "USDC"): bigint {
+  return exactAmount(toUnits(amount, coin), 100n, 99);
 }
 
 async function send(api: Api, chatId: number, text: string) {
@@ -77,7 +77,7 @@ export async function runTransferWatch(api: Api): Promise<void> {
     const wallet = getUser(s.userId)?.wallet;
     if (!wallet) continue;
     try {
-      const hit = findExactTransfer(await sentSince(wallet.address, "USDC", Date.parse(s.createdAt)), anchorAddress, BigInt(s.payExact));
+      const hit = findExactTransfer(await sentSince(wallet.address, stakeCoin(s), Date.parse(s.createdAt)), anchorAddress, BigInt(s.payExact));
       if (hit) await markStakePaid(api, s.token, wallet.address, hit.digest);
     } catch (err) {
       console.warn(`[transfers] stake check ${s.token} failed:`, err instanceof Error ? err.message : err);

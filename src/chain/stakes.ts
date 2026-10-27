@@ -17,7 +17,7 @@ import { config } from "../config.js";
 import { clause } from "../memory/types.js";
 import { allStakes, bump, getStake, getUser, putStake, updateStake, updateUser, type Stake } from "../state.js";
 import { anchorAddress, anchorKey } from "./signer.js";
-import { COINS, explorerTx, shortAddr, sui, toUnits } from "./sui.js";
+import { coinLabel, COINS, explorerTx, shortAddr, sui, toUnits, type StakeCoin } from "./sui.js";
 import { requirements, type PaymentRequirements } from "./x402.js";
 
 export const stakesEnabled = () => !!anchorKey && !!config.PUBLIC_URL;
@@ -32,9 +32,12 @@ export function createStake(opts: Omit<Stake, "token" | "status" | "createdAt">)
   return stake;
 }
 
+export const stakeCoin = (s: Stake): StakeCoin => s.coin ?? "USDC";
+
 export function stakeRequirements(stake: Stake): PaymentRequirements {
   if (!anchorAddress) throw new Error("ANCHOR_SUI_PRIVATE_KEY is not set");
-  return requirements({ amount: toUnits(stake.amount, "USDC"), asset: COINS.USDC.type, payTo: anchorAddress, timeoutSeconds: 300 });
+  const coin = stakeCoin(stake);
+  return requirements({ amount: toUnits(stake.amount, coin), asset: COINS[coin].type, payTo: anchorAddress, timeoutSeconds: 300 });
 }
 
 /** The x402 payment settled: the stake is now held and tied to the promise. */
@@ -60,7 +63,7 @@ export async function markStakePaid(api: Api | undefined, token: string, payer: 
         kind: "fact",
         date: todayIn(config.TIMEZONE),
         proof: digest,
-        text: `Staked ${stake.amount} USDC on promise #${stake.commitmentId} (${clause(stake.text)}); it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)} if missed`,
+        text: `Staked ${stake.amount} ${coinLabel(stakeCoin(stake))} on promise #${stake.commitmentId} (${clause(stake.text)}); it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)} if missed`,
       },
     ]),
   ).catch((err) => console.error(`[stake] memory write failed:`, err));
@@ -69,19 +72,19 @@ export async function markStakePaid(api: Api | undefined, token: string, payer: 
     await api
       .sendMessage(
         chatId,
-        `🔒 ${stake.amount} USDC staked on #${stake.commitmentId} · ${clause(stake.text)}.\nKeep it and it comes back to you. Miss it and it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. The chain decides.\n${explorerTx(digest)}`,
+        `🔒 ${stake.amount} ${coinLabel(stakeCoin(stake))} staked on #${stake.commitmentId} · ${clause(stake.text)}.\nKeep it and it comes back to you. Miss it and it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. The chain decides.\n${explorerTx(digest)}`,
         { link_preview_options: { is_disabled: true } },
       )
       .catch(() => undefined);
   }
 }
 
-/** Send USDC from Anchor's wallet (Tatum executes it). Returns the digest. */
-async function payout(to: string, units: bigint): Promise<string> {
+/** Send a stablecoin from Anchor's wallet (Tatum executes it). Returns the digest. */
+async function payout(to: string, units: bigint, coin: StakeCoin): Promise<string> {
   if (!anchorKey || !anchorAddress) throw new Error("no Anchor key");
   const tx = new Transaction();
   tx.setSender(anchorAddress);
-  tx.transferObjects([coinWithBalance({ type: COINS.USDC.type, balance: units })], to);
+  tx.transferObjects([coinWithBalance({ type: COINS[coin].type, balance: units })], to);
   const res = await sui.signAndExecuteTransaction({ transaction: tx, signer: anchorKey, include: { effects: true } });
   if (res.$kind !== "Transaction") throw new Error(`payout failed on-chain: ${res.FailedTransaction.digest}`);
   await sui.waitForTransaction({ digest: res.Transaction.digest, timeout: 30_000 }).catch(() => undefined);
@@ -96,7 +99,8 @@ export async function settleStake(api: Api | undefined, token: string, outcome: 
   const chatId = getUser(stake.userId)?.chatId;
   try {
     // Pay out exactly what was received (a direct transfer includes its small recognition tail).
-    const digest = await payout(to, stake.payExact ? BigInt(stake.payExact) : toUnits(stake.amount, "USDC"));
+    const coin = stakeCoin(stake);
+    const digest = await payout(to, stake.payExact ? BigInt(stake.payExact) : toUnits(stake.amount, coin), coin);
     updateStake(token, (s) => {
       s.status = outcome === "kept" ? "refunded" : "forfeited";
       s.payoutDigest = digest;
@@ -104,8 +108,8 @@ export async function settleStake(api: Api | undefined, token: string, outcome: 
     bump((m) => (outcome === "kept" ? m.stakes.refunded++ : m.stakes.forfeited++));
     const text =
       outcome === "kept"
-        ? `💸 Your ${stake.amount} USDC stake is on its way back to you. Well earned.\n${explorerTx(digest)}`
-        : `💸 As agreed, your ${stake.amount} USDC stake went to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. Next time it stays with you.\n${explorerTx(digest)}`;
+        ? `💸 Your ${stake.amount} ${coinLabel(coin)} stake is on its way back to you. Well earned.\n${explorerTx(digest)}`
+        : `💸 As agreed, your ${stake.amount} ${coinLabel(coin)} stake went to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. Next time it stays with you.\n${explorerTx(digest)}`;
     if (api && chatId) await api.sendMessage(chatId, text, { link_preview_options: { is_disabled: true } }).catch(() => undefined);
   } catch (err) {
     const note = err instanceof Error ? err.message.slice(0, 200) : String(err);

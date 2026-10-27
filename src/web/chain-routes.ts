@@ -19,8 +19,8 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
 import { buildReport, fetchReport, reportsEnabled, signReport, uploadStatus, verifyReport } from "../chain/report.js";
 import { anchorAddress } from "../chain/signer.js";
-import { markStakePaid, stakeRequirements } from "../chain/stakes.js";
-import { COINS, explorerAddr, explorerTx, shortAddr, toUnits } from "../chain/sui.js";
+import { markStakePaid, stakeCoin, stakeRequirements } from "../chain/stakes.js";
+import { coinLabel, COINS, explorerAddr, explorerTx, shortAddr, STAKE_COINS, toUnits } from "../chain/sui.js";
 import {
   buildPaymentTransaction,
   decodeHeader,
@@ -218,13 +218,13 @@ export function registerChainRoutes(app: Hono, getApi: () => Api | undefined) {
     const rows = [
       ["Promise", `#${s.commitmentId} · ${clause(s.text)}`],
       ["Deadline", `${s.due}${s.at ? ` ${s.at}` : ""} (${config.TIMEZONE})`],
-      ["Stake", `${s.amount} USDC`],
+      ["Stake", `${s.amount} ${coinLabel(stakeCoin(s))}`],
       ["If kept", "back to the wallet that pays"],
       ["If missed", `to ${s.forfeitName ?? shortAddr(s.forfeitTo)}`],
       ["Status", s.status.replace("_", " ")],
     ];
-    const body = `<div class="label">// put money on it</div><h1>Stake ${esc(s.amount)} USDC on your word.</h1>
-<p>Paid with <b>x402</b> on Sui: your wallet signs a USDC transfer, Anchor verifies and settles it on Sui (through Tatum), and the chain decides the promise at the deadline. Anchor never keeps stake money.</p>
+    const body = `<div class="label">// put money on it</div><h1>Stake ${esc(s.amount)} ${coinLabel(stakeCoin(s))} on your word.</h1>
+<p>Paid with <b>x402</b> on Sui: your wallet signs a ${coinLabel(stakeCoin(s))} transfer, Anchor verifies and settles it on Sui (through Tatum), and the chain decides the promise at the deadline. Anchor never keeps stake money.</p>
 <div class="card">${rows.map(([k, v]) => `<div class="row"><span>${esc(k!)}</span><span>${esc(v!)}</span></div>`).join("")}</div>
 ${
   s.status === "awaiting_payment"
@@ -240,7 +240,7 @@ ${
     const s = getStake(c.req.param("token"));
     if (!s) return c.json({ error: "stake not found" }, 404);
     if (s.status !== "awaiting_payment") return c.json({ error: `stake is ${s.status.replace("_", " ")}` }, 409);
-    return x402(c, stakeRequirements(s), `Stake ${s.amount} USDC on promise #${s.commitmentId}`, async (payer, digest) => {
+    return x402(c, stakeRequirements(s), `Stake ${s.amount} ${coinLabel(stakeCoin(s))} on promise #${s.commitmentId}`, async (payer, digest) => {
       updateStake(s.token, (x) => delete x.payExact); // paid the plain amount through x402
       await markStakePaid(getApi(), s.token, payer, digest);
       return { staked: true, amount: s.amount, promise: s.commitmentId };
@@ -251,15 +251,17 @@ ${
   app.post("/api/x402/build", async (c) => {
     const { sender, accepted } = (await c.req.json().catch(() => ({}))) as { sender?: string; accepted?: PaymentRequirements };
     if (!sender || !accepted || !anchorAddress) return c.json({ error: "bad request" }, 400);
-    const ours = requirements({ amount: BigInt(accepted.amount || "0"), asset: COINS.USDC.type, payTo: anchorAddress });
-    if (!sameRequirements(accepted, ours) || BigInt(accepted.amount) > toUnits(String(config.STAKE_MAX_USDC), "USDC")) {
+    const coin = STAKE_COINS.find((c) => accepted.asset?.split("::").pop() === COINS[c].type.split("::").pop());
+    if (!coin) return c.json({ error: "not a payment this server asked for" }, 400);
+    const ours = requirements({ amount: BigInt(accepted.amount || "0"), asset: COINS[coin].type, payTo: anchorAddress });
+    if (!sameRequirements(accepted, ours) || BigInt(accepted.amount) > toUnits(String(config.STAKE_MAX_USDC), coin)) {
       return c.json({ error: "not a payment this server asked for" }, 400);
     }
     try {
       return c.json({ transaction: await buildPaymentTransaction(sender, ours) });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return c.json({ error: /insufficient|balance|coin/i.test(msg) ? "Not enough USDC (or SUI for gas) in this wallet." : msg.slice(0, 160) }, 400);
+      return c.json({ error: /insufficient|balance|coin/i.test(msg) ? `Not enough ${coinLabel(coin)} (or SUI for gas) in this wallet.` : msg.slice(0, 160) }, 400);
     }
   });
 

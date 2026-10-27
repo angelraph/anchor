@@ -52,9 +52,18 @@ export const COINS = {
   SUI: { type: "0x2::sui::SUI", decimals: 9 },
   USDC: { type: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC", decimals: 6 },
   WAL: { type: "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL", decimals: 9 },
+  /** USDsui: Sui's native dollar stablecoin, issued by Bridge (a Stripe company). */
+  USDSUI: { type: "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI", decimals: 6 },
 } as const;
 
 export type CoinSymbol = keyof typeof COINS;
+
+/** Dollar stablecoins a stake can be paid in. */
+export const STAKE_COINS = ["USDC", "USDSUI"] as const;
+export type StakeCoin = (typeof STAKE_COINS)[number];
+export const isStakeCoin = (s: string): s is StakeCoin => (STAKE_COINS as readonly string[]).includes(s);
+/** How a coin is written for people ("USDsui", not "USDSUI"). */
+export const coinLabel = (c: CoinSymbol) => (c === "USDSUI" ? "USDsui" : c);
 
 export function isCoin(s: string): s is CoinSymbol {
   return Object.hasOwn(COINS, s);

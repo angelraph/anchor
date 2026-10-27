@@ -122,7 +122,7 @@ export async function learnMoneyPattern(userId: number | string): Promise<string
   const user = getUser(userId);
   if (!user?.wallet) return undefined;
   const since = Date.now() - 28 * 86_400_000;
-  for (const coin of ["USDC", "SUI"] as const) {
+  for (const coin of ["USDC", "USDSUI", "SUI"] as const) {
     const transfers = await sentSince(user.wallet.address, coin, since);
     const pattern = spendingPattern(transfers, coin, config.TIMEZONE);
     if (!pattern) continue;

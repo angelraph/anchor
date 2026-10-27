@@ -8,9 +8,15 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import type { Api } from "grammy";
+import { anchorAddress } from "../chain/signer.js";
+import { chainHealth } from "../chain/sui.js";
 import { config } from "../config.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client.js";
+import { metrics } from "../state.js";
+import { registerChainRoutes } from "./chain-routes.js";
+import { registerMeRoutes } from "./me-routes.js";
 import { logoSvg } from "./logo.js";
 import { renderPage } from "./page.js";
 
@@ -73,11 +79,32 @@ function proofJson(s: NamespaceStat[]) {
     users,
     generatedAt: new Date().toISOString(),
     checkinTime: `${String(config.CHECKIN_HOUR).padStart(2, "0")}:00 (${config.TIMEZONE})`,
+    chain: "Sui mainnet via Tatum RPC",
+    anchorAddress: anchorAddress ?? null,
+    learning: learningJson(),
   };
 }
 
-export function startWebServer() {
+/** The learning loop in numbers, counted since the Total Recall build started. */
+function learningJson() {
+  const m = metrics();
+  return {
+    since: m.since,
+    replies: m.replies,
+    repliesShapedByLearning: m.repliesShapedByLearning,
+    shapedPct: m.replies ? Math.round((m.repliesShapedByLearning / m.replies) * 100) : 0,
+    memoriesWritten: m.memoriesByKind,
+    chainVerified: m.chainVerified,
+    reportsPublished: m.reportsPublished,
+    stakes: m.stakes,
+    agentPayments: m.agentPayments,
+  };
+}
+
+export function startWebServer(api?: Api) {
   const app = new Hono();
+  registerChainRoutes(app, () => api);
+  registerMeRoutes(app, () => api);
   app.get("/", async (c) => c.html(renderPage(proofJson(await stats()))));
   app.get("/proof.json", async (c) => c.json(proofJson(await stats())));
   app.get("/logo.svg", (c) => c.body(logoSvg(512), 200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" }));
@@ -96,7 +123,8 @@ export function startWebServer() {
       (h) => ({ ok: true, ...h }),
       (e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),
     );
-    return c.json({ ok: true, memory }, memory.ok ? 200 : 503);
+    const chain = await chainHealth();
+    return c.json({ ok: true, memory, chain }, memory.ok ? 200 : 503);
   });
   app.onError((err, c) => {
     console.error("[web]", err);

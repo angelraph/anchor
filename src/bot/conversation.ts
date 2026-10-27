@@ -3,6 +3,9 @@
  *   recall (Walrus) → generate (Gemini) → reply → extract + store (Walrus, in background)
  */
 import { generateText, type ModelMessage } from "ai";
+import { confirmation, prepareChecks } from "../chain/promises.js";
+import { shortAddr } from "../chain/sui.js";
+import { noteReply } from "../learning.js";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
@@ -70,6 +73,7 @@ export async function generateReply(opts: {
         commitments: context?.commitments ?? [],
         awaiting: opts.withMemory ? (getUser(opts.userId)?.awaitingOutcome ?? []) : [],
         memoryUnavailable: context?.unavailable,
+        wallet: walletLabel(opts.userId),
       }),
       messages: [...(opts.useHistory === false ? [] : historyFor(opts.userId)), { role: "user", content: opts.message }],
       temperature: 0.6,
@@ -78,6 +82,11 @@ export async function generateReply(opts: {
     }),
   );
   return { reply: cleanReply(text), context };
+}
+
+function walletLabel(userId: number): string | undefined {
+  const w = getUser(userId)?.wallet;
+  return w ? `${w.name ?? shortAddr(w.address)} (${w.verified ? "verified" : "watch-only"})` : undefined;
 }
 
 /** Gemini sometimes slips in markdown despite instructions; Telegram shows it raw. */
@@ -89,7 +98,13 @@ function cleanReply(text: string): string {
 }
 
 /** A normal chat turn: reply now, learn in the background. */
-export async function chatTurn(userId: number, firstName: string, message: string): Promise<TurnResult> {
+export async function chatTurn(
+  userId: number,
+  firstName: string,
+  message: string,
+  /** Sends a follow-up message (e.g. "#k3f9 will be verified on Sui") once memories are prepared. */
+  notify?: (text: string) => Promise<unknown>,
+): Promise<TurnResult> {
   const before = historyFor(userId);
   const prevUser = before.at(-2), prevBot = before.at(-1);
   const previous =
@@ -98,6 +113,7 @@ export async function chatTurn(userId: number, firstName: string, message: strin
       : undefined;
   const result = await generateReply({ userId, firstName, message, withMemory: true });
   pushHistory(userId, message, result.reply);
+  if (result.context && !result.context.unavailable) noteReply(result.context.memories);
 
   updateUser(userId, (u) => {
     u.lastTrace = {
@@ -130,7 +146,13 @@ export async function chatTurn(userId: number, firstName: string, message: strin
     }
     try {
       const fresh = await dropDuplicates(userId, candidates, context.memories);
+      const notes = await prepareChecks(userId, fresh).catch((err) => {
+        console.error(`[chain] preparing checks for ${userId} failed:`, err instanceof Error ? err.message : err);
+        return [];
+      });
       await storeMemories(userId, fresh);
+      const note = confirmation(notes);
+      if (note && notify) await notify(note).catch(() => undefined);
       if (fresh.some((r) => r.kind === "outcome")) {
         const answered = new Set(fresh.flatMap((r) => (r.kind === "outcome" && r.ref ? [r.ref] : [])));
         updateUser(userId, (u) => {

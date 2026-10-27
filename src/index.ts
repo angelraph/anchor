@@ -1,5 +1,9 @@
 import { run } from "@grammyjs/runner";
 import { BOT_COMMANDS, createBot } from "./bot/bot.js";
+import { runChainChecks } from "./chain/promises.js";
+import { anchorAddress } from "./chain/signer.js";
+import { maintainStakes } from "./chain/stakes.js";
+import { chainHealth } from "./chain/sui.js";
 import { startCheckinScheduler } from "./checkins.js";
 import { config } from "./config.js";
 import { MODEL_LABEL } from "./llm/model.js";
@@ -33,6 +37,14 @@ async function main() {
     (err) => console.warn(`[memwal] health check failed at startup, continuing: ${redact(err).split("\n")[0]}`),
   );
 
+  // Sui (through Tatum) being down must not keep the bot offline either; chain checks retry on their own.
+  void chainHealth().then((h) =>
+    h.ok
+      ? console.log(`[sui] Tatum gateway ${config.TATUM_SUI_GRAPHQL_URL} ok (${config.TATUM_API_KEY ? "API key set" : "no API key: heavily rate-limited"})`)
+      : console.warn(`[sui] Tatum gateway check failed at startup, continuing: ${h.error}`),
+  );
+  if (!anchorAddress) console.warn("[sui] ANCHOR_SUI_PRIVATE_KEY not set: signed reports, stakes and agent payments are off");
+
   const bot = createBot();
   // Command menu and description are cosmetic: retry, but never fail startup over them.
   await retry("setMyCommands", () => bot.api.setMyCommands(BOT_COMMANDS)).catch((err) =>
@@ -47,14 +59,17 @@ async function main() {
   bot.botInfo = me; // the runner reuses this instead of calling getMe again
   console.log(`[bot] @${me.username} · ${MODEL_LABEL}`);
 
-  startWebServer();
+  startWebServer(bot.api);
   startCheckinScheduler(bot.api);
+  setInterval(() => void maintainStakes(bot.api, todayIn(config.TIMEZONE)).catch((err) => console.error("[stake] maintenance failed:", err)), 30 * 60_000);
   setInterval(() => void drainOutbox().catch((err) => console.error("[memwal] outbox drain failed:", err)), 10 * 60_000);
 
   // Exact-time deadline reminders (local state only) and the Sunday weekly summary.
   let weeklyRan = "";
   setInterval(() => {
     void runDeadlineReminders(bot.api).catch((err) => console.error("[remind] failed:", err));
+    // Money promises: early verdicts every 15 min, final ones at the deadline (reads Sui via Tatum).
+    void runChainChecks(bot.api).catch((err) => console.error("[chain] failed:", err));
     const today = todayIn(config.TIMEZONE);
     const isSunday = new Date(`${today}T12:00:00Z`).getUTCDay() === 0;
     if (isSunday && hourIn(config.TIMEZONE) === config.CHECKIN_HOUR && weeklyRan !== today) {

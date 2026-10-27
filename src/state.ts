@@ -24,6 +24,26 @@ export interface TimedPromise {
   at: string; // HH:MM
 }
 
+/** A Sui wallet the user linked. `verified` once they signed a message with it. */
+export interface WalletLink {
+  address: string;
+  /** SuiNS name it was linked by, if any. */
+  name?: string;
+  verified: boolean;
+  linkedAt: string;
+}
+
+/** A promise the chain can verify, mirrored locally so the verifier needs no Walrus reads. */
+export interface ChainPromise {
+  text: string;
+  due: string; // YYYY-MM-DD
+  at?: string; // HH:MM
+  /** Serialized ChainCheck (chain/checks.ts). */
+  chk: string;
+  /** Stake token, when money is staked on it. */
+  stake?: string;
+}
+
 export interface UserState {
   firstName: string;
   chatId: number;
@@ -45,12 +65,67 @@ export interface UserState {
   /** commitment id -> date its 30-minute heads-up was sent */
   warned?: Record<string, string>;
   lastTrace?: { at: string; query: string; items: TraceItem[] };
+  /** Linked Sui wallet (for chain-verified promises). */
+  wallet?: WalletLink;
+  /** Open chain-verifiable promises, by commitment id. */
+  chain?: Record<string, ChainPromise>;
+  /** Publish a signed report to Walrus every Sunday. */
+  reportAuto?: boolean;
+  /** Let agents read this user's signed follow-through record (x402, paid). */
+  publicRecord?: boolean;
+  /** Last money pattern learned from the wallet (so it is stored once, not weekly). */
+  moneyPattern?: string;
+  /** SHA-256 of the personal API token for portable memory (MCP / other tools). */
+  apiTokenHash?: string;
+  /** Latest published report. */
+  lastReport?: { blobId: string; at: string; week: string };
+}
+
+export type StakeStatus = "awaiting_payment" | "held" | "refunded" | "forfeited" | "expired" | "payout_failed";
+
+/** Money staked on a promise: back to the payer if kept, to `forfeitTo` if missed. */
+export interface Stake {
+  token: string;
+  userId: string;
+  commitmentId: string;
+  text: string;
+  due: string;
+  at?: string;
+  /** USDC, human amount. */
+  amount: string;
+  forfeitTo: string;
+  forfeitName?: string;
+  status: StakeStatus;
+  createdAt: string;
+  payer?: string;
+  payDigest?: string;
+  payoutDigest?: string;
+  note?: string;
+}
+
+/** Counters behind the public "learning loop" numbers. Started fresh in the Total Recall build. */
+export interface Metrics {
+  since: string;
+  replies: number;
+  /** Replies whose recalled memories included a learned pattern or win. */
+  repliesShapedByLearning: number;
+  memoriesByKind: Record<string, number>;
+  chainVerified: { kept: number; broken: number };
+  reportsPublished: number;
+  stakes: { held: number; refunded: number; forfeited: number };
+  agentPayments: number;
+  /** USDC base units earned from agents. */
+  agentRevenue: string;
 }
 
 interface StateFile {
   users: Record<string, UserState>;
   /** Serialized memories Walrus rejected, per user, waiting to be retried. */
   outbox?: Record<string, string[]>;
+  stakes?: Record<string, Stake>;
+  /** One-time wallet-link tokens: token -> { userId, expires (ms) } */
+  linkTokens?: Record<string, { userId: string; expires: number }>;
+  metrics?: Metrics;
 }
 
 const dir = config.DATA_DIR;
@@ -119,4 +194,74 @@ export function takeOutbox(): Array<[string, string[]]> {
   state.outbox = {};
   persist();
   return entries;
+}
+
+// ---------------------------------------------------------------- stakes
+
+export function putStake(stake: Stake) {
+  (state.stakes ??= {})[stake.token] = stake;
+  persist();
+}
+
+export function getStake(token: string): Stake | undefined {
+  return state.stakes?.[token];
+}
+
+export function updateStake(token: string, fn: (s: Stake) => void) {
+  const s = state.stakes?.[token];
+  if (!s) return;
+  fn(s);
+  persist();
+}
+
+export function allStakes(): Stake[] {
+  return Object.values(state.stakes ?? {});
+}
+
+// ---------------------------------------------------------------- wallet links
+
+export function putLinkToken(token: string, userId: string, ttlMs = 30 * 60_000) {
+  state.linkTokens ??= {};
+  const now = Date.now();
+  for (const [t, v] of Object.entries(state.linkTokens)) if (v.expires < now) delete state.linkTokens[t];
+  state.linkTokens[token] = { userId, expires: now + ttlMs };
+  persist();
+}
+
+/** The user a link token belongs to, if it is still valid. Does not consume it. */
+export function peekLinkToken(token: string): string | undefined {
+  const t = state.linkTokens?.[token];
+  return t && t.expires > Date.now() ? t.userId : undefined;
+}
+
+export function consumeLinkToken(token: string) {
+  delete state.linkTokens?.[token];
+  persist();
+}
+
+// ---------------------------------------------------------------- metrics
+
+export function metrics(): Metrics {
+  state.metrics ??= {
+    since: new Date().toISOString(),
+    replies: 0,
+    repliesShapedByLearning: 0,
+    memoriesByKind: {},
+    chainVerified: { kept: 0, broken: 0 },
+    reportsPublished: 0,
+    stakes: { held: 0, refunded: 0, forfeited: 0 },
+    agentPayments: 0,
+    agentRevenue: "0",
+  };
+  return state.metrics;
+}
+
+export function bump(fn: (m: Metrics) => void) {
+  fn(metrics());
+  persist();
+}
+
+/** The user a personal API token belongs to (tokens are stored hashed). */
+export function userByTokenHash(hash: string): [string, UserState] | undefined {
+  return Object.entries(state.users).find(([, u]) => u.apiTokenHash === hash);
 }

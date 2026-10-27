@@ -90,3 +90,68 @@ It's free and open source, and I'd love feedback from people who struggle with f
 Bot: t.me/Anchor_daBot
 Code: github.com/angelraph/anchor
 Write-up: [ARTICLE LINK]
+
+
+---
+
+# Total Recall (Tatum × Walrus) launch
+
+## X thread
+
+**1/**
+My accountability bot used to take your word for it.
+
+Not anymore. ⚓ Anchor now verifies money promises on Sui.
+
+"I'll pay Tobi back 20 USDC by Friday" → the chain reports it, not you.
+
+Built for #TotalRecall with @Tatum_io + @WalrusFoundation 🧵
+
+**2/**
+How it works:
+
+🔗 /wallet you.sui → resolved on Sui through Tatum, ownership proven with one signed message
+🎯 Promise in plain words: save, keep, pay, or a spending cap in USDC/SUI/WAL
+⛓ Anchor reads your wallet through Tatum's Sui RPC and closes the promise itself
+🧠 The verdict + tx digest go into your Walrus Memory
+
+**3/**
+Want pressure? Stake on it.
+
+/stake #id 5 friend.sui → pay with x402 on Sui.
+Keep your word: the USDC comes back.
+Miss it: it goes to your friend.
+
+Anchor never keeps a cent. The chain is the referee.
+
+**4/**
+Your follow-through becomes portable proof:
+
+🧾 Weekly reports signed by Anchor's Sui key and stored on Walrus via Tatum's Storage API
+🤖 Agents can pay (x402, $0.01) to read your signed record, only if you opt in
+🔌 Same memory in Claude Code via MCP
+
+**5/**
+Memory that visibly changes the product: /learning shows what Anchor learned about you each week and how your follow-through moved. It even learns money patterns from your on-chain history.
+
+Try it: t.me/Anchor_daBot
+Code: github.com/angelraph/anchor
+Write-up: <blog link>
+
+## LinkedIn
+
+I rebuilt my accountability bot around one idea: for promises that involve money, your word shouldn't be the evidence. Your wallet should.
+
+Anchor is a Telegram bot that holds you to your word. It remembers every promise on Walrus Memory, checks in at the deadline, and learns what derails you and what works. For the Total Recall hackathon by Tatum and Walrus Foundation, I made it verify money promises on the Sui blockchain:
+
+• Link your wallet by name. Anchor can read it, never move it.
+• Promise in plain words ("I'll save 50 USDC by Friday"). Anchor reads your wallet through Tatum's Sui RPC and closes the promise from on-chain evidence.
+• Optionally stake money on it, paid with x402. Keep your word and it comes back. Miss it and it goes to someone you chose.
+• Each week becomes a signed report stored on Walrus, portable proof of follow-through.
+• The same memory works in Claude Code and other AI tools through MCP.
+
+It's live, open source (MIT), and built with Walrus Memory, Tatum, Sui, x402 and Gemini.
+
+Try it: t.me/Anchor_daBot · Code: github.com/angelraph/anchor
+
+@Tatum @Walrus Foundation #TotalRecall #Sui #Walrus #AIagents

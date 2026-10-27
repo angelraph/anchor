@@ -8,6 +8,11 @@
  *   [outcome] 2026-10-09 ref:k3f9 status:broken | Sent 2; got distracted by…
  *   [pattern] 2026-10-09 | Pushes gym to "next Monday" when work runs late
  *
+ * Money promises also carry a chain check, and their outcomes the proof:
+ *
+ *   [commitment] 2026-10-27 id:p2x1 due:2026-10-29 chk:pay~USDC~20~n=Tobi~to=0x7a… | Promised to pay Tobi back 20 USDC
+ *   [outcome] 2026-10-28 ref:p2x1 status:kept proof:9xQe… | Verified on Sui: sent 20 USDC to Tobi
+ *
  * The header keeps the text embeddable (the sentence still dominates the
  * vector) while letting the app parse structure back out after recall.
  */
@@ -20,6 +25,7 @@ export const MEMORY_KINDS = [
   "fact", // durable context: name, job, goals, people, constraints
   "preference", // how the user wants to be coached
   "retracted", // tombstone: the user asked Anchor to forget a memory
+  "report", // a signed weekly report published to Walrus (blob id in proof)
 ] as const;
 
 export type MemoryKind = (typeof MEMORY_KINDS)[number];
@@ -38,6 +44,10 @@ export interface MemoryRecord {
   /** For outcomes: the commitment id. For retractions: hash of the forgotten memory. */
   ref?: string;
   status?: OutcomeStatus;
+  /** Serialized chain check (commitments only), see chain/checks.ts. */
+  chk?: string;
+  /** Sui transaction digest or Walrus blob id that proves an outcome or report. */
+  proof?: string;
   text: string;
 }
 
@@ -62,6 +72,8 @@ export function serialize(record: MemoryRecord): string {
   if (record.at && TIME.test(record.at)) fields.push(`at:${record.at}`);
   if (record.ref) fields.push(`ref:${record.ref}`);
   if (record.status) fields.push(`status:${record.status}`);
+  if (record.chk && !/\s/.test(record.chk)) fields.push(`chk:${record.chk}`);
+  if (record.proof && /^[\w-]+$/.test(record.proof)) fields.push(`proof:${record.proof}`);
   const text = record.text.replace(/\s+/g, " ").trim();
   return `[${record.kind}] ${record.date}${fields.length ? " " + fields.join(" ") : ""} | ${text}`;
 }
@@ -82,6 +94,8 @@ export function parse(raw: string): MemoryRecord {
     else if (key === "ref") record.ref = value;
     else if (key === "status" && ["kept", "broken", "partial", "moved"].includes(value!))
       record.status = value as OutcomeStatus;
+    else if (key === "chk") record.chk = value;
+    else if (key === "proof") record.proof = value;
   }
   return record;
 }

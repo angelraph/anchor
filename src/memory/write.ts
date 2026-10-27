@@ -4,6 +4,9 @@ import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { extractionPrompt } from "../llm/prompts.js";
+import { serializeCheck } from "../chain/checks.js";
+import { trackChainRecords } from "../chain/promises.js";
+import { noteStored } from "../learning.js";
 import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
@@ -19,6 +22,15 @@ const extractionSchema = z.object({
       at: z.string().nullable().describe("Time of day the promise is due, HH:MM 24h, if the user gave one, else null"),
       ref: z.string().nullable().describe("Promise id for outcomes, else null"),
       status: z.enum(["kept", "broken", "partial", "moved"]).nullable().describe("Outcome status, else null"),
+      chain: z
+        .object({
+          kind: z.enum(["save", "hold", "pay", "cap"]),
+          coin: z.enum(["SUI", "USDC", "WAL"]),
+          amount: z.string().describe("Plain number, e.g. 50 or 12.5"),
+          recipient: z.string().nullable().describe("pay only: who, exactly as the user said it (name, name.sui or 0x address)"),
+        })
+        .nullable()
+        .describe("For commitments about SUI, USDC or WAL that a Sui wallet can prove, else null"),
     }),
   ),
 });
@@ -59,7 +71,12 @@ export async function extractMemories(opts: {
     const due = m.due && ISO.test(m.due) ? m.due : undefined;
     const at = m.at && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.at) ? m.at : undefined;
     if (m.kind === "commitment") {
-      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, text });
+      const amount = m.chain?.amount.replace(/,/g, "").trim();
+      const chk =
+        m.chain && amount && /^\d+(\.\d+)?$/.test(amount) && Number(amount) > 0
+          ? serializeCheck({ kind: m.chain.kind, coin: m.chain.coin, amount, toName: m.chain.kind === "pay" ? (m.chain.recipient ?? undefined) : undefined })
+          : undefined;
+      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, chk, text });
     } else if (m.kind === "outcome") {
       const ref = m.ref?.replace(/^#/, "");
       if (ref && opts.closed?.[ref]) continue; // already recorded (e.g. via the check-in button)
@@ -110,6 +127,8 @@ export async function dropDuplicates(
 /** Write records to the user's namespace on Walrus and wait until they are indexed. */
 export async function storeMemories(userId: number | string, records: MemoryRecord[]): Promise<string[]> {
   trackRecords(userId, records); // timed promises get an exact-time reminder
+  trackChainRecords(userId, records); // money promises get verified on Sui
+  noteStored(records);
   return storeRaw(userId, records.map((r) => serialize(r)));
 }
 

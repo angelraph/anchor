@@ -57,3 +57,28 @@ A timer ticks every minute; at `CHECKIN_HOUR` in `TIMEZONE` it:
 - **Telegram 409 conflict** (two instances during a redeploy): polling restarts instead of silently stopping.
 - **Deadlines:** prompts get the full local clock, so "by 6am" said at 23:59 resolves to the next morning.
 
+
+## Chain-verified promises (Total Recall)
+
+**Why the chain?** Memory made Anchor a good coach, but it still relied on self-reports. Money promises leave evidence, so for those the wallet is the source of truth and Walrus Memory keeps the verdict with its proof.
+
+**Check in the memory, proof in the outcome.** A money promise stores its check in the header (`chk:pay~USDC~20~n=Tobi~to=0x…~s=<since>`), so the promise and how to verify it are one memory. The verdict is an `outcome` with `proof:<tx digest>`. Verified outcomes stay checkable months later, and the signed report lists them.
+
+**Judging is pure.** `chain/checks.ts` turns `{balance}` or `{transfers}` into kept / broken / pending with a one-sentence piece of evidence. Early verdicts only when conclusive (a payment landed, a cap blown, savings reached); `hold` waits for the deadline. With no stake, a failed check shows the evidence and asks whether the user did it another way (cash exists); with a stake, or a blown cap, the chain decides.
+
+**No extra Walrus cost.** Open checks are mirrored in local state (like timed reminders), so the verifier loop reads only Sui. Recipient lookups ("Tobi") use one recall, and only until the address is found.
+
+**x402 without a third-party facilitator.** Anchor implements the `exact` scheme on Sui as both resource server and facilitator: decode the payer's transaction, check the signature against its sender, simulate through Tatum, require a balance change of at least the asked amount of the asked asset to Anchor's address, then execute through Tatum and return the digest. Digests are accepted once. The stake page asks the server to build the unsigned transfer (the spec's "query an RPC for your coins" step) so the browser needs no RPC key; the wallet still signs, and the result is verified like any other payment.
+
+**Stakes never enrich Anchor.** Payouts go to the payer (kept) or to a recipient the user named, never to Anchor, and the recipient can't be the user's own wallet. Failed payouts are retried every 30 minutes.
+
+**Reports are public, so they're minimal.** Walrus blobs are public, so reports carry counts, hashed promise texts (unless the user asks for a public report) and Sui proofs, signed as a Sui personal message over canonical JSON (sorted keys). Anyone can verify one with `verifyPersonalMessageSignature`.
+
+**Portable memory.** `/connect` issues a token (stored as a SHA-256 hash). `scripts/anchor-mcp.ts` is a dependency-free MCP server over the `/api/me/*` routes: recall, list promises, make a promise, report an outcome. Promises made from another tool land in the same Walrus namespace, so Telegram follow-ups work unchanged.
+
+## Tatum friction found while building
+
+1. **Sui JSON-RPC is gone on public nodes**, while Tatum's Sui docs still list `suix_*` methods. The gateway's `/_methods` and `/llms.txt` show what's really served: Sui mainnet on Tatum is GraphQL at `/graphql`. The Sui SDK's `SuiGraphQLClient` works with it once pointed there.
+2. **Pruned nodes break `getChainIdentifier()`.** The SDK reads `checkpoint(sequenceNumber: 0) { digest }`, which is `null` on Tatum. The gateway answers `{ chainIdentifier }` directly, so a fetch adapter rewrites that one query.
+3. **Keyless access is 5 requests per minute** (HTTP 429 with a clear message). Fine for a curl, not for an app. Every Tatum call goes through a 429 backoff, and a mainnet key is required in production.
+4. **The Storage API returns a quilt.** `blobId` is the quilt's id; fetching the file needs `downloadUrlByQuiltPatchId` from the job status once it's `CERTIFIED`, so Anchor keeps the `jobId`, not just the blob id.

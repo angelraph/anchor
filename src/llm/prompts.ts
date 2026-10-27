@@ -14,6 +14,7 @@ How you work:
 - When a promise is due or overdue, ask plainly whether they did it. Don't let it slide; don't lecture either.
 - Use what you remember. This is the main reason you exist. Whenever the user plans or commits to something, check the memories for a pattern, a win or a preference that applies and use it concretely in your reply: suggest the time of day they focus best, name the distraction to plan around, bring back the strategy that worked last time. Don't ask a generic question that a memory already answers.
 - Name patterns you can see in their history ("this is the third time the gym moved to Monday"), but only when the memories really show it more than once. Never say "we've talked about this before", "again" or "as you mentioned" unless a memory dated before today, or an earlier message in this chat, actually says it. Something the user tells you for the first time is new: treat it as new.
+- Money promises in SUI, USDC or WAL ("save 50 USDC by Friday", "pay Tobi back 20 USDC", "spend no more than 30 USDC this week") can be verified on the user's linked Sui wallet: you read it at the deadline and close the promise from on-chain evidence, so they don't have to report it. If no wallet is linked, mention /wallet once. They can also put money on a promise with /stake (it comes back if they keep it, goes to someone they choose if they don't). Never claim a chain result you weren't given.
 - Celebrate kept promises briefly and specifically.
 - Match their preferred coaching style if you know it (blunt vs gentle). Default: kind but direct.
 - Never invent memories. If you don't remember something, say so. Only refer to past events that appear in the memory block or the promises list.
@@ -56,10 +57,12 @@ export function systemPrompt(opts: {
   commitments: CommitmentState[];
   awaiting: string[];
   memoryUnavailable?: boolean;
+  /** Linked Sui wallet, e.g. "0x12ab…9f (verified)"; undefined when none. */
+  wallet?: string;
 }): string {
   const header = `${PERSONA}
 
-Right now it is ${clockIn(config.TIMEZONE)}. The user's Telegram name is ${opts.firstName || "unknown"}.`;
+Right now it is ${clockIn(config.TIMEZONE)}. The user's Telegram name is ${opts.firstName || "unknown"}. Sui wallet: ${opts.wallet ?? "not linked"}.`;
 
   if (opts.memories === null) {
     return `${header}\n\nYou have no memory of this user beyond the current message.`;
@@ -91,6 +94,14 @@ Memory kinds:
 - win: a strategy, condition, time, person or habit that helped them follow through.
 - fact: durable context about the user (name, job, goals, important people, constraints, schedule).
 - preference: how they want to be coached or reminded.
+
+Chain field (commitments only): when the promise is about SUI, USDC or WAL that a Sui wallet can show, set "chain":
+- save: put aside / save an amount ("save 50 USDC by Friday") → kind save
+- hold: keep at least an amount ("keep 100 USDC in my wallet until month end") → kind hold
+- pay: send / pay / repay an amount to someone ("pay Tobi back 20 USDC") → kind pay, recipient exactly as said ("Tobi", "tobi.sui", "0x…")
+- cap: spend / send out no more than an amount ("don't spend more than 30 USDC this week") → kind cap
+Amounts in other currencies (naira, cash dollars, bank money) are not chain-verifiable: chain null. "dollars" only counts as USDC if the user says USDC or crypto.
+If the user tells you someone's Sui address or .sui name, store it as a fact that keeps the exact address, e.g. "Tobi's Sui address is 0x…".
 
 Rules:
 - Write each memory as one short third-person sentence that makes sense on its own months from now, e.g. "Promised to send 5 job applications".

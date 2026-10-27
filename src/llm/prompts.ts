@@ -105,6 +105,7 @@ If the user tells you someone's Sui address or .sui name, store it as a fact tha
 
 Rules:
 - Write each memory as one short third-person sentence that makes sense on its own months from now, e.g. "Promised to send 5 job applications".
+- Refer to the user by name (or not at all), never "he", "she", "his" or "her": never guess anyone's gender. Use "they" only if a pronoun is unavoidable.
 - Never use relative words like "today", "tomorrow" or "tonight" in memory text; they become wrong later. Use the absolute date or leave it to the due field.
 - Only store things the USER said or confirmed. Never store the assistant's suggestions as facts.
 - A short answer like "Today at 2pm" or "yes, by 3pm" usually completes a promise discussed in the earlier exchange: store it as a commitment with that date and time, not as a preference.

@@ -34,6 +34,7 @@ const { paysEnough, requirements, sameRequirements, settlePayment, verifyPayment
 const { canonical, signReport, verifyReport } = await import("../src/chain/report.js");
 const { spendingPattern, weekOf, weeklyLearning } = await import("../src/learning.js");
 const { isFinal } = await import("../src/chain/promises.js");
+const { exactUnits, findExactTransfer, newProofAmount, stakeTransferAmount } = await import("../src/chain/transfers.js");
 
 const A = normalizeSuiAddress("0xa11ce");
 const TOBI = normalizeSuiAddress("0x70b1");
@@ -238,5 +239,33 @@ describe("learning loop", () => {
     const p = spendingPattern([tx(sat, "30"), tx(sat + 3_600_000, "20"), tx(tue, "10")], "USDC", "Africa/Lagos");
     expect(p).toBe("Sends out most USDC on Saturdays: 83% of 60 USDC over the last 4 weeks (verified on Sui)");
     expect(spendingPattern([tx(sat, "30")], "USDC", "Africa/Lagos")).toBeUndefined(); // one transaction isn't a pattern
+  });
+});
+
+describe("proof and stakes by exact transfer", () => {
+  it("proof amounts are 0.001001 to 0.001999 SUI, six decimals", () => {
+    for (let i = 0; i < 200; i++) {
+      const a = newProofAmount();
+      expect(a > toUnits("0.001", "SUI") && a < toUnits("0.002", "SUI")).toBe(true);
+      expect(a % 1_000n).toBe(0n);
+    }
+  });
+
+  it("stake amounts add a 0.0001 to 0.0099 USDC tail", () => {
+    const a = stakeTransferAmount("1");
+    expect(a > usdc("1") && a < usdc("1.01")).toBe(true);
+    expect(a % 100n).toBe(0n);
+  });
+
+  it("shows the exact amount to type", () => {
+    expect(exactUnits(1_284_000n, "SUI")).toBe("0.001284");
+    expect(exactUnits(1_003_700n, "USDC")).toBe("1.0037");
+  });
+
+  it("matches only the exact amount to the right address", () => {
+    const tx = (digest: string, address: string, amount: bigint) => ({ digest, timestampMs: 1, received: [{ address, amount }], ownChange: -amount });
+    const ts = [tx("a", A, 1_284_000n), tx("b", TOBI, 1_285_000n), tx("c", TOBI, 1_284_000n)];
+    expect(findExactTransfer(ts, TOBI, 1_284_000n)?.digest).toBe("c");
+    expect(findExactTransfer(ts, TOBI, 1_283_000n)).toBeUndefined();
   });
 });

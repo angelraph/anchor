@@ -3,6 +3,7 @@ import { BOT_COMMANDS, createBot } from "./bot/bot.js";
 import { runChainChecks } from "./chain/promises.js";
 import { anchorAddress } from "./chain/signer.js";
 import { maintainStakes } from "./chain/stakes.js";
+import { runTransferWatch } from "./chain/transfers.js";
 import { chainHealth } from "./chain/sui.js";
 import { startCheckinScheduler } from "./checkins.js";
 import { config } from "./config.js";
@@ -70,6 +71,8 @@ async function main() {
     void runDeadlineReminders(bot.api).catch((err) => console.error("[remind] failed:", err));
     // Money promises: early verdicts every 15 min, final ones at the deadline (reads Sui via Tatum).
     void runChainChecks(bot.api).catch((err) => console.error("[chain] failed:", err));
+    // Proofs and stakes paid by direct transfer (no browser needed).
+    void runTransferWatch(bot.api).catch((err) => console.error("[transfers] failed:", err));
     const today = todayIn(config.TIMEZONE);
     const isSunday = new Date(`${today}T12:00:00Z`).getUTCDay() === 0;
     if (isSunday && hourIn(config.TIMEZONE) === config.CHECKIN_HOUR && weeklyRan !== today) {

@@ -77,11 +77,11 @@ export async function markStakePaid(api: Api | undefined, token: string, payer: 
 }
 
 /** Send USDC from Anchor's wallet (Tatum executes it). Returns the digest. */
-async function payout(to: string, amount: string): Promise<string> {
+async function payout(to: string, units: bigint): Promise<string> {
   if (!anchorKey || !anchorAddress) throw new Error("no Anchor key");
   const tx = new Transaction();
   tx.setSender(anchorAddress);
-  tx.transferObjects([coinWithBalance({ type: COINS.USDC.type, balance: toUnits(amount, "USDC") })], to);
+  tx.transferObjects([coinWithBalance({ type: COINS.USDC.type, balance: units })], to);
   const res = await sui.signAndExecuteTransaction({ transaction: tx, signer: anchorKey, include: { effects: true } });
   if (res.$kind !== "Transaction") throw new Error(`payout failed on-chain: ${res.FailedTransaction.digest}`);
   await sui.waitForTransaction({ digest: res.Transaction.digest, timeout: 30_000 }).catch(() => undefined);
@@ -95,7 +95,8 @@ export async function settleStake(api: Api | undefined, token: string, outcome: 
   const to = outcome === "kept" ? stake.payer : stake.forfeitTo;
   const chatId = getUser(stake.userId)?.chatId;
   try {
-    const digest = await payout(to, stake.amount);
+    // Pay out exactly what was received (a direct transfer includes its small recognition tail).
+    const digest = await payout(to, stake.payExact ? BigInt(stake.payExact) : toUnits(stake.amount, "USDC"));
     updateStake(token, (s) => {
       s.status = outcome === "kept" ? "refunded" : "forfeited";
       s.payoutDigest = digest;

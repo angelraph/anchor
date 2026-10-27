@@ -16,6 +16,7 @@ import { evaluate, runChainChecks } from "../chain/promises.js";
 import { publishReport, reportPageUrl, reportsEnabled } from "../chain/report.js";
 import { anchorAddress } from "../chain/signer.js";
 import { createStake, stakesEnabled, stakeUrl } from "../chain/stakes.js";
+import { exactUnits, newProofAmount, stakeTransferAmount } from "../chain/transfers.js";
 import { balanceOf, COINS, explorerAddr, fromUnits, resolveRecipient, shortAddr } from "../chain/sui.js";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
@@ -55,7 +56,30 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       }
       const url = current.verified ? undefined : linkUrl(userId);
       await ctx.reply(
-        `Linked: ${current.name ?? shortAddr(current.address)} · ${current.verified ? "verified ✅" : "watch-only"}\n${explorerAddr(current.address)}${url ? `\n\nProve it's yours (sign a message, free, no transaction): ${url}` : ""}\n\n/wallet off unlinks it.`,
+        `Linked: ${current.name ?? shortAddr(current.address)} · ${current.verified ? "verified ✅" : "watch-only"}\n${explorerAddr(current.address)}${url ? `\n\nProve it's yours (sign a message, free, no transaction): ${url}\nWallet blocks that page? Send /wallet verify and prove it with a tiny transfer instead.` : ""}\n\n/wallet off unlinks it.`,
+        noPreview,
+      );
+      return;
+    }
+    if (arg === "verify") {
+      if (!current) {
+        await ctx.reply("Link a wallet first: /wallet <your address or name.sui>");
+        return;
+      }
+      if (current.verified) {
+        await ctx.reply(`${current.name ?? shortAddr(current.address)} is already verified ✅`);
+        return;
+      }
+      if (!anchorAddress) {
+        await ctx.reply("Verification by transfer isn't switched on for this Anchor yet (it needs its own Sui wallet).");
+        return;
+      }
+      const amount = newProofAmount();
+      updateUser(userId, (u) => {
+        u.walletProof = { amount: amount.toString(), since: Date.now() };
+      });
+      await ctx.reply(
+        `Prove ${shortAddr(current.address)} is yours with a tiny transfer, no website needed.\n\nFrom that wallet, send exactly:\n${exactUnits(amount, "SUI")} SUI\n\nto Anchor's address:\n${anchorAddress}\n\nThe odd amount is how I recognise it's you. I'm watching Sui (through Tatum) for the next 2 hours and will confirm here within a minute of it landing.`,
         noPreview,
       );
       return;
@@ -86,7 +110,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       const usdc = await balanceOf(r.address, "USDC").catch(() => undefined);
       const url = linkUrl(userId);
       await ctx.reply(
-        `⛓ Linked ${r.name ?? shortAddr(r.address)}${usdc !== undefined ? ` (${fromUnits(usdc, "USDC")} USDC right now, read via Tatum)` : ""}.\n\nI'll verify money promises on it. ${url ? `To make it count for stakes and public reports, prove it's yours: ${url}` : ""}\n\nTry: "I'll save 20 USDC by Friday".`,
+        `⛓ Linked ${r.name ?? shortAddr(r.address)}${usdc !== undefined ? ` (${fromUnits(usdc, "USDC")} USDC right now, read via Tatum)` : ""}.\n\nI'll verify money promises on it. ${url ? `To make it count for public reports, prove it's yours: ${url}\n(or /wallet verify to prove it with a tiny transfer instead)` : ""}\n\nTry: "I'll save 20 USDC by Friday".`,
         noPreview,
       );
     });
@@ -188,10 +212,14 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
         amount: rawAmount,
         forfeitTo: r.address,
         forfeitName: r.name ?? who,
+        payExact: user?.wallet ? stakeTransferAmount(rawAmount).toString() : undefined,
       });
       const check = parseCheck(p.chk);
+      const direct = stake.payExact
+        ? `\n\nOr pay straight from your wallet app, no website: send exactly\n${exactUnits(stake.payExact, "USDC")} USDC\nfrom ${shortAddr(user!.wallet!.address)} to Anchor's address:\n${anchorAddress}\nPay one way only. I'll see it on Sui within a minute.`
+        : "";
       await ctx.reply(
-        `🔒 Stake ${rawAmount} USDC on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\nPay from your Sui wallet (x402, settled on Sui): ${stakeUrl(stake.token)}`,
+        `🔒 Stake ${rawAmount} USDC on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\nPay from your Sui wallet (x402, settled on Sui): ${stakeUrl(stake.token)}${direct}`,
         noPreview,
       );
     });
@@ -306,6 +334,7 @@ export const CHAIN_COMMANDS = [
 export const CHAIN_HELP = `
 On-chain (Sui, read through Tatum)
 /wallet <address or name.sui>: link your wallet so money promises verify themselves
+/wallet verify: prove it's yours with a tiny transfer (no website)
 /money: balances, money promises in progress, money patterns I've learned
 /verify: check money promises on Sui right now
 /stake #id <USDC> <name.sui>: money back if you keep it, theirs if you don't

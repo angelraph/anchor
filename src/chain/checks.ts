@@ -9,7 +9,7 @@
  * At (or before) the deadline Anchor reads the linked wallet through Tatum's
  * Sui RPC and the judge below turns that into kept / broken plus evidence.
  */
-import { fromUnits, isCoin, toUnits, type CoinSymbol, type Transfer } from "./sui.js";
+import { coinLabel, fromUnits, isCoin, toUnits, type CoinSymbol, type Transfer } from "./sui.js";
 
 export const CHECK_KINDS = ["save", "hold", "pay", "cap"] as const;
 export type CheckKind = (typeof CHECK_KINDS)[number];
@@ -83,10 +83,10 @@ export interface Verdict {
 
 /** One-line description of what will be checked, for the confirmation message. */
 export function describeCheck(c: ChainCheck): string {
-  const amt = `${c.amount} ${c.coin}`;
+  const amt = `${c.amount} ${coinLabel(c.coin)}`;
   switch (c.kind) {
     case "save":
-      return `your ${c.coin} balance grows by ${amt}${c.base !== undefined ? ` (from ${fromUnits(c.base, c.coin)} now)` : ""}`;
+      return `your ${coinLabel(c.coin)} balance grows by ${amt}${c.base !== undefined ? ` (from ${fromUnits(c.base, c.coin)} now)` : ""}`;
     case "hold":
       return `you hold at least ${amt} at the deadline`;
     case "pay":
@@ -103,7 +103,7 @@ export function describeCheck(c: ChainCheck): string {
  */
 export function judge(c: ChainCheck, data: { balance?: bigint; transfers?: Transfer[] }, final: boolean): Verdict {
   const target = toUnits(c.amount, c.coin);
-  const fmt = (u: bigint) => `${fromUnits(u, c.coin)} ${c.coin}`;
+  const fmt = (u: bigint) => `${fromUnits(u, c.coin)} ${coinLabel(c.coin)}`;
   switch (c.kind) {
     case "save": {
       if (data.balance === undefined || c.base === undefined) return { status: "pending", evidence: "No baseline balance recorded." };
@@ -128,12 +128,12 @@ export function judge(c: ChainCheck, data: { balance?: bigint; transfers?: Trans
       if (sent >= target) {
         return { status: "kept", evidence: `Sent ${fmt(sent)} to ${who} on Sui.`, digest: hits.at(-1)?.digest };
       }
-      const evidence = sent > 0n ? `Only ${fmt(sent)} of ${c.amount} ${c.coin} reached ${who} so far.` : `No ${c.coin} transfer to ${who} found on Sui yet.`;
+      const evidence = sent > 0n ? `Only ${fmt(sent)} of ${c.amount} ${coinLabel(c.coin)} reached ${who} so far.` : `No ${coinLabel(c.coin)} transfer to ${who} found on Sui yet.`;
       return { status: final ? "broken" : "pending", evidence, digest: hits.at(-1)?.digest };
     }
     case "cap": {
       const spent = (data.transfers ?? []).reduce((n, t) => n + (t.ownChange < 0n ? -t.ownChange : 0n), 0n);
-      const evidence = `Sent out ${fmt(spent)} since the promise (cap ${c.amount} ${c.coin}).`;
+      const evidence = `Sent out ${fmt(spent)} since the promise (cap ${c.amount} ${coinLabel(c.coin)}).`;
       if (spent > target) {
         const last = (data.transfers ?? []).filter((t) => t.ownChange < 0n).at(0);
         return { status: "broken", evidence, digest: last?.digest };

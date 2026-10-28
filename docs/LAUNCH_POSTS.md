@@ -155,3 +155,75 @@ It's live, open source (MIT), and built with Walrus Memory, Tatum, Sui, x402 and
 Try it: t.me/Anchor_daBot · Code: github.com/angelraph/anchor
 
 @Tatum @Walrus Foundation #TotalRecall #Sui #Walrus #AIagents
+
+# Second angle: the life of one promise (post-submission)
+
+Told by the promise itself. Same product, different door in: no feature list, one small life from "I'll save" to a contract paying it back.
+
+## X thread
+
+**1/**
+I'm a promise.
+
+"I'll save ₦20,000 by the 30th."
+
+Most of us die the same night we're said. Nobody writes us down, nobody checks.
+
+I got lucky. I was said to ⚓ Anchor. 🧵
+
+**2/**
+First, I was remembered.
+
+Anchor wrote me into my person's own Walrus Memory: who, what, by when. Next to me sat the things that had killed my siblings: "phone distracts me at night". And the thing that saved one: "phone in another room".
+
+**3/**
+Then I was given a referee.
+
+My person linked their Sui wallet. Now nobody had to take their word for me. Anchor reads the balance through @Tatum_io, priced in naira by Tatum's rates. The chain decides if I'm kept.
+
+**4/**
+Then I was given weight.
+
+/stake: 2 USDsui locked in a Move escrow on Sui. Not in Anchor's wallet. In a contract that can only do two things:
+
+kept → back to my person
+missed → to their sister
+
+Anchor can't touch it. Nobody can change the rules. It's immutable.
+
+**5/**
+On the 30th, the chain looked. The money was there.
+
+Anchor gave its verdict, the contract paid my person back, and the receipt went into their memory on @WalrusFoundation: "kept, proof: <tx>".
+
+Their buddy got a ping: ✅ kept. 🎉
+
+**6/**
+I'm finished now. But I'm not gone.
+
+Next time my person promises something, Anchor will remember me, and what helped. That's the point. Every kept promise makes the next one easier.
+
+Make one: t.me/Anchor_daBot
+Code: github.com/angelraph/anchor
+#TotalRecall #Sui #Walrus
+
+## LinkedIn
+
+**This is the life of one promise.**
+
+"I'll save ₦20,000 by the 30th."
+
+Most promises die the night they're made. Nobody writes them down and nobody checks. This one was made to Anchor, a Telegram accountability partner I've been building, and here's what happened to it:
+
+1. **It was remembered.** Anchor stored it in the person's own Walrus Memory, next to what had derailed them before ("phone at night") and what had worked ("phone in another room"). When they planned, Anchor brought both up.
+2. **It got a referee.** The person linked their Sui wallet. Anchor read the balance through Tatum, valued in naira with Tatum's exchange rates. Their word stopped being the only evidence.
+3. **It got weight.** They staked 2 USDsui in a Move escrow on Sui. Not Anchor's wallet: an immutable contract that can only pay them back if they keep it, or pay their sister if they don't. Anchor can't keep the money, and if Anchor went silent, they'd take it back themselves.
+4. **It was kept.** On the 30th the chain showed the savings. The contract paid the stake back, their accountability buddy got a "kept" notification, and the proof went into their memory.
+
+That's what I mean by an AI that holds you to your word: memory that lasts (Walrus), evidence that can't be argued with (Sui), and stakes nobody, including me, can run off with (Move).
+
+It's live and open source, with habits and streaks, buddies, your own timezone and currency, and signed reports on Walrus.
+
+Make a promise: t.me/Anchor_daBot · Code: github.com/angelraph/anchor
+
+Built for Total Recall with @Tatum and @Walrus Foundation. #TotalRecall #Sui #Walrus #AIagents

@@ -18,7 +18,7 @@ import { todayIn } from "../dates.js";
 import { mergeAndFilter, pendingFor, recall, recallCommitments } from "../memory/recall.js";
 import { clause, effectiveDue, isOpen, newCommitmentId } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
-import { getUser, updateUser, userByTokenHash } from "../state.js";
+import { getUser, tzOf, updateUser, userByTokenHash } from "../state.js";
 
 export const hashToken = (t: string) => createHash("sha256").update(t).digest("hex");
 
@@ -40,7 +40,7 @@ export function registerMeRoutes(app: Hono, getApi: () => Api | undefined) {
   app.get("/api/me", (c) => {
     const userId = auth(c);
     if (!userId) return c.json({ error: "Missing or invalid token. Send /connect to Anchor in Telegram." }, 401);
-    return c.json({ ok: true, namespace: "walrus-memory", today: todayIn(config.TIMEZONE), timezone: config.TIMEZONE });
+    return c.json({ ok: true, namespace: "walrus-memory", today: todayIn(tzOf(userId)), timezone: tzOf(userId) });
   });
 
   app.get("/api/me/memory", async (c) => {
@@ -78,7 +78,7 @@ export function registerMeRoutes(app: Hono, getApi: () => Api | undefined) {
     }
     const id = newCommitmentId();
     const source = (body.source ?? "another tool").slice(0, 40);
-    const record = { kind: "commitment" as const, date: todayIn(config.TIMEZONE), id, due: body.due, at: body.at, text: `Promised to ${text.replace(/^promised to /i, "")} (made from ${source})` };
+    const record = { kind: "commitment" as const, date: todayIn(tzOf(userId)), id, due: body.due, at: body.at, text: `Promised to ${text.replace(/^promised to /i, "")} (made from ${source})` };
     await enqueue(`write:${userId}`, () => storeMemories(userId, [record]));
     const api = getApi();
     const chatId = getUser(userId)?.chatId;
@@ -100,7 +100,7 @@ export function registerMeRoutes(app: Hono, getApi: () => Api | undefined) {
     const verb = { kept: "Kept the promise", partial: "Partly kept the promise", broken: "Did not keep the promise" }[status];
     await enqueue(`write:${userId}`, () =>
       storeMemories(userId, [
-        { kind: "outcome", date: todayIn(config.TIMEZONE), ref: id, status, text: `${verb}: ${clause(state.commitment.text)}${body.note ? `. ${body.note.slice(0, 200)}` : ""}` },
+        { kind: "outcome", date: todayIn(tzOf(userId)), ref: id, status, text: `${verb}: ${clause(state.commitment.text)}${body.note ? `. ${body.note.slice(0, 200)}` : ""}` },
       ]),
     );
     updateUser(userId, (u) => {

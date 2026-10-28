@@ -3,17 +3,20 @@ import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
 import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
 import { weeklySummary } from "../reminders.js";
 import { config } from "../config.js";
-import { relativeDay, todayIn, weekdayOf } from "../dates.js";
+import { relativeDay, timeIn, todayIn, weekdayOf } from "../dates.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces } from "../memory/client.js";
 import { mergeAndFilter, pendingFor, recall, recallCommitments } from "../memory/recall.js";
 import { clause, effectiveDue, isOpen, memoryHash, type MemoryKind, type RecalledMemory } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
-import { getUser, updateUser, upsertUser } from "../state.js";
+import { getUser, tzOf, updateUser, upsertUser } from "../state.js";
 import { isOverloadError } from "../llm/model.js";
 import { analyzeFallback } from "../memory/write.js";
 import { chatTurn, enqueue, generateReply } from "./conversation.js";
 import { CHAIN_COMMANDS, CHAIN_HELP, registerChainCommands } from "./chain-commands.js";
+import { ONBOARDING_COMMANDS, registerOnboarding } from "./onboarding.js";
+import { HABIT_COMMANDS, registerHabitCommands } from "./habit-commands.js";
+import { BUDDY_COMMANDS, handleBuddyStart, registerBuddyCommands } from "./buddy-commands.js";
 import { metrics } from "../state.js";
 
 const WALRUSCAN = "https://walruscan.com/mainnet/blob/";
@@ -35,6 +38,10 @@ Commands
 /checkin: check in on due promises now
 /week: your follow-through this week
 /stats: how much Anchor remembers overall
+/timezone <city>: run everything on your local time
+/tour: a two-minute tour
+/habit gym 3x a week: a habit with a streak (/habits lists them)
+/buddy: invite a friend to hold you accountable
 ${CHAIN_HELP}`;
 
 async function sendLong(ctx: Context, text: string, extra?: Parameters<Context["reply"]>[1]) {
@@ -73,6 +80,8 @@ const KIND_LABEL: Record<MemoryKind | "note", string> = {
   preference: "⚙️ Preferences",
   retracted: "🗑 Forgotten",
   report: "🧾 Signed reports",
+  habit: "🔄 Habits",
+  streak: "🔥 Streaks",
   note: "📝 Notes",
 };
 
@@ -93,13 +102,15 @@ export function createBot(): Bot {
   });
 
   bot.command("start", async (ctx) => {
+    if (await handleBuddyStart(ctx)) return; // t.me/<bot>?start=buddy_<token>
     const user = touch(ctx);
     await withTyping(ctx, async () => {
       const states = await recallCommitments(ctx.from!.id).catch(() => []);
       const open = states.filter(isOpen);
       if (states.length === 0) {
         await ctx.reply(
-          `Hey${user.firstName ? ` ${user.firstName}` : ""}, I'm Anchor, the bot that holds you to your word.\n\nMost chatbots forget you when the chat ends. I don't: everything you tell me is stored as encrypted memory on Walrus, so I can follow up, notice patterns, and remember what actually works for you.\n\nLet's start: what's one thing you keep promising yourself you'll do? Tell me what, and by when.`,
+          `Hey${user.firstName ? ` ${user.firstName}` : ""}, I'm Anchor, the bot that holds you to your word.\n\nMost chatbots forget you when the chat ends. I don't: everything you tell me is stored as encrypted memory on Walrus, so I can follow up, notice patterns, and remember what actually works for you.\n\nLet's start: what's one thing you keep promising yourself you'll do? Tell me what, and by when.${user.tz ? "" : "\n\nWhere are you? /timezone your city, so reminders arrive on your local time."}`,
+          { reply_markup: new InlineKeyboard().text("▶ Take the 2-minute tour", "tour:0") },
         );
       } else {
         await ctx.reply(
@@ -114,7 +125,8 @@ export function createBot(): Bot {
   bot.command("promises", async (ctx) => {
     touch(ctx);
     await withTyping(ctx, async () => {
-      const today = todayIn(config.TIMEZONE);
+      const tz = tzOf(ctx.from!.id);
+      const today = todayIn(tz);
       const states = await recallCommitments(ctx.from!.id);
       if (states.length === 0) {
         await ctx.reply("You haven't made me any promises yet. What's one thing you'll do, and by when?");
@@ -139,7 +151,7 @@ export function createBot(): Bot {
         lines.push("", `Follow-through: ${kept}/${done.length} kept`);
       }
       await sendLong(ctx, lines.join("\n"));
-      const due = dueCommitments(open, today);
+      const due = dueCommitments(open, today, timeIn(tz));
       for (const s of due) {
         await ctx.reply(`#${s.commitment.id} is due, how did it go?`, {
           reply_markup: outcomeKeyboard(s.commitment.id!),
@@ -167,7 +179,7 @@ export function createBot(): Bot {
       }
       const groups = new Map<string, RecalledMemory[]>();
       for (const m of memories) groups.set(m.kind, [...(groups.get(m.kind) ?? []), m]);
-      const order: Array<MemoryKind | "note"> = ["fact", "preference", "commitment", "outcome", "pattern", "win", "report", "note"];
+      const order: Array<MemoryKind | "note"> = ["fact", "preference", "commitment", "outcome", "habit", "streak", "pattern", "win", "report", "note"];
       const lines = [`What I remember about you${total !== undefined ? ` (${total} memories stored on Walrus)` : ""}:`];
       for (const kind of order) {
         const items = groups.get(kind);
@@ -316,7 +328,7 @@ export function createBot(): Bot {
     }
     const verb = { kept: "Kept the promise", partial: "Partly kept the promise", broken: "Did not keep the promise" }[status as "kept" | "partial" | "broken"];
     const promiseText = clause(state.commitment.text);
-    const today = todayIn(config.TIMEZONE);
+    const today = todayIn(tzOf(userId));
     void enqueue(`write:${userId}`, () =>
       storeMemories(userId, [
         { kind: "outcome", date: today, ref: id, status: status as "kept" | "partial" | "broken", text: `${verb}: ${promiseText}` },
@@ -350,7 +362,7 @@ export function createBot(): Bot {
     });
     void enqueue(`write:${userId}`, () =>
       storeMemories(userId, [
-        { kind: "retracted", date: todayIn(config.TIMEZONE), ref: hash, text: `User asked Anchor to forget: ${raw}` },
+        { kind: "retracted", date: todayIn(tzOf(userId)), ref: hash, text: `User asked Anchor to forget: ${raw}` },
       ]),
     ).catch((err) => console.error(`[memory] background write failed for ${userId}:`, err));
     await ctx.editMessageReplyMarkup().catch(() => undefined);
@@ -358,6 +370,9 @@ export function createBot(): Bot {
   });
 
   registerChainCommands(bot, withTyping);
+  registerOnboarding(bot, withTyping);
+  registerHabitCommands(bot, withTyping);
+  registerBuddyCommands(bot);
 
   bot.on("message:text", async (ctx) => {
     if (ctx.message.text.startsWith("/")) {
@@ -419,6 +434,9 @@ export const BOT_COMMANDS = [
   { command: "checkin", description: "Check in on due promises now" },
   { command: "week", description: "Your follow-through this week" },
   { command: "stats", description: "How much Anchor remembers overall" },
+  ...ONBOARDING_COMMANDS,
+  ...HABIT_COMMANDS,
+  ...BUDDY_COMMANDS,
   ...CHAIN_COMMANDS,
   { command: "help", description: "How Anchor works" },
 ];

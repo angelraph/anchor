@@ -117,7 +117,7 @@ describe("judging a promise from chain data", () => {
   });
 
   it("describes what will be checked", () => {
-    expect(describeCheck({ kind: "save", coin: "USDC", amount: "50", base: usdc("12.5").toString() })).toBe("your USDC balance grows by 50 USDC (from 12.5 now)");
+    expect(describeCheck({ kind: "save", coin: "USDC", amount: "50", base: usdc("12.5").toString() })).toBe("your USDC balance grows by 50 USDC (from 12.5 USDC now)");
   });
 
   it("a promise without a time runs to the end of its due day", () => {

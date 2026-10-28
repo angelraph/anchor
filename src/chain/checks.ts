@@ -5,10 +5,15 @@
  *
  *   [commitment] 2026-10-27 id:k3f9 due:2026-10-31 chk:save~USDC~50~s=1761552000000~b=12500000 | Promised to save 50 USDC
  *   [commitment] 2026-10-27 id:p2x1 due:2026-10-29 chk:pay~USDC~20~n=tobi.sui~to=0x7a…~s=1761552000000 | Promised to pay Tobi back 20 USDC
+ *   [commitment] 2026-10-28 id:m9q2 due:2026-10-31 chk:save~NGN~20000~s=…~b=1234500 | Promised to save ₦20,000 in the wallet
+ *
+ * A check in a currency (NGN, USD, EUR…) measures the wallet's total value,
+ * priced through Tatum's Data API (chain/prices.ts); amounts are hundredths.
  *
  * At (or before) the deadline Anchor reads the linked wallet through Tatum's
  * Sui RPC and the judge below turns that into kept / broken plus evidence.
  */
+import { isCurrency, money, toCents } from "./prices.js";
 import { coinLabel, fromUnits, isCoin, toUnits, type CoinSymbol, type Transfer } from "./sui.js";
 
 export const CHECK_KINDS = ["save", "hold", "pay", "cap"] as const;
@@ -22,7 +27,8 @@ export interface ChainCheck {
    * cap:  at most `amount` spent (sent out) between `since` and the deadline
    */
   kind: CheckKind;
-  coin: CoinSymbol;
+  /** A coin (SUI, USDC, USDSUI, WAL), or a currency code (USD, NGN, EUR…) for wallet-value promises. */
+  coin: CoinSymbol | string;
   /** Human amount, e.g. "50" or "12.5". */
   amount: string;
   /** Recipient address (pay). */
@@ -31,7 +37,7 @@ export interface ChainCheck {
   toName?: string;
   /** Window start, ms since epoch (pay, cap, save). */
   since?: number;
-  /** Baseline balance in base units when the promise was made (save). */
+  /** Baseline balance in base units, or in hundredths of the currency, when the promise was made (save). */
   base?: string;
 }
 
@@ -47,7 +53,9 @@ export function serializeCheck(c: ChainCheck): string {
 export function parseCheck(value: string): ChainCheck | undefined {
   const [kind, coin, amount, ...rest] = value.split("~");
   if (!kind || !(CHECK_KINDS as readonly string[]).includes(kind)) return undefined;
-  if (!coin || !isCoin(coin) || !amount || !/^\d+(\.\d+)?$/.test(amount)) return undefined;
+  if (!coin || !amount || !/^\d+(\.\d+)?$/.test(amount)) return undefined;
+  // Currency checks measure wallet value, so a payment (which lands in one coin) can't be one.
+  if (!isCoin(coin) && !(isCurrency(coin) && kind !== "pay")) return undefined;
   const check: ChainCheck = { kind: kind as CheckKind, coin, amount };
   for (const part of rest) {
     const i = part.indexOf("=");
@@ -68,6 +76,17 @@ function safeDecode(v: string): string {
   }
 }
 
+/** True for wallet-value promises in a currency (USD, NGN…) rather than one coin. */
+export const isFiat = (c: Pick<ChainCheck, "coin">) => !isCoin(c.coin);
+
+/** The check's amount in the units judge() compares: coin base units, or hundredths of a currency. */
+export const targetUnits = (c: ChainCheck) => (isFiat(c) ? toCents(c.amount) : toUnits(c.amount, c.coin as CoinSymbol));
+
+/** "52.1 USDsui" or "₦20,000.00" */
+export function fmtAmount(c: Pick<ChainCheck, "coin">, units: bigint): string {
+  return isFiat(c) ? money(units, c.coin) : `${fromUnits(units, c.coin as CoinSymbol)} ${coinLabel(c.coin as CoinSymbol)}`;
+}
+
 /** Which chain data a check needs. */
 export const needsBalance = (c: ChainCheck) => c.kind === "save" || c.kind === "hold";
 export const needsTransfers = (c: ChainCheck) => c.kind === "pay" || c.kind === "cap";
@@ -83,16 +102,17 @@ export interface Verdict {
 
 /** One-line description of what will be checked, for the confirmation message. */
 export function describeCheck(c: ChainCheck): string {
-  const amt = `${c.amount} ${coinLabel(c.coin)}`;
+  const amt = fmtAmount(c, targetUnits(c));
+  const what = isFiat(c) ? `wallet value (SUI, USDC and USDsui, priced in ${c.coin} through Tatum)` : `${coinLabel(c.coin as CoinSymbol)} balance`;
   switch (c.kind) {
     case "save":
-      return `your ${coinLabel(c.coin)} balance grows by ${amt}${c.base !== undefined ? ` (from ${fromUnits(c.base, c.coin)} now)` : ""}`;
+      return `your ${what} grows by ${amt}${c.base !== undefined ? ` (from ${fmtAmount(c, BigInt(c.base))} now)` : ""}`;
     case "hold":
-      return `you hold at least ${amt} at the deadline`;
+      return isFiat(c) ? `your ${what} is at least ${amt} at the deadline` : `you hold at least ${amt} at the deadline`;
     case "pay":
       return `at least ${amt} goes to ${c.toName ?? "the recipient"}${c.to ? ` (${c.to.slice(0, 6)}…${c.to.slice(-4)})` : ""}`;
     case "cap":
-      return `you send out no more than ${amt} before the deadline`;
+      return `you send out no more than ${amt}${isFiat(c) ? " in total" : ""} before the deadline`;
   }
 }
 
@@ -101,20 +121,21 @@ export function describeCheck(c: ChainCheck): string {
  * before that, only conclusive results (a payment that landed, a cap already
  * blown, savings already reached) close the promise early.
  */
-export function judge(c: ChainCheck, data: { balance?: bigint; transfers?: Transfer[] }, final: boolean): Verdict {
-  const target = toUnits(c.amount, c.coin);
-  const fmt = (u: bigint) => `${fromUnits(u, c.coin)} ${coinLabel(c.coin)}`;
+export function judge(c: ChainCheck, data: { balance?: bigint; transfers?: Transfer[]; spent?: bigint }, final: boolean): Verdict {
+  const target = targetUnits(c);
+  const fmt = (u: bigint) => fmtAmount(c, u);
   switch (c.kind) {
     case "save": {
       if (data.balance === undefined || c.base === undefined) return { status: "pending", evidence: "No baseline balance recorded." };
       const gained = data.balance - BigInt(c.base);
-      const evidence = `Balance went from ${fmt(BigInt(c.base))} to ${fmt(data.balance)} (${gained >= 0n ? "+" : ""}${fromUnits(gained, c.coin)}, needed +${c.amount}).`;
+      const label = isFiat(c) ? "Wallet value" : "Balance";
+      const evidence = `${label} went from ${fmt(BigInt(c.base))} to ${fmt(data.balance)} (${gained >= 0n ? "+" : "-"}${fmt(gained >= 0n ? gained : -gained)}, needed +${fmt(target)}).`;
       if (gained >= target) return { status: "kept", evidence };
       return { status: final ? "broken" : "pending", evidence };
     }
     case "hold": {
       if (data.balance === undefined) return { status: "pending", evidence: "Balance unavailable." };
-      const evidence = `Balance at the deadline: ${fmt(data.balance)} (needed at least ${c.amount}).`;
+      const evidence = `${isFiat(c) ? "Wallet value" : "Balance"} at the deadline: ${fmt(data.balance)} (needed at least ${fmt(target)}).`;
       if (!final) return { status: "pending", evidence };
       return { status: data.balance >= target ? "kept" : "broken", evidence };
     }
@@ -128,12 +149,12 @@ export function judge(c: ChainCheck, data: { balance?: bigint; transfers?: Trans
       if (sent >= target) {
         return { status: "kept", evidence: `Sent ${fmt(sent)} to ${who} on Sui.`, digest: hits.at(-1)?.digest };
       }
-      const evidence = sent > 0n ? `Only ${fmt(sent)} of ${c.amount} ${coinLabel(c.coin)} reached ${who} so far.` : `No ${coinLabel(c.coin)} transfer to ${who} found on Sui yet.`;
+      const evidence = sent > 0n ? `Only ${fmt(sent)} of ${fmt(target)} reached ${who} so far.` : `No ${coinLabel(c.coin as CoinSymbol)} transfer to ${who} found on Sui yet.`;
       return { status: final ? "broken" : "pending", evidence, digest: hits.at(-1)?.digest };
     }
     case "cap": {
-      const spent = (data.transfers ?? []).reduce((n, t) => n + (t.ownChange < 0n ? -t.ownChange : 0n), 0n);
-      const evidence = `Sent out ${fmt(spent)} since the promise (cap ${c.amount} ${coinLabel(c.coin)}).`;
+      const spent = data.spent ?? (data.transfers ?? []).reduce((n, t) => n + (t.ownChange < 0n ? -t.ownChange : 0n), 0n);
+      const evidence = `Sent out ${fmt(spent)} since the promise (cap ${fmt(target)}).`;
       if (spent > target) {
         const last = (data.transfers ?? []).filter((t) => t.ownChange < 0n).at(0);
         return { status: "broken", evidence, digest: last?.digest };

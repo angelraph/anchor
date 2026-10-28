@@ -6,6 +6,8 @@ import { maintainStakes } from "./chain/stakes.js";
 import { runTransferWatch } from "./chain/transfers.js";
 import { chainHealth } from "./chain/sui.js";
 import { startCheckinScheduler } from "./checkins.js";
+import { runHabitSettlement } from "./habits.js";
+import { setBuddyApi } from "./buddies.js";
 import { config } from "./config.js";
 import { MODEL_LABEL } from "./llm/model.js";
 import { memwal } from "./memory/client.js";
@@ -61,24 +63,21 @@ async function main() {
   console.log(`[bot] @${me.username} · ${MODEL_LABEL}`);
 
   startWebServer(bot.api);
+  setBuddyApi(bot.api);
   startCheckinScheduler(bot.api);
   setInterval(() => void maintainStakes(bot.api, todayIn(config.TIMEZONE)).catch((err) => console.error("[stake] maintenance failed:", err)), 30 * 60_000);
   setInterval(() => void drainOutbox().catch((err) => console.error("[memwal] outbox drain failed:", err)), 10 * 60_000);
 
-  // Exact-time deadline reminders (local state only) and the Sunday weekly summary.
-  let weeklyRan = "";
+  // Exact-time deadline reminders (local state only) and the Sunday weekly summary, both in each person's timezone.
   setInterval(() => {
     void runDeadlineReminders(bot.api).catch((err) => console.error("[remind] failed:", err));
     // Money promises: early verdicts every 15 min, final ones at the deadline (reads Sui via Tatum).
     void runChainChecks(bot.api).catch((err) => console.error("[chain] failed:", err));
     // Proofs and stakes paid by direct transfer (no browser needed).
     void runTransferWatch(bot.api).catch((err) => console.error("[transfers] failed:", err));
-    const today = todayIn(config.TIMEZONE);
-    const isSunday = new Date(`${today}T12:00:00Z`).getUTCDay() === 0;
-    if (isSunday && hourIn(config.TIMEZONE) === config.CHECKIN_HOUR && weeklyRan !== today) {
-      weeklyRan = today;
-      void runWeekly(bot.api).catch((err) => console.error("[weekly] failed:", err));
-    }
+    void runWeekly(bot.api).catch((err) => console.error("[weekly] failed:", err));
+    // Habits: settle finished days/weeks into streaks (mornings, local time).
+    void runHabitSettlement(bot.api).catch((err) => console.error("[habits] failed:", err));
   }, 60_000);
 
   // Updates run concurrently across users; bot.ts keeps each chat in order.

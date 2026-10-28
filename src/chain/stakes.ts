@@ -15,7 +15,7 @@ import type { Api } from "grammy";
 import { coinWithBalance, Transaction } from "@mysten/sui/transactions";
 import { config } from "../config.js";
 import { clause } from "../memory/types.js";
-import { allStakes, bump, getStake, getUser, putStake, updateStake, updateUser, type Stake } from "../state.js";
+import { allStakes, bump, getStake, getUser, putStake, tzOf, updateStake, updateUser, type Stake } from "../state.js";
 import { anchorAddress, anchorKey } from "./signer.js";
 import { coinLabel, COINS, explorerTx, shortAddr, sui, toUnits, type StakeCoin } from "./sui.js";
 import { requirements, type PaymentRequirements } from "./x402.js";
@@ -61,7 +61,7 @@ export async function markStakePaid(api: Api | undefined, token: string, payer: 
     storeMemories(stake.userId, [
       {
         kind: "fact",
-        date: todayIn(config.TIMEZONE),
+        date: todayIn(tzOf(stake.userId)),
         proof: digest,
         text: `Staked ${stake.amount} ${coinLabel(stakeCoin(stake))} on promise #${stake.commitmentId} (${clause(stake.text)}); it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)} if missed`,
       },

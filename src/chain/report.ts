@@ -17,7 +17,7 @@ import { addDays, todayIn } from "../dates.js";
 import { recall, recallCommitments } from "../memory/recall.js";
 import { isOpen } from "../memory/types.js";
 import { weekStats } from "../reminders.js";
-import { bump, getUser, updateUser } from "../state.js";
+import { bump, getUser, tzOf, updateUser } from "../state.js";
 import { anchorAddress, anchorKey } from "./signer.js";
 import { sui } from "./sui.js";
 
@@ -63,7 +63,7 @@ export function canonical(v: unknown): string {
 }
 
 export async function buildReport(userId: string | number, opts: { publicTexts: boolean }): Promise<FollowThroughReport> {
-  const today = todayIn(config.TIMEZONE);
+  const today = todayIn(tzOf(userId));
   const states = await recallCommitments(userId);
   const w = weekStats(states, today);
   const learned = await recall(userId, "patterns and wins: what derails the user and what helps them follow through", { limit: 20 }).catch(() => []);
@@ -174,7 +174,7 @@ export async function publishReport(userId: string | number, opts: { publicTexts
     storeMemories(userId, [
       {
         kind: "report",
-        date: todayIn(config.TIMEZONE),
+        date: todayIn(tzOf(userId)),
         proof: job.jobId,
         text: `Published a signed weekly report to Walrus for ${r.week.from} to ${r.week.to}: kept ${r.kept}, partly ${r.partial}, missed ${r.missed}${r.followThroughPct !== null ? `, follow-through ${r.followThroughPct}%` : ""}`,
       },

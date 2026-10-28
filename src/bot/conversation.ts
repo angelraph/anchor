@@ -12,7 +12,7 @@ import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { systemPrompt } from "../llm/prompts.js";
 import { recallForTurn, type TurnContext } from "../memory/recall.js";
 import { analyzeFallback, dropDuplicates, extractMemories, storeMemories } from "../memory/write.js";
-import { getUser, updateUser } from "../state.js";
+import { getUser, tzOf, updateUser } from "../state.js";
 
 const HISTORY_TURNS = 8;
 const history = new Map<string, ModelMessage[]>();
@@ -52,7 +52,8 @@ export async function generateReply(opts: {
   withMemory: boolean;
   useHistory?: boolean;
 }): Promise<TurnResult> {
-  const today = todayIn(config.TIMEZONE);
+  const tz = tzOf(opts.userId);
+  const today = todayIn(tz);
   let context: TurnContext | null = null;
   if (opts.withMemory) {
     try {
@@ -74,6 +75,8 @@ export async function generateReply(opts: {
         awaiting: opts.withMemory ? (getUser(opts.userId)?.awaitingOutcome ?? []) : [],
         memoryUnavailable: context?.unavailable,
         wallet: walletLabel(opts.userId),
+        tz,
+        tzUnset: !getUser(opts.userId)?.tz,
       }),
       messages: [...(opts.useHistory === false ? [] : historyFor(opts.userId)), { role: "user", content: opts.message }],
       temperature: 0.6,
@@ -136,6 +139,7 @@ export async function chatTurn(
         known: context.memories,
         closed: getUser(userId)?.closed ?? {},
         previous,
+        tz: tzOf(userId),
       });
     } catch (err) {
       console.error(`[memory] Gemini extraction failed for user ${userId}, using Walrus analyze:`, err instanceof Error ? err.message : err);

@@ -12,7 +12,7 @@ import { config } from "./config.js";
 import { addDays, todayIn, weekdayOf } from "./dates.js";
 import { mergeAndFilter, recall } from "./memory/recall.js";
 import { clause, commitmentStates, type MemoryRecord, type RecalledMemory } from "./memory/types.js";
-import { bump, getUser, updateUser } from "./state.js";
+import { bump, getUser, tzOf, updateUser } from "./state.js";
 import { fromUnits, sentSince, type CoinSymbol, type Transfer } from "./chain/sui.js";
 
 export function noteReply(memories: RecalledMemory[]): void {
@@ -124,7 +124,7 @@ export async function learnMoneyPattern(userId: number | string): Promise<string
   const since = Date.now() - 28 * 86_400_000;
   for (const coin of ["USDC", "USDSUI", "SUI"] as const) {
     const transfers = await sentSince(user.wallet.address, coin, since);
-    const pattern = spendingPattern(transfers, coin, config.TIMEZONE);
+    const pattern = spendingPattern(transfers, coin, tzOf(userId));
     if (!pattern) continue;
     const key = pattern.replace(/:.*$/, "");
     if (user.moneyPattern === key) return pattern; // already known, don't store it again
@@ -133,7 +133,7 @@ export async function learnMoneyPattern(userId: number | string): Promise<string
     });
     const { storeMemories } = await import("./memory/write.js");
     const { enqueue } = await import("./bot/conversation.js");
-    void enqueue(`write:${userId}`, () => storeMemories(userId, [{ kind: "pattern", date: todayIn(config.TIMEZONE), text: pattern }])).catch(
+    void enqueue(`write:${userId}`, () => storeMemories(userId, [{ kind: "pattern", date: todayIn(tzOf(userId)), text: pattern }])).catch(
       (err) => console.error("[learning] money pattern write failed:", err),
     );
     return pattern;

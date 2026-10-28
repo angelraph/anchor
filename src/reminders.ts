@@ -11,12 +11,12 @@ import { generateText } from "ai";
 import type { Api } from "grammy";
 import { outcomeKeyboard } from "./checkins.js";
 import { config } from "./config.js";
-import { addDays, timeIn, todayIn, weekdayOf } from "./dates.js";
+import { addDays, hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { formatMemoryBlock } from "./llm/prompts.js";
 import { recall, recallCommitments } from "./memory/recall.js";
 import { clause, effectiveDue, isOpen, type CommitmentState, type MemoryRecord } from "./memory/types.js";
-import { allUsers, getUser, updateUser, type TimedPromise } from "./state.js";
+import { allUsers, getUser, tzOf, updateUser, type TimedPromise } from "./state.js";
 
 // ---------------------------------------------------------------- tracking
 
@@ -82,9 +82,10 @@ export function headsUpNow(
 
 /** Send heads-ups and exact-time deadline reminders. Reads local state only (no Walrus calls). */
 export async function runDeadlineReminders(api: Api): Promise<void> {
-  const today = todayIn(config.TIMEZONE);
-  const now = timeIn(config.TIMEZONE);
   for (const [userId, user] of allUsers()) {
+    const tz = tzOf(userId);
+    const today = todayIn(tz);
+    const now = timeIn(tz);
     const timed = user.timed ?? {};
     // Drop promises whose day has passed; the evening check-in owns them now.
     const stale = Object.keys(timed).filter((id) => timed[id]!.due < addDays(today, -1));
@@ -168,9 +169,14 @@ export function formatWeek(w: WeekStats, today: string): string {
 
 /** Build one user's weekly summary: real counts from Walrus, plus one insight from memory. */
 export async function weeklySummary(userId: number | string): Promise<string> {
-  const today = todayIn(config.TIMEZONE);
+  const today = todayIn(tzOf(userId));
   const states = await recallCommitments(userId);
-  const text = formatWeek(weekStats(states, today), today);
+  let text = formatWeek(weekStats(states, today), today);
+  const habits = Object.values(getUser(userId)?.habits ?? {}).filter((h) => h.active);
+  if (habits.length) {
+    const { describeRep, progress } = await import("./habits.js");
+    text += `\n\n🔄 Habits\n${habits.map((h) => `  ${clause(h.text)} (${describeRep(h)}): ${progress(h, today)}${h.best > 1 ? ` · best ${h.best}` : ""}`).join("\n")}`;
+  }
   try {
     const memories = await recall(userId, "what helped the user follow through, and what got in the way", { limit: 6, maxDistance: 0.8 });
     if (memories.length === 0) return text;
@@ -190,13 +196,18 @@ export async function weeklySummary(userId: number | string): Promise<string> {
   }
 }
 
-/** Sunday evening: send every active user their week. */
+/** Runs every minute: Sunday at CHECKIN_HOUR in each person's own timezone, send them their week. */
 export async function runWeekly(api: Api): Promise<void> {
-  const today = todayIn(config.TIMEZONE);
   for (const [userId, user] of allUsers()) {
-    if (user.lastWeekly === today) continue;
+    const tz = tzOf(userId);
+    const today = todayIn(tz);
+    const isSunday = new Date(`${today}T12:00:00Z`).getUTCDay() === 0;
+    if (!isSunday || hourIn(tz) !== config.CHECKIN_HOUR || user.lastWeekly === today) continue;
     const activeRecently = Date.now() - Date.parse(user.lastSeen || "0") < 14 * 86_400_000;
     if (!activeRecently) continue;
+    updateUser(userId, (u) => {
+      u.lastWeekly = today; // marked first, so a slow send can't be repeated next minute
+    });
     try {
       await api.sendMessage(user.chatId, await weeklySummary(userId));
       console.log(`[weekly] sent to ${userId}`);
@@ -219,8 +230,6 @@ export async function runWeekly(api: Api): Promise<void> {
         }
       }
     }
-    updateUser(userId, (u) => {
-      u.lastWeekly = today;
-    });
+
   }
 }

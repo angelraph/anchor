@@ -351,7 +351,7 @@ footer a:hover{color:var(--bone)}
         <li><div><h3>Link a wallet, prove it's yours</h3><p><code style="color:var(--saffron)">/wallet you.sui</code> resolves your SuiNS name on-chain. Sign one free message and it's verified. Anchor can read your money, never move it.</p></div></li>
         <li><div><h3>Promise in plain words</h3><p>Anchor recognises save, keep, pay and spending-cap promises in SUI, USDC, USDsui or WAL, records your starting balance, and finds the recipient's address in memory or SuiNS.</p></div></li>
         <li><div><h3>The chain reports, not you</h3><p>A payment that lands closes the promise early. At the deadline Anchor reads the final balance or transfers, and stores the verdict on Walrus with the Sui transaction digest.</p></div></li>
-        <li><div><h3>Optional: put money on it</h3><p><code style="color:var(--saffron)">/stake #id 5 friend.sui</code>. Pay with x402 on Sui. Stake in USDC or USDsui, Sui's native dollar. Keep the promise and it comes back. Miss it and it goes to the person you chose. Anchor never keeps it.</p></div></li>
+        <li><div><h3>Optional: put money on it</h3><p><code style="color:var(--saffron)">/stake #id 5 friend.sui</code>. The stake is locked in an immutable Move escrow on Sui, not in Anchor's wallet, in USDC or USDsui, Sui's native dollar. Keep the promise and it comes back. Miss it and it goes to the person you chose. Anchor can't keep it, and if Anchor ever went quiet you'd take it back yourself.</p></div></li>
         <li><div><h3>Signed reports on Walrus</h3><p><code style="color:var(--saffron)">/report</code> signs your week with Anchor's Sui key and publishes it to Walrus through Tatum's Storage API. Portable proof of follow-through that anyone can verify.</p></div></li>
       </ol>
     </div>
@@ -445,8 +445,9 @@ GET /.well-known/x402${p.anchorAddress ? `\npayTo ${esc(p.anchorAddress.slice(0,
       <ol class="steps">
         <li><div><h3>Live: deadline reminders</h3><p>"By 3pm" means a heads-up at 14:30 and a check at 15:00, then an evening check-in on anything still open.</p></div></li>
         <li><div><h3>Live: weekly follow-through</h3><p>Every Sunday: kept, partly kept, missed, your follow-through %, and one insight from memory. Or send /week any time.</p></div></li>
-        <li><div><h3>Live: promises the chain verifies</h3><p>Money promises close themselves from Sui evidence, stakes are paid with x402, and weekly reports are signed and stored on Walrus.</p></div></li>
-        <li><div><h3>Next: WhatsApp and accountability buddies</h3><p>Anchor where most people already chat, and an optional friend who sees your follow-through and nudges you.</p></div></li>
+        <li><div><h3>Live: promises the chain verifies</h3><p>Money promises close themselves from Sui evidence, priced in your own currency through Tatum. Stakes sit in a Move escrow, and weekly reports are signed and stored on Walrus.</p></div></li>
+        <li><div><h3>Live: habits, streaks and buddies</h3><p>"Gym 3 times a week" becomes a streak Anchor keeps count of, on your own clock. Invite a buddy who sees what you kept and can cheer or nudge you with one tap.</p></div></li>
+        <li><div><h3>Next: WhatsApp</h3><p>Anchor where most people already chat.</p></div></li>
         <li><div><h3>Next: memory you own</h3><p>Connect your own Walrus Memory account so your promises and patterns travel with you to any app.</p></div></li>
       </ol>
     </div>

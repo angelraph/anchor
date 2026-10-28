@@ -102,6 +102,12 @@ function learningJson() {
 }
 
 export function startWebServer(api?: Api) {
+  serve({ fetch: createWebApp(api).fetch, port: config.PORT });
+  console.log(`[web] proof page on :${config.PORT}`);
+}
+
+/** The whole web app without listening on a port (the e2e script calls it with app.request). */
+export function createWebApp(api?: Api): Hono {
   const app = new Hono();
   registerChainRoutes(app, () => api);
   registerMeRoutes(app, () => api);
@@ -132,6 +138,5 @@ export function startWebServer(api?: Api) {
     if (c.req.path === "/") return c.html(renderPage(proofJson([])), 200);
     return c.text("Temporarily unavailable, please try again in a minute.", 503);
   });
-  serve({ fetch: app.fetch, port: config.PORT });
-  console.log(`[web] proof page on :${config.PORT}`);
+  return app;
 }

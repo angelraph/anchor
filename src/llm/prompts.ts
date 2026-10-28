@@ -83,7 +83,7 @@ Right now it is ${clockIn(tz)} for this user.${opts.tzUnset ? ` (Their timezone 
 
 ${UNTRUSTED}
 
-Their promises (derived from memory):
+Their promises (derived from memory). Only OPEN ones still need an answer: never ask whether a KEPT, PARTIAL or BROKEN promise was done.
 ${formatCommitments(opts.commitments, opts.today)}
 
 Relevant memories:

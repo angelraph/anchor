@@ -22,6 +22,14 @@ function historyFor(userId: number): ModelMessage[] {
   return history.get(String(userId)) ?? [];
 }
 
+/**
+ * Add an exchange that didn't go through chatTurn (an outcome button tap and its
+ * follow-up), so the next reply knows that question was already answered.
+ */
+export function noteExchange(userId: number, user: string, assistant: string) {
+  pushHistory(userId, user, assistant);
+}
+
 function pushHistory(userId: number, user: string, assistant: string) {
   const h = [...historyFor(userId), { role: "user", content: user } as const, { role: "assistant", content: assistant } as const];
   history.set(String(userId), h.slice(-HISTORY_TURNS * 2));
@@ -92,10 +100,15 @@ function walletLabel(userId: number): string | undefined {
   return w ? `${w.name ?? shortAddr(w.address)} (${w.verified ? "verified" : "watch-only"})` : undefined;
 }
 
-/** Gemini sometimes slips in markdown despite instructions; Telegram shows it raw. */
-function cleanReply(text: string): string {
+/** Gemini sometimes slips in markdown or em dashes despite instructions; Telegram shows markdown raw. */
+export function cleanReply(text: string): string {
   return (
-    text.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "").trim() ||
+    text
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/^#+\s*/gm, "")
+      .replace(/\s*—\s*/g, ", ")
+      .replace(/ – /g, ", ")
+      .trim() ||
     "Sorry, I lost my words for a second there. Could you say that again in a different way?"
   );
 }

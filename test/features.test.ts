@@ -12,6 +12,16 @@ const { money, toCents, isCurrency } = await import("../src/chain/prices.js");
 const { settleHabit, parseRepQuick, habitsToAsk, doneIn, periodKey, describeRep } = await import("../src/habits.js");
 const { buddyMessage } = await import("../src/buddies.js");
 const { parse, serialize } = await import("../src/memory/types.js");
+const { cleanReply } = await import("../src/bot/conversation.js");
+
+describe("reply cleanup", () => {
+  it("turns em dashes and spaced en dashes into commas, keeps ranges", () => {
+    expect(cleanReply("Phone in another room right after dinner—I'll remember that.")).toBe("Phone in another room right after dinner, I'll remember that.");
+    expect(cleanReply("Good plan — go for it")).toBe("Good plan, go for it");
+    expect(cleanReply("Tuesday – Friday works")).toBe("Tuesday, Friday works");
+    expect(cleanReply("2–3 times a week, **really**")).toBe("2–3 times a week, really");
+  });
+});
 
 describe("per-user timezones", () => {
   it("accepts IANA names in any case", () => {

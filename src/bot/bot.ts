@@ -12,7 +12,7 @@ import { storeMemories } from "../memory/write.js";
 import { getUser, tzOf, updateUser, upsertUser } from "../state.js";
 import { isOverloadError } from "../llm/model.js";
 import { analyzeFallback } from "../memory/write.js";
-import { chatTurn, enqueue, generateReply } from "./conversation.js";
+import { chatTurn, enqueue, generateReply, noteExchange } from "./conversation.js";
 import { CHAIN_COMMANDS, CHAIN_HELP, registerChainCommands } from "./chain-commands.js";
 import { ONBOARDING_COMMANDS, registerOnboarding } from "./onboarding.js";
 import { HABIT_COMMANDS, registerHabitCommands } from "./habit-commands.js";
@@ -343,6 +343,7 @@ export function createBot(): Bot {
       partial: "Noted. Partial still counts for something. What did you get done, and what stopped the rest?",
       broken: "Thanks for being honest, I've noted it. What got in the way? Knowing that is how we fix it.",
     }[status as "kept" | "partial" | "broken"];
+    noteExchange(userId, `(tapped "${{ kept: "Did it", partial: "Partly", broken: "Didn't" }[status as "kept" | "partial" | "broken"]}" for #${id}: ${promiseText})`, follow);
     await ctx.reply(follow);
   });
 

@@ -16,10 +16,11 @@ import { config } from "../config.js";
 import { addDays, timeIn, todayIn } from "../dates.js";
 import { recall } from "../memory/recall.js";
 import { clause, type MemoryRecord } from "../memory/types.js";
-import { allUsers, bump, getUser, updateUser, type ChainPromise } from "../state.js";
-import { describeCheck, judge, needsBalance, parseCheck, serializeCheck, type ChainCheck, type Verdict } from "./checks.js";
+import { allUsers, bump, getUser, tzOf, updateUser, type ChainPromise } from "../state.js";
+import { describeCheck, isFiat, judge, needsBalance, parseCheck, serializeCheck, type ChainCheck, type Verdict } from "./checks.js";
+import { outflowCents, walletValue } from "./prices.js";
 import { settleStake } from "./stakes.js";
-import { balanceOf, explorerTx, resolveRecipient, sentSince } from "./sui.js";
+import { balanceOf, explorerTx, resolveRecipient, sentSince, type CoinSymbol } from "./sui.js";
 
 /** A check that could not be fully prepared, explained in one sentence for the user. */
 export interface CheckNote {
@@ -66,7 +67,7 @@ export async function prepareChecks(userId: number | string, records: MemoryReco
     if (!wallet) problem = "Link your Sui wallet with /wallet so I can verify it on-chain.";
     else if (needsBalance(check) && check.kind === "save") {
       try {
-        check.base = (await balanceOf(wallet.address, check.coin)).toString();
+        check.base = (await currentAmount(wallet.address, check)).toString();
       } catch {
         problem = "I couldn't read your balance on Sui just now, so I can't measure savings from today.";
       }
@@ -136,17 +137,26 @@ export async function evaluate(userId: number | string, p: ChainPromise, final: 
       });
     }
   }
-  const data = needsBalance(check)
-    ? { balance: await balanceOf(wallet.address, check.coin) }
-    : { transfers: await sentSince(wallet.address, check.coin, check.since ?? Date.now() - 7 * 86_400_000) };
+  const since = check.since ?? Date.now() - 7 * 86_400_000;
+  let data: Parameters<typeof judge>[1];
+  if (needsBalance(check)) data = { balance: await currentAmount(wallet.address, check) };
+  else if (isFiat(check)) {
+    const out = await outflowCents(wallet.address, check.coin, since); // cap in a currency: everything sent out, priced via Tatum
+    data = { spent: out.cents, transfers: out.transfers };
+  } else data = { transfers: await sentSince(wallet.address, check.coin as CoinSymbol, since) };
   return { ...judge(check, data, final), check };
+}
+
+/** Balance of the coin, or the wallet's value in the check's currency (hundredths), via Tatum. */
+async function currentAmount(address: string, check: ChainCheck): Promise<bigint> {
+  return isFiat(check) ? (await walletValue(address, check.coin)).cents : balanceOf(address, check.coin as CoinSymbol);
 }
 
 /** Store the verdict on Walrus (with the tx digest as proof) and close the promise locally. */
 async function record(userId: string, id: string, p: ChainPromise, v: Verdict, status: "kept" | "broken"): Promise<void> {
   const { storeMemories } = await import("../memory/write.js");
   const { enqueue } = await import("../bot/conversation.js");
-  const today = todayIn(config.TIMEZONE);
+  const today = todayIn(tzOf(userId));
   void enqueue(`write:${userId}`, () =>
     storeMemories(userId, [
       {
@@ -176,11 +186,12 @@ const PENDING_EVERY_MS = 15 * 60_000;
  * decided): final checks at the deadline, early checks every 15 minutes.
  */
 export async function runChainChecks(api: Api, opts: { userId?: string; force?: boolean } = {}): Promise<string[]> {
-  const today = todayIn(config.TIMEZONE);
-  const now = timeIn(config.TIMEZONE);
   const report: string[] = [];
   for (const [userId, user] of allUsers()) {
     if (opts.userId && userId !== opts.userId) continue;
+    const tz = tzOf(userId);
+    const today = todayIn(tz);
+    const now = timeIn(tz);
     if (!user.wallet || !user.chain) continue;
     for (const [id, p] of Object.entries(user.chain)) {
       const final = isFinal(p, today, now);

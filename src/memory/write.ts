@@ -7,6 +7,8 @@ import { extractionPrompt } from "../llm/prompts.js";
 import { serializeCheck } from "../chain/checks.js";
 import { trackChainRecords } from "../chain/promises.js";
 import { noteStored } from "../learning.js";
+import { trackHabitRecords } from "../habits.js";
+import { notifyBuddies } from "../buddies.js";
 import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memwal, namespaceFor, withRetry } from "./client.js";
@@ -16,7 +18,8 @@ import { newCommitmentId, normalise, serialize, similarity, type MemoryRecord, t
 const extractionSchema = z.object({
   memories: z.array(
     z.object({
-      kind: z.enum(["commitment", "outcome", "pattern", "win", "fact", "preference"]),
+      kind: z.enum(["commitment", "outcome", "pattern", "win", "fact", "preference", "habit"]),
+      rep: z.string().nullable().describe("habit only: how often, as times/day or times/week, e.g. 3/week or 1/day; else null"),
       text: z.string().describe("One short third-person sentence"),
       due: z.string().nullable().describe("YYYY-MM-DD for commitments or moved outcomes, else null"),
       at: z.string().nullable().describe("Time of day the promise is due, HH:MM 24h, if the user gave one, else null"),
@@ -25,7 +28,10 @@ const extractionSchema = z.object({
       chain: z
         .object({
           kind: z.enum(["save", "hold", "pay", "cap"]),
-          coin: z.enum(["SUI", "USDC", "USDSUI", "WAL"]).describe("USDSUI is USDsui, the Sui Dollar"),
+          coin: z
+            .enum(["SUI", "USDC", "USDSUI", "WAL", "CURRENCY"])
+            .describe("USDSUI is USDsui, the Sui Dollar. CURRENCY: an amount of money in a currency (dollars, naira, euros) held in the wallet"),
+          currency: z.string().nullable().describe("CURRENCY only: ISO 4217 code, e.g. USD, NGN, EUR; else null"),
           amount: z.string().describe("Plain number, e.g. 50 or 12.5"),
           recipient: z.string().nullable().describe("pay only: who, exactly as the user said it (name, name.sui or 0x address)"),
         })
@@ -46,12 +52,15 @@ export async function extractMemories(opts: {
   closed?: Record<string, string>;
   /** The exchange before this one, for context ("Today at 2pm" answers a question). */
   previous?: { user: string; assistant: string };
+  /** The user's IANA timezone, for resolving "tomorrow", "6am" and so on. */
+  tz?: string;
 }): Promise<MemoryRecord[]> {
-  const today = todayIn(config.TIMEZONE);
+  const tz = opts.tz ?? config.TIMEZONE;
+  const today = todayIn(tz);
   const { output } = await withModel((model) =>
     generateText({
       model,
-      system: extractionPrompt({ today, commitments: opts.commitments, known: (opts.known ?? []).map((m) => m.text), closed: opts.closed ?? {} }),
+      system: extractionPrompt({ today, tz, commitments: opts.commitments, known: (opts.known ?? []).map((m) => m.text), closed: opts.closed ?? {} }),
       prompt:
         (opts.previous
           ? `EARLIER EXCHANGE (context only; its memories are already stored):\nUSER: ${opts.previous.user}\nANCHOR: ${opts.previous.assistant}\n\nLATEST EXCHANGE (extract from this, using the earlier one to understand it):\n`
@@ -70,11 +79,18 @@ export async function extractMemories(opts: {
     if (!text) continue;
     const due = m.due && ISO.test(m.due) ? m.due : undefined;
     const at = m.at && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.at) ? m.at : undefined;
+    if (m.kind === "habit") {
+      const rep = (m.rep ?? "").replace(/\s+/g, "").toLowerCase();
+      const ok = /^([1-7])\/(day|week)$/.exec(rep);
+      if (ok) records.push({ kind: "habit", date: today, id: newCommitmentId(), rep, text: /^habit:/i.test(text) ? text.replace(/^habit:\s*/i, "Habit: ") : `Habit: ${text}` });
+      continue;
+    }
     if (m.kind === "commitment") {
       const amount = m.chain?.amount.replace(/,/g, "").trim();
+      const coin = m.chain?.coin === "CURRENCY" ? (m.chain.currency ?? "").toUpperCase() : m.chain?.coin;
       const chk =
-        m.chain && amount && /^\d+(\.\d+)?$/.test(amount) && Number(amount) > 0
-          ? serializeCheck({ kind: m.chain.kind, coin: m.chain.coin, amount, toName: m.chain.kind === "pay" ? (m.chain.recipient ?? undefined) : undefined })
+        m.chain && coin && amount && /^\d+(\.\d+)?$/.test(amount) && Number(amount) > 0
+          ? serializeCheck({ kind: m.chain.kind, coin, amount, toName: m.chain.kind === "pay" ? (m.chain.recipient ?? undefined) : undefined })
           : undefined;
       records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, chk, text });
     } else if (m.kind === "outcome") {
@@ -128,6 +144,8 @@ export async function dropDuplicates(
 export async function storeMemories(userId: number | string, records: MemoryRecord[]): Promise<string[]> {
   trackRecords(userId, records); // timed promises get an exact-time reminder
   trackChainRecords(userId, records); // money promises get verified on Sui
+  trackHabitRecords(userId, records); // recurring promises get daily asks and streaks
+  notifyBuddies(userId, records); // friends hear about kept and missed promises
   noteStored(records);
   return storeRaw(userId, records.map((r) => serialize(r)));
 }

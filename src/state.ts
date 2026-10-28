@@ -44,8 +44,40 @@ export interface ChainPromise {
   stake?: string;
 }
 
+/** A recurring promise: `times` per day or week, with a running streak of periods that met it. */
+export interface Habit {
+  text: string;
+  per: "day" | "week";
+  times: number;
+  /** Local dates (YYYY-MM-DD) it was done. Kept for the last ~60 days. */
+  done: string[];
+  /** Local dates the person said it didn't happen (so they aren't asked again that day). */
+  skipped: string[];
+  streak: number;
+  best: number;
+  /** Key of the last period whose result was settled ("2026-10-27" or week "2026-10-26"). */
+  settled?: string;
+  createdAt: string;
+  /** False after /habit stop. */
+  active: boolean;
+}
+
 export interface UserState {
   firstName: string;
+  /** IANA timezone (e.g. "Europe/Berlin"); deadlines, check-ins and summaries use it. */
+  tz?: string;
+  /** Friends (user ids) who see this person's outcomes. */
+  buddies?: string[];
+  /** People (user ids) this person is a buddy for. */
+  watching?: string[];
+  /** false: buddies see "a promise" instead of what it was. */
+  buddyShare?: boolean;
+  /** Habits by id. */
+  habits?: Record<string, Habit>;
+  /** Preferred currency for /money (ISO code). */
+  currency?: string;
+  /** Local date of the last scheduled evening check-in. */
+  lastEvening?: string;
   chatId: number;
   lastSeen: string; // ISO timestamp
   /** commitment id -> date (YYYY-MM-DD) Anchor last nudged about it */
@@ -131,6 +163,8 @@ interface StateFile {
   stakes?: Record<string, Stake>;
   /** One-time wallet-link tokens: token -> { userId, expires (ms) } */
   linkTokens?: Record<string, { userId: string; expires: number }>;
+  /** Buddy invites: token -> { userId (who invites), expires (ms) } */
+  invites?: Record<string, { userId: string; expires: number }>;
   metrics?: Metrics;
 }
 
@@ -156,6 +190,11 @@ export function flush() {
   const tmp = `${file}.tmp`;
   writeFileSync(tmp, JSON.stringify(state, null, 2));
   renameSync(tmp, file);
+}
+
+/** The user's timezone, or the server default until they set one (/timezone). */
+export function tzOf(userId: number | string): string {
+  return state.users[String(userId)]?.tz ?? config.TIMEZONE;
 }
 
 export function getUser(userId: number | string): UserState | undefined {
@@ -270,4 +309,23 @@ export function bump(fn: (m: Metrics) => void) {
 /** The user a personal API token belongs to (tokens are stored hashed). */
 export function userByTokenHash(hash: string): [string, UserState] | undefined {
   return Object.entries(state.users).find(([, u]) => u.apiTokenHash === hash);
+}
+
+// ---------------------------------------------------------------- buddy invites
+
+export function putInvite(token: string, userId: string, ttlMs: number) {
+  state.invites ??= {};
+  const now = Date.now();
+  for (const [t, v] of Object.entries(state.invites)) if (v.expires < now) delete state.invites[t];
+  state.invites[token] = { userId, expires: now + ttlMs };
+  persist();
+}
+
+/** The inviter, if the invite is still valid. Consumes it. */
+export function takeInvite(token: string): string | undefined {
+  const t = state.invites?.[token];
+  if (!t || t.expires < Date.now()) return undefined;
+  delete state.invites![token];
+  persist();
+  return t.userId;
 }

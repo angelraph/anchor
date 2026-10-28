@@ -35,7 +35,7 @@ import {
 } from "../chain/x402.js";
 import { config } from "../config.js";
 import { clause } from "../memory/types.js";
-import { allUsers, bump, consumeLinkToken, getStake, peekLinkToken, updateStake, updateUser } from "../state.js";
+import { allUsers, bump, consumeLinkToken, getStake, peekLinkToken, tzOf, updateStake, updateUser } from "../state.js";
 import { logoSvg } from "./logo.js";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -217,7 +217,7 @@ export function registerChainRoutes(app: Hono, getApi: () => Api | undefined) {
     if (!s) return c.html(shell("Stake · Anchor", `<h1>Stake not found.</h1><p>Run /stake again in Telegram.</p>`), 404);
     const rows = [
       ["Promise", `#${s.commitmentId} · ${clause(s.text)}`],
-      ["Deadline", `${s.due}${s.at ? ` ${s.at}` : ""} (${config.TIMEZONE})`],
+      ["Deadline", `${s.due}${s.at ? ` ${s.at}` : ""} (${tzOf(s.userId)})`],
       ["Stake", `${s.amount} ${coinLabel(stakeCoin(s))}`],
       ["If kept", "back to the wallet that pays"],
       ["If missed", `to ${s.forfeitName ?? shortAddr(s.forfeitTo)}`],

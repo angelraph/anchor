@@ -17,13 +17,14 @@ import { publishReport, reportPageUrl, reportsEnabled } from "../chain/report.js
 import { anchorAddress } from "../chain/signer.js";
 import { createStake, stakesEnabled, stakeUrl } from "../chain/stakes.js";
 import { exactUnits, newProofAmount, stakeTransferAmount } from "../chain/transfers.js";
+import { isCurrency, money, UNPRICED, valueCents } from "../chain/prices.js";
 import { balanceOf, coinLabel, COINS, explorerAddr, fromUnits, isStakeCoin, resolveRecipient, shortAddr, type StakeCoin } from "../chain/sui.js";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { learnMoneyPattern, learningTimeline } from "../learning.js";
 import { clause } from "../memory/types.js";
 import { storeMemories } from "../memory/write.js";
-import { allStakes, getUser, putLinkToken, updateUser, upsertUser } from "../state.js";
+import { allStakes, getUser, putLinkToken, tzOf, updateUser, upsertUser } from "../state.js";
 import { enqueue } from "./conversation.js";
 
 const base = () => config.PUBLIC_URL.replace(/\/$/, "");
@@ -104,7 +105,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       });
       void enqueue(`write:${userId}`, () =>
         storeMemories(userId, [
-          { kind: "fact", date: todayIn(config.TIMEZONE), text: `Linked Sui wallet ${r.name ? `${r.name} (${r.address})` : r.address} to Anchor for verified money promises` },
+          { kind: "fact", date: todayIn(tzOf(userId)), text: `Linked Sui wallet ${r.name ? `${r.name} (${r.address})` : r.address} to Anchor for verified money promises` },
         ]),
       ).catch(() => undefined);
       const usdc = await balanceOf(r.address, "USDC").catch(() => undefined);
@@ -124,13 +125,25 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       await ctx.reply("No wallet linked yet. /wallet <address or name.sui> and I'll start reading it.");
       return;
     }
+    // /money NGN shows values in naira (and remembers it); default USD.
+    const asked = ctx.match.trim().toUpperCase();
+    if (asked && !isCurrency(asked)) {
+      await ctx.reply("Use a currency code, e.g. /money USD, /money NGN or /money EUR.");
+      return;
+    }
+    if (asked) updateUser(userId, (u) => (u.currency = asked));
+    const cur = asked || user.currency || "USD";
     await withTyping(ctx, async () => {
       const w = user.wallet!;
-      const lines = [`💰 ${w.name ?? shortAddr(w.address)} on Sui (read through Tatum)`];
+      const lines = [`💰 ${w.name ?? shortAddr(w.address)} on Sui (balances via Tatum's Sui RPC, prices via Tatum's Data API)`];
+      let total = 0n;
       for (const coin of Object.keys(COINS) as Array<keyof typeof COINS>) {
         const b = await balanceOf(w.address, coin).catch(() => undefined);
-        lines.push(`  ${coinLabel(coin)}: ${b === undefined ? "unavailable" : fromUnits(b, coin)}`);
+        const v = b !== undefined && !UNPRICED.includes(coin) ? await valueCents(coin, b, cur).catch(() => undefined) : undefined;
+        if (v !== undefined) total += v;
+        lines.push(`  ${coinLabel(coin)}: ${b === undefined ? "unavailable" : fromUnits(b, coin)}${v !== undefined ? `  ≈ ${money(v, cur)}` : UNPRICED.includes(coin) ? "  (not priced)" : ""}`);
       }
+      lines.push(`  Total: ≈ ${money(total, cur)}${cur === "USD" ? "  (/money NGN for naira, /money EUR…)" : ""}`);
       const open = Object.entries(user.chain ?? {});
       if (open.length) {
         lines.push("", "Money promises I'm watching:");
@@ -191,7 +204,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
       await ctx.reply(`The stake has to be between 0 and ${config.STAKE_MAX_USDC} (USDC or USDsui).`);
       return;
     }
-    if (p.due < todayIn(config.TIMEZONE)) {
+    if (p.due < todayIn(tzOf(userId))) {
       await ctx.reply(`#${id} is already past its deadline.`);
       return;
     }

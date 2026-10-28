@@ -70,7 +70,12 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 ### Built during Total Recall (Oct 20 – Nov 10, 2026)
 - **Chain-verified money promises** via Tatum's Sui RPC: `save`, `hold`, `pay` and spending-`cap` promises in SUI, USDC or WAL, closed from on-chain evidence, with the transaction digest stored in the outcome memory on Walrus.
 - **Wallet linking** by address or SuiNS name, with proof of ownership by signed message (zkLogin wallets included).
-- **Stakes** paid with x402 on Sui: back to you if you keep the promise, to the person you chose if you don't. Anchor never keeps stake money.
+- **Trustless stakes in a Move escrow** ([`move/anchor_escrow`](move/anchor_escrow), package [`0x119c…8e2d`](https://suiscan.xyz/mainnet/object/0x119c87d56bd17fc3c5713717c8cd50312b0ef181f555723ab3bc1facf9f48e2d), published **immutable**): your stake sits in a Sui object, not Anchor's wallet. The contract can only send it back to you (kept) or to the person you chose (missed), and if Anchor ever went silent you reclaim it a week after the deadline. Paying Anchor with x402 is still there as the alternative.
+- **Per-user timezones** (`/timezone Berlin`, or just tell Anchor your city): every reminder, check-in, deadline and weekly summary runs on your own clock.
+- **Habits and streaks**: "gym 3 times a week", "read every day". Anchor asks at check-in, counts the streak, settles each day or week, and stores streaks on Walrus.
+- **Accountability buddies**: `/buddy` gives you an invite link; your buddy sees what you kept and missed (only what you allow) and can cheer or nudge you with one tap.
+- **Real money values through Tatum's Data API**: `/money NGN` shows your wallet in your currency, and promises can be in it too ("save ₦50,000 by December", "spend under $30 this week").
+- **Guided tour** (`/tour`): seven steps from first promise to stakes, for people who've never used a crypto wallet.
 - **Signed weekly reports** published to Walrus via Tatum's Storage API, verifiable by anyone at `/report/<jobId>`.
 - **Agent payments**: AI agents pay per read (x402) for the signed follow-through record of people who opt in. Discovery at `/.well-known/x402`, a reference client in `scripts/agent-pay.ts`.
 - **Money patterns learned from the chain** ("sends out most USDC on Saturdays") and stored on Walrus as patterns that shape later advice.
@@ -79,12 +84,14 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 
 Full list with file pointers: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md).
 
+**Escrow live on Sui mainnet (2026-10-28):** the package was published and frozen in one transaction ([tx](https://suiscan.xyz/mainnet/tx/58462JNqhhhDP7wzzAbt4YnNPkv5edVGxzMpHo7x4ACb)), then a stake was locked in it ([tx](https://suiscan.xyz/mainnet/tx/HnFow8MAZrQ2KbDwY6h7NsfFjjUeDBozuABB8YK1n3Tv)) and released back by Anchor's "kept" verdict ([tx](https://suiscan.xyz/mainnet/tx/Cy2h7dYErBWnLCC6APkCHVtGfw7nCTh7qd1jTo3rbq7S)).
+
 **Live on Sui mainnet (2026-10-27):** a wallet proven by exact transfer ([tx](https://suiscan.xyz/mainnet/tx/9z5jWhjcwdME7w11u1WPcLz8DurANNncvQF4qrCZPbrn)), a 1 USDC stake on "save 1 USDsui by Friday" ([tx](https://suiscan.xyz/mainnet/tx/MusNBtgHF3KDMoNXMatgm1Lf2bQXJX9UnnRwV4AiAUM)), an AI agent paying 0.01 USDC over x402 for a signed record ([tx](https://suiscan.xyz/mainnet/tx/5kE6mngkpmvSAEo7azBMHBKduGqmNw2scUfY9N8VD5s6)), and a signed report certified on Walrus via Tatum ([tx](https://suiscan.xyz/mainnet/tx/5q3cfsPn1mC5JgX8nko3WyunFVvGwDnbMb1JYJNDEb8K)). Details in [Live evidence](docs/TOTAL_RECALL.md#live-evidence-on-sui-mainnet-2026-10-27).
 
 ### Roadmap
 1. **WhatsApp**, where most of our first users already live (needs a Meta Business account and number)
-2. **Accountability buddies**: let a friend see your follow-through and nudge you, with your permission
-3. **Streaks and monthly reflections** built from long-term memory
+2. **Monthly reflections** built from long-term memory
+3. **Group commitments**: a team or study group staking on a shared goal through the escrow
 4. **Bring your own memory**: connect your own Walrus Memory account so your data is fully yours (portable to other tools already works through `/connect` and MCP)
 5. **Voice notes**: make a promise by talking; Anchor transcribes and remembers it
 
@@ -125,9 +132,13 @@ Memories are stored as single readable lines with a typed header, so they embed 
 | `/week` | Your follow-through this week |
 | `/stats` | Users and memories across Anchor |
 | `/wallet <address or name.sui>` | Link a Sui wallet (resolved via Tatum), then prove it's yours by signing a message |
-| `/money` | Balances, money promises in progress, money patterns learned, all read through Tatum |
+| `/money [NGN\|EUR\|…]` | Balances and their value in your currency (Tatum Data API), money promises in progress, money patterns learned |
 | `/verify` | Check money promises on Sui right now |
-| `/stake #id <USDC> <name.sui>` | Put USDC on a promise (x402 on Sui) |
+| `/stake #id <amount> [usdc\|usdsui] <name.sui>` | Put money on a promise, locked in the escrow contract on Sui (or paid by x402) |
+| `/habit <text>` · `/habits` | Start a habit, see streaks |
+| `/buddy [remove\|private\|share]` | Invite an accountability buddy, or change what they see |
+| `/timezone <city or zone>` | Set your own clock |
+| `/tour` | A guided tour |
 | `/report [public\|auto\|off]` | Publish a signed follow-through report to Walrus (via Tatum) |
 | `/record on\|off` | Let AI agents buy your signed record (x402) |
 | `/learning` | How Anchor learned you, week by week |
@@ -212,6 +223,7 @@ Hono         ──► / (site + proof) · /proof.json · /health
 | `src/chain/promises.ts` | Preparing checks, the verifier loop, verdicts written to Walrus with proof |
 | `src/chain/x402.ts` | x402 v2 `exact` on Sui: requirements, verification (signature, simulation, balance change), settlement |
 | `src/chain/stakes.ts` | Stake lifecycle and payouts signed by Anchor's key |
+| `move/anchor_escrow`, `src/chain/escrow.ts` | The Move escrow (9 Move tests) and its TypeScript side: build, check-then-execute, settle |
 | `src/chain/report.ts` | Signed reports, Tatum Storage API upload, verification |
 | `src/learning.ts` | Learning-loop counters, `/learning` timeline, money patterns from the chain |
 | `src/web/chain-routes.ts`, `client/wallet.ts` | Wallet-link and stake pages (Wallet Standard), x402 endpoints, report verifier |

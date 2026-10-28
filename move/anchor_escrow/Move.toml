@@ -1,0 +1,6 @@
+[package]
+name = "anchor_escrow"
+edition = "2024"
+
+[addresses]
+anchor_escrow = "0x0"

@@ -8,7 +8,9 @@
  *       missed: 5 USDC goes to tobi.sui (a friend, a charity, someone who'll enjoy it)
  *
  * Anchor never keeps stake money. Every payout is a Sui transaction signed by
- * Anchor's key and executed through Tatum, linked in the chat.
+ * Anchor's key and executed through Tatum, linked in the chat. With escrow on
+ * (escrow.ts) the money never reaches Anchor at all: it sits in a Move object
+ * that can only pay the payer or the chosen recipient.
  */
 import { randomBytes } from "node:crypto";
 import type { Api } from "grammy";
@@ -16,6 +18,7 @@ import { coinWithBalance, Transaction } from "@mysten/sui/transactions";
 import { config } from "../config.js";
 import { clause } from "../memory/types.js";
 import { allStakes, bump, getStake, getUser, putStake, tzOf, updateStake, updateUser, type Stake } from "../state.js";
+import { releaseEscrowStake } from "./escrow.js";
 import { anchorAddress, anchorKey } from "./signer.js";
 import { coinLabel, COINS, explorerTx, shortAddr, sui, toUnits, type StakeCoin } from "./sui.js";
 import { requirements, type PaymentRequirements } from "./x402.js";
@@ -68,11 +71,12 @@ export async function markStakePaid(api: Api | undefined, token: string, payer: 
     ]),
   ).catch((err) => console.error(`[stake] memory write failed:`, err));
   const chatId = getUser(stake.userId)?.chatId;
+  const where = stake.escrowId ? `\nIt's locked in the escrow contract on Sui, not in Anchor's wallet: it can only go back to you or to them.` : "";
   if (api && chatId) {
     await api
       .sendMessage(
         chatId,
-        `🔒 ${stake.amount} ${coinLabel(stakeCoin(stake))} staked on #${stake.commitmentId} · ${clause(stake.text)}.\nKeep it and it comes back to you. Miss it and it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. The chain decides.\n${explorerTx(digest)}`,
+        `🔒 ${stake.amount} ${coinLabel(stakeCoin(stake))} staked on #${stake.commitmentId} · ${clause(stake.text)}.\nKeep it and it comes back to you. Miss it and it goes to ${stake.forfeitName ?? shortAddr(stake.forfeitTo)}. The chain decides.${where}\n${explorerTx(digest)}`,
         { link_preview_options: { is_disabled: true } },
       )
       .catch(() => undefined);
@@ -100,7 +104,9 @@ export async function settleStake(api: Api | undefined, token: string, outcome: 
   try {
     // Pay out exactly what was received (a direct transfer includes its small recognition tail).
     const coin = stakeCoin(stake);
-    const digest = await payout(to, stake.payExact ? BigInt(stake.payExact) : toUnits(stake.amount, coin), coin);
+    const digest = stake.escrowId
+      ? await releaseEscrowStake(stake, outcome === "kept") // the contract pays out; Anchor only gives the verdict
+      : await payout(to, stake.payExact ? BigInt(stake.payExact) : toUnits(stake.amount, coin), coin);
     updateStake(token, (s) => {
       s.status = outcome === "kept" ? "refunded" : "forfeited";
       s.payoutDigest = digest;

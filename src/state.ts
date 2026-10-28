@@ -138,6 +138,8 @@ export interface Stake {
   /** Exact amount (base units of `coin`) that pays this stake by direct transfer from the linked wallet. */
   payExact?: string;
   payoutDigest?: string;
+  /** The shared Stake object when the stake is locked in the escrow contract instead of Anchor's wallet. */
+  escrowId?: string;
   note?: string;
 }
 

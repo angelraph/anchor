@@ -15,6 +15,7 @@ import { describeCheck, parseCheck } from "../chain/checks.js";
 import { evaluate, runChainChecks } from "../chain/promises.js";
 import { publishReport, reportPageUrl, reportsEnabled } from "../chain/report.js";
 import { anchorAddress } from "../chain/signer.js";
+import { escrowEnabled } from "../chain/escrow.js";
 import { createStake, stakesEnabled, stakeUrl } from "../chain/stakes.js";
 import { exactUnits, newProofAmount, stakeTransferAmount } from "../chain/transfers.js";
 import { isCurrency, money, UNPRICED, valueCents } from "../chain/prices.js";
@@ -239,7 +240,7 @@ export function registerChainCommands(bot: Bot, withTyping: <T>(ctx: Context, wo
         ? `\n\nOr pay straight from your wallet app, no website: send exactly\n${exactUnits(stake.payExact, coin)} ${coinLabel(coin)}\nfrom ${shortAddr(user!.wallet!.address)} to Anchor's address:\n${anchorAddress}\nPay one way only. I'll see it on Sui within a minute.`
         : "";
       await ctx.reply(
-        `🔒 Stake ${rawAmount} ${coinLabel(coin)} on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\nPay from your Sui wallet (x402, settled on Sui): ${stakeUrl(stake.token)}${direct}`,
+        `🔒 Stake ${rawAmount} ${coinLabel(coin)} on #${id} · ${clause(p.text)}\n\nThe chain decides${check ? `: I'll check that ${describeCheck(check)}` : ""}.\n• Kept: it comes back to the wallet that paid.\n• Missed: it goes to ${r.name ?? shortAddr(r.address)}.\nAnchor never keeps it.\n\n${escrowEnabled() ? "Lock it in the escrow contract on Sui (trustless: it never touches Anchor's wallet)" : "Pay from your Sui wallet (x402, settled on Sui)"}: ${stakeUrl(stake.token)}${direct}`,
         noPreview,
       );
     });

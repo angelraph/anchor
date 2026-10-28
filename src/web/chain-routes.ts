@@ -6,6 +6,7 @@
  *   GET  /stake/:token               stake payment page
  *   GET  /api/stake/:token           stake details for the page
  *   POST /x402/stake/:token          x402 resource: pay the stake
+ *   POST /api/escrow/build|lock/:token   trustless stake: lock it in the escrow contract instead
  *   GET  /x402/record/:address       x402 resource: an agent reads a signed follow-through record
  *   POST /api/x402/build             build the unsigned payment transaction for a payer (via Tatum)
  *   GET  /.well-known/x402           what this server sells, for agents
@@ -19,6 +20,7 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
 import { buildReport, fetchReport, reportsEnabled, signReport, uploadStatus, verifyReport } from "../chain/report.js";
 import { anchorAddress } from "../chain/signer.js";
+import { buildEscrowStake, escrowEnabled, lockEscrowStake } from "../chain/escrow.js";
 import { markStakePaid, stakeCoin, stakeRequirements } from "../chain/stakes.js";
 import { coinLabel, COINS, explorerAddr, explorerTx, shortAddr, STAKE_COINS, toUnits } from "../chain/sui.js";
 import {
@@ -91,6 +93,8 @@ a{color:var(--saffron)}
 .status{margin-top:18px;font-size:15px;line-height:1.5;color:var(--mist)}.status.ok{color:var(--verdant)}.status.err{color:var(--rose)}
 .ok{color:var(--verdant)}.bad{color:var(--rose)}
 .muted{color:var(--ash);font-size:14px}
+.choice{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;margin:0 0 16px;border:1px solid #2a2a35;border-radius:14px;background:#0e0f16;font-size:14px;line-height:1.5;color:var(--mist);cursor:pointer}
+.choice input{margin-top:4px;accent-color:var(--iris);width:18px;height:18px;flex:none}
 pre{white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:12px;color:var(--mist);background:#07080c;border:1px solid #222;border-radius:12px;padding:14px;max-height:320px;overflow:auto}
 </style></head>
 <body${attrs}><main>
@@ -223,12 +227,17 @@ export function registerChainRoutes(app: Hono, getApi: () => Api | undefined) {
       ["If missed", `to ${s.forfeitName ?? shortAddr(s.forfeitTo)}`],
       ["Status", s.status.replace("_", " ")],
     ];
+    if (s.escrowId) rows.push(["Held by", "escrow contract on Sui"]);
+    const escrow = escrowEnabled();
+    const choice = escrow
+      ? `<label class="choice"><input type="checkbox" id="escrow" checked><span><b>Trustless: lock it in the escrow contract.</b> The money sits in a Sui object, not Anchor's wallet. The contract can only send it back to you or to ${esc(s.forfeitName ?? shortAddr(s.forfeitTo))}, and if Anchor ever went silent you could take it back a week after the deadline. <a href="${explorerAddr(config.ESCROW_PACKAGE_ID)}" target="_blank" rel="noopener">Contract</a> (immutable). Untick to pay Anchor with x402 instead.</span></label>`
+      : "";
     const body = `<div class="label">// put money on it</div><h1>Stake ${esc(s.amount)} ${coinLabel(stakeCoin(s))} on your word.</h1>
-<p>Paid with <b>x402</b> on Sui: your wallet signs a ${coinLabel(stakeCoin(s))} transfer, Anchor verifies and settles it on Sui (through Tatum), and the chain decides the promise at the deadline. Anchor never keeps stake money.</p>
+<p>${escrow ? "Your wallet locks the stake in Anchor's escrow contract on Sui" : `Paid with <b>x402</b> on Sui: your wallet signs a ${coinLabel(stakeCoin(s))} transfer, Anchor verifies and settles it on Sui (through Tatum)`}, and the chain decides the promise at the deadline. Anchor never keeps stake money.</p>
 <div class="card">${rows.map(([k, v]) => `<div class="row"><span>${esc(k!)}</span><span>${esc(v!)}</span></div>`).join("")}</div>
 ${
   s.status === "awaiting_payment"
-    ? `<div id="wallets"></div><div id="status" class="status"></div><script type="module" src="/wallet.js"></script>`
+    ? `${choice}<div id="wallets"></div><div id="status" class="status"></div><script type="module" src="/wallet.js"></script>`
     : s.payDigest
       ? `<p>Paid: <a href="${explorerTx(s.payDigest)}">${esc(s.payDigest.slice(0, 12))}…</a>${s.payoutDigest ? ` · Paid out: <a href="${explorerTx(s.payoutDigest)}">${esc(s.payoutDigest.slice(0, 12))}…</a>` : ""}</p>`
       : ""
@@ -245,6 +254,41 @@ ${
       await markStakePaid(getApi(), s.token, payer, digest);
       return { staked: true, amount: s.amount, promise: s.commitmentId };
     });
+  });
+
+  // Escrow: build the payer's create<T> transaction, then take it back signed, check it and execute it.
+  app.post("/api/escrow/build/:token", async (c) => {
+    const s = getStake(c.req.param("token"));
+    const { sender } = (await c.req.json().catch(() => ({}))) as { sender?: string };
+    if (!s || !sender || !escrowEnabled()) return c.json({ error: "bad request" }, 400);
+    if (s.status !== "awaiting_payment") return c.json({ error: `stake is ${s.status.replace("_", " ")}` }, 409);
+    try {
+      return c.json({ transaction: await buildEscrowStake(s, sender) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return c.json({ error: /insufficient|balance|coin/i.test(msg) ? `Not enough ${coinLabel(stakeCoin(s))} (or SUI for gas) in this wallet.` : /abort|EDeadline|code 4/i.test(msg) ? "This promise's deadline has passed." : msg.slice(0, 160) }, 400);
+    }
+  });
+  const locking = new Set<string>();
+  app.post("/api/escrow/lock/:token", async (c) => {
+    const s = getStake(c.req.param("token"));
+    const { transaction, signature } = (await c.req.json().catch(() => ({}))) as { transaction?: string; signature?: string };
+    if (!s || !transaction || !signature || !escrowEnabled()) return c.json({ error: "bad request" }, 400);
+    if (s.status !== "awaiting_payment" || locking.has(s.token)) return c.json({ error: `stake is ${s.status.replace("_", " ")}` }, 409);
+    locking.add(s.token);
+    try {
+      const { payer, digest, escrowId } = await lockEscrowStake(s, transaction, signature);
+      updateStake(s.token, (x) => {
+        x.escrowId = escrowId;
+        delete x.payExact;
+      });
+      await markStakePaid(getApi(), s.token, payer, digest);
+      return c.json({ staked: true, digest, escrowId });
+    } catch (err) {
+      return c.json({ error: err instanceof Error ? err.message.slice(0, 200) : String(err) }, 400);
+    } finally {
+      locking.delete(s.token);
+    }
   });
 
   // Build the payer's unsigned transfer (the spec's "query an RPC for coins" step), only for our own requirements.

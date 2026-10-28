@@ -2,7 +2,8 @@
  * Browser side of the wallet pages (bundled by esbuild at server start).
  *
  *  /link/:token   prove a wallet is yours: sign a personal message (free, no transaction)
- *  /stake/:token  pay a stake with x402: 402 → build → wallet signs → PAYMENT-SIGNATURE → settled on Sui
+ *  /stake/:token  lock a stake in the escrow contract (build → wallet signs → Anchor checks and executes),
+ *                 or pay it with x402: 402 → build → wallet signs → PAYMENT-SIGNATURE → settled on Sui
  *
  * Wallets are found through the Wallet Standard (Slush, Suiet, Phantom, …),
  * implemented here directly so the page needs no wallet SDK.
@@ -74,7 +75,37 @@ async function run(w: Wallet) {
   status(`Connecting to ${w.name}…`);
   const account = await connect(w);
   if (mode === "link") await link(w, account);
+  else if ((document.getElementById("escrow") as HTMLInputElement | null)?.checked) await escrowStake(w, account);
   else await stake(w, account);
+}
+
+async function escrowStake(w: Wallet, account: WalletAccount) {
+  // 1. The server builds create<T> for this wallet: your coins go into a shared Stake object.
+  status("Preparing the escrow…");
+  const built = await fetch(`/api/escrow/build/${token}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sender: account.address }),
+  }).then((r) => r.json());
+  if (!built.transaction) throw new Error(built.error ?? "couldn't build the stake (enough stablecoin and a little SUI for gas?)");
+  // 2. Your wallet signs it.
+  status(`Approve the stake in ${w.name}. It goes into the escrow contract, not to Anchor.`);
+  const sign = w.features["sui:signTransaction"];
+  if (!sign) throw new Error(`${w.name} can't sign transactions`);
+  const signed = await sign.signTransaction({ transaction: Transaction.from(built.transaction), account, chain: CHAIN });
+  // 3. Anchor checks it locks exactly this stake, then executes it on Sui.
+  status("Locking it on Sui…");
+  const res = await fetch(`/api/escrow/lock/${token}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ transaction: signed.bytes, signature: signed.signature }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? `stake failed (${res.status})`);
+  status(
+    `🔒 Locked in escrow on Sui: <a href="https://suiscan.xyz/mainnet/tx/${body.digest}" target="_blank" rel="noopener">${String(body.digest).slice(0, 10)}…</a><br>Only the contract holds it now. Go back to Telegram.`,
+    "ok",
+  );
 }
 
 async function link(w: Wallet, account: WalletAccount) {

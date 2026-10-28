@@ -24,6 +24,8 @@ const schema = z.object({
   TATUM_API_URL: z.string().url().default("https://api.tatum.io"),
   /** Anchor's own Sui key (suiprivkey…): signs weekly reports, receives and returns stakes. */
   ANCHOR_SUI_PRIVATE_KEY: z.string().default(""),
+  /** The anchor_escrow Move package (trustless stakes), published immutable on mainnet. Empty switches escrow off. */
+  ESCROW_PACKAGE_ID: z.string().default("0x119c87d56bd17fc3c5713717c8cd50312b0ef181f555723ab3bc1facf9f48e2d"),
   /** Public base URL of this server, for wallet-link and stake pages. */
   PUBLIC_URL: z.string().default(""),
   /** Largest stake Anchor will hold on one promise, in USDC. */

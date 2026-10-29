@@ -1,5 +1,5 @@
 import { run } from "@grammyjs/runner";
-import { appUrl, BOT_COMMANDS, createBot, GROUP_COMMANDS } from "./bot/bot.js";
+import { appUrl, BOT_ABOUT, BOT_COMMANDS, BOT_DESCRIPTION, createBot, GROUP_COMMANDS } from "./bot/bot.js";
 import { runGroupNudges, setGroupApi } from "./groups.js";
 import { runMorning } from "./morning.js";
 import { runChainChecks } from "./chain/promises.js";
@@ -64,11 +64,13 @@ async function main() {
       console.warn(`[startup] menu button skipped: ${redact(err).split("\n")[0]}`),
     );
   }
-  await retry("setMyDescription", () =>
-    bot.api.setMyDescription(
-      "I'm Anchor, tell me what you'll do and by when. I remember it on Walrus, check in when it's due, and learn what makes you follow through.",
-    ),
-  ).catch((err) => console.warn(`[startup] setMyDescription skipped: ${redact(err).split("\n")[0]}`));
+  // What a new person sees in the empty chat (max 512) and on the bot's profile (max 120).
+  await retry("setMyDescription", () => bot.api.setMyDescription(BOT_DESCRIPTION)).catch((err) =>
+    console.warn(`[startup] setMyDescription skipped: ${redact(err).split("\n")[0]}`),
+  );
+  await retry("setMyShortDescription", () => bot.api.setMyShortDescription(BOT_ABOUT)).catch((err) =>
+    console.warn(`[startup] setMyShortDescription skipped: ${redact(err).split("\n")[0]}`),
+  );
   const me = await retry("getMe", () => bot.api.getMe());
   bot.botInfo = me; // the runner reuses this instead of calling getMe again
   console.log(`[bot] @${me.username} · ${MODEL_LABEL}`);

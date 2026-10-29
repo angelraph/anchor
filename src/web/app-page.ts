@@ -81,7 +81,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
 <div id="loading"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
 <div id="app" hidden>
   <section class="card"><div class="hero"><svg class="ring" viewBox="0 0 120 120" id="ring"></svg><div><div class="label">last 30 days</div><h1 id="heroLine"></h1><p class="muted" id="heroSub"></p></div></div>
-    <div class="stats"><div class="stat"><b id="sOpen">0</b><span>open now</span></div><div class="stat"><b id="sStreak">0</b><span>best streak 🔥</span></div><div class="stat"><b id="sWeek">0</b><span>kept this week</span></div></div>
+    <div class="stats"><div class="stat"><b id="sOpen">0</b><span>open now</span></div><div class="stat"><b id="sStreak">0</b><span>in a row 🔥</span></div><div class="stat"><b id="sWeek">0</b><span>kept this week</span></div></div>
     <button class="btn ghost" id="shareBtn">Share my follow-through</button></section>
   <section class="card"><div class="label">your last 5 weeks</div><div class="dow"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div><div class="cal" id="cal"></div>
     <p class="muted" style="margin-top:10px;font-size:12px">🟩 kept · 🟥 missed · 🟨 both</p></section>
@@ -175,7 +175,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
     $("ownStatus").textContent = d.ownMemory ? "Your memory lives in your own Walrus Memory account (" + d.ownMemory.account + ") since " + d.ownMemory.since + ". It's yours outright." : "Your memories are encrypted on Walrus in a space only you have, inside Anchor's account. Move them into your own Walrus Memory account and they're yours outright, usable by any app you trust.";
     $("ownForm").hidden = !!d.ownMemory; $("disconnect").hidden = !d.ownMemory;
     $("morning").checked = d.morning;
-    $("meta").textContent = "Timezone: " + d.tz + (d.wallet ? " · Wallet: " + d.wallet : "") + (d.buddies.length ? " · Buddies: " + d.buddies.join(", ") : "") + (d.groups.length ? " · Groups: " + d.groups.join(", ") : "");
+    $("meta").textContent = "Timezone: " + d.tzLabel + (d.wallet ? " · Wallet: " + d.wallet : "") + (d.buddies.length ? " · Buddies: " + d.buddies.join(", ") : "") + (d.groups.length ? " · Groups: " + d.groups.join(", ") : "");
     $("stopShare").hidden = !d.sharing;
     $("loading").hidden = true; $("app").hidden = false;
   }
@@ -244,7 +244,7 @@ p{color:var(--ash);line-height:1.5;font-size:15px}
 .s{color:var(--saffron);font-family:var(--mono);font-size:13px;margin-top:8px}
 </style></head><body><div class="c">
 <div class="brand">${logoSvg(26)}<span>Anchor</span></div>
-${d ? `<div class="big">${pct === null ? "⚓" : `${pct}%`}</div><h1>${esc(title)}</h1>${d.streak ? `<div class="s">🔥 ${d.streak}-period habit streak</div>` : ""}<div class="bars">${bars}</div>` : `<h1>${esc(title)}</h1>`}
+${d ? `<div class="big">${pct === null ? "⚓" : `${pct}%`}</div><h1>${esc(title)}</h1>${d.streak > 1 ? `<div class="s">🔥 ${d.streak} in a row</div>` : ""}<div class="bars">${bars}</div>` : `<h1>${esc(title)}</h1>`}
 <p>${esc(desc)}</p>
 <a class="cta" href="https://t.me/${esc(bot)}">Make a promise on Telegram</a>
 </div></body></html>`;

@@ -157,6 +157,63 @@ describe("photo proof in memory", () => {
   });
 });
 
+describe("remind me at 9, it starts at 10", () => {
+  const p = { text: "Promised to attend the real estate program at 10:00", due: "2026-10-29", at: "10:00", rem: "09:00" };
+  it("reminds at the asked time and checks at the event, not before", async () => {
+    const { headsUpAt, headsUpNow, dueNow, headsUpText } = await import("../src/reminders.js");
+    expect(headsUpAt(p)).toEqual(["2026-10-29", "09:00"]);
+    expect(headsUpNow({ j563: p }, "2026-10-29", "08:59", {}, {})).toHaveLength(0);
+    expect(headsUpNow({ j563: p }, "2026-10-29", "09:00", {}, {})).toHaveLength(1);
+    expect(dueNow({ j563: p }, "2026-10-29", "09:00", {}, {})).toHaveLength(0);
+    expect(dueNow({ j563: p }, "2026-10-29", "10:00", {}, {})).toHaveLength(1);
+    expect(headsUpText("j563", p)).toMatch(/^🔔 Your reminder: .* at 10:00 \(1 hour from now\)/);
+  });
+  it("without a reminder it still warns 30 minutes before", async () => {
+    const { headsUpAt, headsUpText } = await import("../src/reminders.js");
+    const q = { ...p, rem: undefined };
+    expect(headsUpAt(q)).toEqual(["2026-10-29", "09:30"]);
+    expect(headsUpText("j563", q)).toMatch(/^⏳ 30 minutes left/);
+  });
+  it("keeps the reminder time in memory, and ignores one after the deadline", () => {
+    const r = { kind: "commitment" as const, date: "2026-10-29", id: "j563", due: "2026-10-29", at: "10:00", rem: "09:00", text: p.text };
+    expect(serialize(r)).toContain("at:10:00 rem:09:00");
+    expect(parse(serialize(r)).rem).toBe("09:00");
+  });
+  it("mirrors the reminder for exact-time sends, and drops it when the promise moves", async () => {
+    const st = await import("../src/state.js");
+    const { trackRecords } = await import("../src/reminders.js");
+    st.upsertUser(777001, 777001, "Angel");
+    trackRecords(777001, [{ kind: "commitment", date: "2026-10-29", id: "j563", due: "2026-10-29", at: "10:00", rem: "09:00", text: p.text }]);
+    expect(st.getUser(777001)?.timed?.j563?.rem).toBe("09:00");
+    trackRecords(777001, [{ kind: "commitment", date: "2026-10-29", id: "late", due: "2026-10-29", at: "10:00", rem: "11:00", text: "x" }]);
+    expect(st.getUser(777001)?.timed?.late?.rem).toBeUndefined();
+    trackRecords(777001, [{ kind: "outcome", date: "2026-10-29", ref: "j563", status: "moved", due: "2026-10-30", at: "14:00", text: "moved" }]);
+    expect(st.getUser(777001)?.timed?.j563).toEqual({ text: p.text, due: "2026-10-30", at: "14:00" });
+  });
+});
+
+describe("timezone shown as the place the person gave", () => {
+  it("keeps Enugu, explains it's on West Africa time, and leaves zone names alone", async () => {
+    const { placeName, describeZone } = await import("../src/timezone.js");
+    expect(placeName("enugu nigeria")).toBe("Enugu Nigeria");
+    expect(placeName("Africa/Lagos")).toBeUndefined();
+    expect(placeName("UTC+1")).toBeUndefined();
+    expect(placeName("WAT")).toBeUndefined();
+    const at = new Date("2026-10-29T06:53:00Z");
+    expect(describeZone("Africa/Lagos", at, "Enugu Nigeria")).toMatch(/^Enugu Nigeria · West Africa (Standard )?Time \(Africa\/Lagos, now 07:53\)$/);
+    expect(describeZone("Africa/Lagos", at, "Lagos")).toMatch(/^West Africa (Standard )?Time \(Africa\/Lagos, now 07:53\)$/);
+    expect(describeZone("Etc/GMT-3", at)).toBe("Etc/GMT-3 (now 09:53)");
+  });
+});
+
+describe("kept in a row", () => {
+  it("counts back from the latest outcome until a miss", () => {
+    const states = [c("a", "2026-10-20", "broken"), c("b", "2026-10-25", "kept"), c("d", "2026-10-28", "kept"), c("e", "2026-10-29", "kept")];
+    expect(summarize(states, {}, "2026-10-29").keptRun).toBe(3);
+    expect(summarize([...states, c("f", "2026-10-29", "broken")], {}, "2026-10-29").keptRun).toBe(0);
+  });
+});
+
 describe("share card", () => {
   it("escapes the name and never includes promise texts", () => {
     const html = cardPage({ name: "<script>x</script>", kept: 3, closed: 4, streak: 2, weeks: [], bot: "Anchor_daBot" });

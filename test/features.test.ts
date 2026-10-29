@@ -35,6 +35,19 @@ describe("per-user timezones", () => {
     expect(offsetZone("UTC+0")).toBe("UTC");
     expect(offsetZone("UTC+20")).toBeUndefined();
   });
+  it("accepts current zone names the runtime may list under an old spelling, and half-hour offsets", () => {
+    expect(ianaZone("Asia/Kolkata")).toBe("Asia/Kolkata");
+    expect(ianaZone("asia/calcutta")).toBe("Asia/Kolkata");
+    expect(ianaZone("asia/kathmandu")).toBe("Asia/Kathmandu");
+    expect(ianaZone("Europe/Kiev")).toBe("Europe/Kyiv");
+    expect(ianaZone("Mars/Olympus")).toBeUndefined();
+    expect(ianaZone("Mumbai")).toBeUndefined();
+    const offset = (tz: string) => new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" }).formatToParts(new Date("2026-01-15T12:00:00Z")).find((p) => p.type === "timeZoneName")!.value;
+    expect(offset(offsetZone("UTC+5:30")!)).toBe("GMT+5:30");
+    expect(offset(offsetZone("gmt+5:45")!)).toBe("GMT+5:45");
+    expect(offset(offsetZone("UTC-3:30")!)).toBe("GMT-3:30");
+    expect(offsetZone("UTC+5:15")).toBeUndefined();
+  });
 });
 
 describe("promises in a currency (wallet value via Tatum prices)", () => {

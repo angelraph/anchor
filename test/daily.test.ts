@@ -230,6 +230,17 @@ describe("open or closed is decided by the broad sweep", () => {
   });
 });
 
+describe("a deadline only comes from what the person said", () => {
+  it("drops the check-in time borrowed from Anchor's reply, keeps a time they gave", async () => {
+    const { borrowedCheckinTime } = await import("../src/memory/write.js");
+    expect(borrowedCheckinTime("19:00", "I'll read one article today.")).toBe(true);
+    expect(borrowedCheckinTime("19:00", "I'll read one article by 7pm")).toBe(false);
+    expect(borrowedCheckinTime("19:00", "I'll call at 19:00")).toBe(false);
+    expect(borrowedCheckinTime("19:00", "yes", "the call is at 7 tonight")).toBe(false);
+    expect(borrowedCheckinTime("18:00", "I'll read one article today.")).toBe(false);
+  });
+});
+
 describe("bot profile texts", () => {
   it("fit Telegram's limits", async () => {
     const { BOT_ABOUT, BOT_DESCRIPTION } = await import("../src/bot/bot.js");

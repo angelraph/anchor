@@ -363,6 +363,157 @@ else {
 }
 if ((await web.request("/api/app/me", { headers: { "x-telegram-init-data": initData.replace(/hash=\w/, "hash=0") } })).status !== 401) failures.push("app: a forged sign-in got in");
 
+// The full sweep: every surface a person touches, checked for what the answer SAYS.
+const { runDeadlineReminders } = await import("../src/reminders.js");
+const { runMorning } = await import("../src/morning.js");
+const { runCheckins } = await import("../src/checkins.js");
+const { hourIn, timeIn, todayIn: today } = await import("../src/dates.js");
+const savesClaim = /locked in|i've noted|i have noted|noted that|i'll check in|i will check in|heads-up|i'll remind|i will remind|scheduled|on your list/i;
+/** A zone where it is `hour` o'clock right now, to run time-of-day jobs without waiting. */
+const zoneAt = (hour: number) => [...Array(27).keys()].map((i) => i - 12).map((o) => (o === 0 ? "UTC" : `Etc/GMT${o > 0 ? "-" : "+"}${Math.abs(o)}`)).find((z) => hourIn(z) === hour);
+const msgsTo = (id: number, since: number) => sent.slice(since).filter((s) => s.method === "sendMessage" && s.chatId === id).map((s) => s.text ?? "");
+
+// Previews never claim to save: /compare and the app's memory switch.
+mark = sent.length;
+await say("/compare I have a meeting around 4pm today");
+const withPart = (lastText().split("WITH Walrus Memory")[1] ?? "");
+if (!withPart) failures.push("/compare: no with-memory answer");
+else if (savesClaim.test(withPart)) failures.push(`/compare: preview claims it saved something: "${savesClaim.exec(withPart)![0]}"`);
+const cmp = await web.request("/api/app/compare", { method: "POST", body: JSON.stringify({ q: "I'll call my mum at 9pm" }), headers: { "x-telegram-init-data": initData, "content-type": "application/json" } });
+const cmpBody = (await cmp.json()) as { on?: string; off?: string; recalled?: number };
+if (cmp.status !== 200 || !cmpBody.on || !cmpBody.off) failures.push(`app compare: ${cmp.status}`);
+else if (savesClaim.test(cmpBody.on)) failures.push(`app compare: preview claims it saved something: "${savesClaim.exec(cmpBody.on)![0]}"`);
+else console.log(`\n   app memory switch: off and on answers, ${cmpBody.recalled} memories recalled, no false save claims`);
+
+// Answers agree with the real promise list: closed promises are never called open.
+await say("What promises do I still have open right now?");
+const openAnswer = lastText();
+if (/\b(cv|water|chapter 3)\b[^.]*\b(still|open|overdue|haven't|pending)\b|\b(still|open|overdue|pending)\b[^.]*\b(cv|water|chapter 3)\b/i.test(openAnswer)) failures.push(`consistency: a kept promise was called open: "${openAnswer.slice(0, 160)}"`);
+
+// Reminders: a reminder time separate from the deadline, then the check at the event.
+await say("I have a call with the bank at 11pm tonight, remind me at 10pm");
+await settle();
+const remId = Object.entries(st.getUser(USER)?.timed ?? {}).find(([, p]) => p.rem)?.[0];
+if (!remId) failures.push("reminder: 'remind me at 10pm' did not record a reminder time");
+else {
+  const tz = st.tzOf(USER), now = timeIn(tz), later = (m: number) => { const d = new Date(Date.now() + m * 60_000); return new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d); };
+  st.updateUser(USER, (u) => { u.timed![remId] = { ...u.timed![remId]!, due: today(tz), rem: now, at: later(2) }; });
+  mark = sent.length;
+  await runDeadlineReminders(bot.api);
+  if (!msgsTo(USER, mark).some((t) => /^🔔 Your reminder/.test(t))) failures.push("reminder: no 🔔 reminder at the asked time");
+  st.updateUser(USER, (u) => { u.timed![remId]!.at = now; });
+  mark = sent.length;
+  await runDeadlineReminders(bot.api);
+  if (!msgsTo(USER, mark).some((t) => /Did you make it\?/.test(t))) failures.push("reminder: no check at the event time");
+}
+// The plain 30-minute heads-up for a promise without a reminder time.
+st.updateUser(USER, (u) => { (u.timed ??= {}).hu01 = { text: "Promised to submit the form", due: today(st.tzOf(USER)), at: (() => { const d = new Date(Date.now() + 20 * 60_000); return new Intl.DateTimeFormat("en-GB", { timeZone: st.tzOf(USER), hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d); })() }; });
+mark = sent.length;
+await runDeadlineReminders(bot.api);
+if (!msgsTo(USER, mark).some((t) => /^⏳ 30 minutes left/.test(t))) failures.push("reminder: no 30-minute heads-up");
+st.updateUser(USER, (u) => { delete u.timed!.hu01; (u.closed ??= {}).hu01 = "kept"; });
+
+// Outcome buttons beyond "Did it": partly and move it.
+await say("I'll tidy my desk today.");
+await settle();
+await say("/checkin");
+const partly = lastButtons().find((b) => b.includes(":partial"));
+if (!partly) failures.push("/checkin: no Partly button");
+else {
+  mark = sent.length;
+  await tap(partly.split("=>")[1]!);
+  if (!msgsTo(USER, mark).some((t) => /Partial still counts/.test(t))) failures.push("Partly: wrong follow-up");
+}
+await say("I'll read one article today.");
+await settle();
+await say("/checkin");
+const moveIt = lastButtons().find((b) => b.includes(":moved"));
+if (!moveIt) failures.push("/checkin: no Move it button");
+else {
+  await tap(moveIt.split("=>")[1]!);
+  if (!/when will you do/i.test(lastText())) failures.push("Move it: did not ask for a new time");
+}
+
+// Time-of-day jobs, run now by moving the person into a zone where it's that hour.
+const z8 = zoneAt(8), z19 = zoneAt(19);
+if (z8) {
+  st.updateUser(USER, (u) => { u.tz = z8; delete u.lastMorning; u.morning = true; });
+  mark = sent.length;
+  await runMorning(bot.api);
+  if (!msgsTo(USER, mark).some((t) => /Good morning/.test(t))) failures.push("morning brief: not sent at 08:00 local");
+  await say("/morning off");
+  st.updateUser(USER, (u) => delete u.lastMorning);
+  mark = sent.length;
+  await runMorning(bot.api);
+  if (msgsTo(USER, mark).some((t) => /Good morning/.test(t))) failures.push("morning brief: sent after /morning off");
+  await say("/morning on");
+}
+if (z19) {
+  st.updateUser(USER, (u) => { u.tz = z19; delete u.lastEvening; });
+  mark = sent.length;
+  await runCheckins(bot.api);
+  console.log(`\n   evening check-in at 19:00 local sent ${msgsTo(USER, mark).length} message(s)`);
+}
+st.updateUser(USER, (u) => { u.tz = "Africa/Lagos"; });
+await say("/week");
+if (!/follow-through|kept/i.test(lastText())) failures.push("/week: no summary");
+
+// The photo chooser: a photo that proves nothing gets a "which promise?" question, and "Not a proof" works.
+fixtures.logo = "docs/img/bot-photo.jpg";
+await say("I'll stretch for 10 minutes today.");
+await settle();
+mark = sent.length;
+await sendMsg({ photo: [{ file_id: "logo", file_unique_id: "p2", width: 640, height: 640 }] }, "[photo that proves nothing]");
+const ask = sent.slice(mark).find((s) => s.buttons?.some((b) => b.endsWith(":none")));
+const accepted = sent.slice(mark).some((s) => /Proof accepted/.test(s.text ?? ""));
+if (accepted) failures.push("photo: a logo was accepted as proof");
+else if (!ask) failures.push("photo: no 'which promise?' chooser for an unclear photo");
+else {
+  await tap(ask.buttons!.find((b) => b.endsWith(":none"))!.split("=>")[1]!);
+  if (!/won't count it/.test(lastText())) failures.push("photo chooser: 'Not a proof' did nothing");
+}
+
+// The rest of the tour, habits, buddies, and the small commands.
+for (let step = 2; step <= 6; step++) await tap(`tour:${step}`);
+mark = sent.length;
+await tap("tour:demo");
+if (!sent.slice(mark).some((s) => /real promise now/.test(s.text ?? ""))) failures.push("tour demo: no demo promise");
+await say("/habit stop 1");
+if (!/Stopped/.test(lastText())) failures.push("/habit stop: did not stop");
+await say("/buddy private");
+if (!/only see that you kept or missed/.test(lastText())) failures.push("/buddy private: wrong reply");
+await say("/buddy share");
+await say("/mymemory");
+if (!/Own your memory|own Walrus Memory account/.test(lastText())) failures.push("/mymemory: no explanation");
+await say("/app");
+if (!sent.at(-1)?.buttons?.length) failures.push("/app: no button to open the app");
+await say("/wallet verify");
+await say("/record on");
+await say("/record off");
+
+// The app's buttons: share and the public card, morning toggle, memory disconnect, a photo proof.
+const auth = { "x-telegram-init-data": initData, "content-type": "application/json" };
+const share = (await (await web.request("/api/app/share", { method: "POST", headers: auth })).json()) as { url?: string };
+const code = share.url?.split("/c/")[1];
+if (!code) failures.push("app share: no card link");
+else {
+  const card = await web.request(`/c/${code}`);
+  const html = await card.text();
+  if (card.status !== 200 || !/in the last 30 days|keeping their promises/.test(html) || /<script/.test(html)) failures.push(`share card: ${card.status}`);
+  await web.request("/api/app/share", { method: "DELETE", headers: auth });
+  if ((await web.request(`/c/${code}`)).status !== 404) failures.push("share card: still public after Stop sharing");
+}
+await web.request("/api/app/morning", { method: "POST", headers: auth, body: JSON.stringify({ on: false }) });
+if (st.getUser(USER)?.morning !== false) failures.push("app: morning toggle did not switch off");
+await web.request("/api/app/morning", { method: "POST", headers: auth, body: JSON.stringify({ on: true }) });
+if ((await web.request("/api/app/memory", { method: "DELETE", headers: auth })).status !== 200) failures.push("app: memory disconnect failed");
+const pic = st.proofsOf(String(USER)).find((p) => p.jobId);
+if (pic) {
+  const img = await web.request(`/api/app/proof/${pic.id}`, { headers: auth });
+  if (img.status !== 200 || !Buffer.from(await img.arrayBuffer()).equals(readFileSync(fixtures.photo!))) failures.push(`app: photo proof ${img.status}`);
+  else console.log("   app photo proof: decrypted from Walrus through the route, byte for byte");
+}
+
 await say("/stats");
 await say("/help");
 await say("/nonsense");

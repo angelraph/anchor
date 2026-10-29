@@ -59,6 +59,8 @@ export async function generateReply(opts: {
   message: string;
   withMemory: boolean;
   useHistory?: boolean;
+  /** A side-by-side preview (/compare, the app's memory switch): nothing said here is saved. */
+  preview?: boolean;
 }): Promise<TurnResult> {
   const tz = tzOf(opts.userId);
   const today = todayIn(tz);
@@ -75,17 +77,19 @@ export async function generateReply(opts: {
   const { text } = await withModel((model) =>
     generateText({
       model,
-      system: systemPrompt({
-        firstName: opts.firstName,
-        today,
-        memories: context?.memories ?? null,
-        commitments: context?.commitments ?? [],
-        awaiting: opts.withMemory ? (getUser(opts.userId)?.awaitingOutcome ?? []) : [],
-        memoryUnavailable: context?.unavailable,
-        wallet: walletLabel(opts.userId),
-        tz,
-        tzUnset: !getUser(opts.userId)?.tz,
-      }),
+      system:
+        (opts.preview ? `PREVIEW MODE.${PREVIEW_NOTE}\n\n` : "") +
+        systemPrompt({
+          firstName: opts.firstName,
+          today,
+          memories: context?.memories ?? null,
+          commitments: context?.commitments ?? [],
+          awaiting: opts.withMemory ? (getUser(opts.userId)?.awaitingOutcome ?? []) : [],
+          memoryUnavailable: context?.unavailable,
+          wallet: walletLabel(opts.userId),
+          tz,
+          tzUnset: !getUser(opts.userId)?.tz,
+        }) + (opts.preview ? PREVIEW_NOTE : ""),
       messages: [...(opts.useHistory === false ? [] : historyFor(opts.userId)), { role: "user", content: opts.message }],
       temperature: 0.6,
       maxRetries: 0,
@@ -94,6 +98,11 @@ export async function generateReply(opts: {
   );
   return { reply: cleanReply(text), context };
 }
+
+/** Previews answer, but never pretend something was saved or scheduled. */
+export const PREVIEW_NOTE = `
+
+This is a preview shown side by side with and without memory: NOTHING from this message is saved, and no reminder, heads-up or check-in is scheduled from it. This overrides the reminder rules below. Never say or imply that anything the user says here is noted, saved, set, locked in, scheduled or on your list, or that you will remind them or check in. Wrong here: "is locked in", "I've noted that", "I'll check in at 4", "I'll send you a heads-up". If they state a new promise, respond to it with what you remember (a pattern, a win), then say: if they send it to you in the chat, you'll hold them to it.`;
 
 function walletLabel(userId: number): string | undefined {
   const w = getUser(userId)?.wallet;

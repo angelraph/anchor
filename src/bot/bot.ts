@@ -275,7 +275,7 @@ export function createBot(): Bot {
       return;
     }
     await withTyping(ctx, async () => {
-      const args = { userId: ctx.from!.id, firstName: user.firstName, message, useHistory: false };
+      const args = { userId: ctx.from!.id, firstName: user.firstName, message, useHistory: false, preview: true };
       const [r1, r2] = await Promise.allSettled([
         generateReply({ ...args, withMemory: false }),
         generateReply({ ...args, withMemory: true }),

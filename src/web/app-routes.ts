@@ -177,7 +177,7 @@ export function registerAppRoutes(app: Hono) {
     const { q } = (await c.req.json().catch(() => ({}))) as { q?: unknown };
     const message = typeof q === "string" ? q.trim().slice(0, 300) : "";
     if (!message) return c.json({ error: "Ask something." }, 400);
-    const args = { userId: Number(uid), firstName: getUser(uid)?.firstName ?? "", message, useHistory: false };
+    const args = { userId: Number(uid), firstName: getUser(uid)?.firstName ?? "", message, useHistory: false, preview: true };
     try {
       const [off, on] = await Promise.all([generateReply({ ...args, withMemory: false }), generateReply({ ...args, withMemory: true })]);
       return c.json({ off: off.reply, on: on.reply, recalled: on.context?.memories.length ?? 0 });

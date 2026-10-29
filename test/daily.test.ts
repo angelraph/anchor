@@ -214,6 +214,22 @@ describe("kept in a row", () => {
   });
 });
 
+describe("open or closed is decided by the broad sweep", () => {
+  it("a promise recalled for this message without its outcome still counts as closed", async () => {
+    const { mergeStates } = await import("../src/memory/recall.js");
+    const { isOpen } = await import("../src/memory/types.js");
+    const turn = [c("zlrg", "2026-10-07")]; // recalled for "meeting at 4pm", outcome not in this set
+    const sweep = [c("zlrg", "2026-10-07", "kept"), c("new1", "2026-10-29")];
+    const merged = mergeStates(turn, sweep);
+    expect(merged.find((s) => s.commitment.id === "zlrg")!.outcome?.status).toBe("kept");
+    expect(merged.filter(isOpen).map((s) => s.commitment.id)).toEqual(["new1"]);
+  });
+  it("keeps promises only one side knows about", async () => {
+    const { mergeStates } = await import("../src/memory/recall.js");
+    expect(mergeStates([c("a", "2026-10-29")], [c("b", "2026-10-28", "broken")]).map((s) => s.commitment.id).sort()).toEqual(["a", "b"]);
+  });
+});
+
 describe("bot profile texts", () => {
   it("fit Telegram's limits", async () => {
     const { BOT_ABOUT, BOT_DESCRIPTION } = await import("../src/bot/bot.js");

@@ -214,6 +214,14 @@ describe("kept in a row", () => {
   });
 });
 
+describe("bot profile texts", () => {
+  it("fit Telegram's limits", async () => {
+    const { BOT_ABOUT, BOT_DESCRIPTION } = await import("../src/bot/bot.js");
+    expect(BOT_ABOUT.length).toBeLessThanOrEqual(120);
+    expect(BOT_DESCRIPTION.length).toBeLessThanOrEqual(512);
+  });
+});
+
 describe("share card", () => {
   it("escapes the name and never includes promise texts", () => {
     const html = cardPage({ name: "<script>x</script>", kept: 3, closed: 4, streak: 2, weeks: [], bot: "Anchor_daBot" });

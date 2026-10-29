@@ -597,6 +597,26 @@ export function createBot(): Bot {
 
 export { GROUP_COMMANDS };
 
+/** The bot's profile line in Telegram (max 120 characters). */
+export const BOT_ABOUT = "⚓ Say what you'll do. I remember, remind you, check in and celebrate every win. Voice, photos, streaks, groups. Free.";
+
+/** What a new person sees in the empty chat before tapping Start (max 512 characters). */
+export const BOT_DESCRIPTION = `Ever said "I'll start tomorrow" and never did?
+
+I'm Anchor ⚓, the friend who never forgets your promises.
+
+✍️ Tell me what you'll do and by when (type or voice note)
+⏰ I message you first: a reminder, then a check-in
+📸 Done? Send a photo as proof
+🔥 Habits and streaks that keep you going
+🤝 Bring a buddy, or add me to your group
+☀️ A morning brief every day at 8
+🧠 I remember you and learn what works
+
+Free, in your language. Your memories stay encrypted.
+
+Tap Start: what do you keep putting off?`;
+
 export const BOT_COMMANDS = [
   { command: "app", description: "Open your Anchor dashboard" },
   { command: "promises", description: "Your open and finished promises" },

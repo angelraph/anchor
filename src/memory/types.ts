@@ -43,6 +43,8 @@ export interface MemoryRecord {
   due?: string;
   /** Optional time of day the promise is due, HH:MM 24h (commitments only). */
   at?: string;
+  /** Time the person asked to be reminded, HH:MM 24h, before `at` on the due day (commitments only). */
+  rem?: string;
   /** For outcomes: the commitment id. For retractions: hash of the forgotten memory. */
   ref?: string;
   status?: OutcomeStatus;
@@ -76,6 +78,7 @@ export function serialize(record: MemoryRecord): string {
   if (record.id) fields.push(`id:${record.id}`);
   if (record.due && DATE.test(record.due)) fields.push(`due:${record.due}`);
   if (record.at && TIME.test(record.at)) fields.push(`at:${record.at}`);
+  if (record.rem && TIME.test(record.rem)) fields.push(`rem:${record.rem}`);
   if (record.ref) fields.push(`ref:${record.ref}`);
   if (record.status) fields.push(`status:${record.status}`);
   if (record.chk && !/\s/.test(record.chk)) fields.push(`chk:${record.chk}`);
@@ -99,6 +102,7 @@ export function parse(raw: string): MemoryRecord {
     if (key === "id") record.id = value;
     else if (key === "due" && DATE.test(value!)) record.due = value;
     else if (key === "at" && TIME.test(value!)) record.at = value;
+    else if (key === "rem" && TIME.test(value!)) record.rem = value;
     else if (key === "ref") record.ref = value;
     else if (key === "status" && ["kept", "broken", "partial", "moved"].includes(value!))
       record.status = value as OutcomeStatus;

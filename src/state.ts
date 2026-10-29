@@ -22,6 +22,8 @@ export interface TimedPromise {
   text: string;
   due: string; // YYYY-MM-DD
   at: string; // HH:MM
+  /** Reminder the person asked for (HH:MM, same day, before `at`); replaces the 30-minute heads-up. */
+  rem?: string;
 }
 
 /** A Sui wallet the user linked. `verified` once they signed a message with it. */
@@ -66,6 +68,8 @@ export interface UserState {
   firstName: string;
   /** IANA timezone (e.g. "Europe/Berlin"); deadlines, check-ins and summaries use it. */
   tz?: string;
+  /** The place the person gave for their timezone ("Enugu Nigeria"), shown instead of the zone's city. */
+  tzPlace?: string;
   /** Friends (user ids) who see this person's outcomes. */
   buddies?: string[];
   /** People (user ids) this person is a buddy for. */

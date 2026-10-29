@@ -37,6 +37,8 @@ export interface Summary {
   weeks: Array<{ week: string; kept: number; closed: number }>;
   /** Last 35 days: date → outcomes recorded that day. */
   days: Record<string, { kept: number; missed: number }>;
+  /** Promises kept in a row, counting back from the latest outcome. */
+  keptRun: number;
 }
 
 const monday = (iso: string) => {
@@ -46,11 +48,13 @@ const monday = (iso: string) => {
 
 /** Follow-through numbers from commitment states. Pure, for tests. */
 export function summarize(states: CommitmentState[], closed: Record<string, string>, today: string): Summary {
-  const outcomes: Array<{ date: string; status: Status }> = [];
+  const outcomes: Array<{ date: string; status: Status; at: string; i: number }> = [];
   for (const s of states) {
     const st = (s.outcome?.status ?? closed[s.commitment.id ?? ""]) as Status | "moved" | undefined;
     if (!st || st === "moved") continue;
-    outcomes.push({ date: s.outcome?.date || today, status: st });
+    const date = s.outcome?.date || today;
+    // Just recorded (button tap, not on Walrus yet) counts as the newest.
+    outcomes.push({ date, status: st, at: s.outcome?.createdAt ?? (s.outcome ? date : "9999"), i: outcomes.length });
   }
   const from30 = addDays(today, -29);
   const in30 = outcomes.filter((o) => o.date >= from30 && o.date <= today);
@@ -69,7 +73,13 @@ export function summarize(states: CommitmentState[], closed: Record<string, stri
     if (o.status === "broken") d.missed++;
     else d.kept++;
   }
-  return { kept30: in30.filter((o) => o.status === "kept").length, closed30: in30.length, weeks, days };
+  let keptRun = 0;
+  const newestFirst = [...outcomes].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at) || b.i - a.i);
+  for (const o of newestFirst) {
+    if (o.status !== "kept") break;
+    keptRun++;
+  }
+  return { kept30: in30.filter((o) => o.status === "kept").length, closed30: in30.length, weeks, days, keptRun };
 }
 
 /** Dashboards are cached briefly so pull-to-refresh can't burn the Walrus budget. */
@@ -103,7 +113,9 @@ async function dashboard(userId: string) {
     wallet: u.wallet ? (u.wallet.name ?? `${u.wallet.address.slice(0, 6)}…${u.wallet.address.slice(-4)}`) : null,
     sharing: !!u.cardCode,
     summary,
-    bestStreak: Math.max(0, ...habits.map((h) => h.streak)),
+    tzLabel: u.tzPlace ? `${u.tzPlace} (${tz})` : tz,
+    // Promises kept in a row, or a longer habit streak.
+    bestStreak: Math.max(summary.keptRun, ...habits.map((h) => h.streak)),
     open: open
       .map((s) => ({ id: s.commitment.id, text: clause(s.commitment.text), due: effectiveDue(s) ?? null, at: s.commitment.at ?? null }))
       .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999")),
@@ -237,7 +249,7 @@ export function registerAppRoutes(app: Hono) {
     const today = todayIn(tzOf(uid));
     const states = await recallCommitments(uid).catch(() => [] as CommitmentState[]);
     const s = summarize(states, u.closed ?? {}, today);
-    const streak = Math.max(0, ...Object.values(u.habits ?? {}).filter((h) => h.active).map((h) => h.streak));
+    const streak = Math.max(s.keptRun, ...Object.values(u.habits ?? {}).filter((h) => h.active).map((h) => h.streak));
     const html = cardPage({ name: u.firstName || "Someone", kept: s.kept30, closed: s.closed30, streak, weeks: s.weeks, bot: config.BOT_USERNAME || "Anchor_daBot" });
     cardCache.set(code, { at: Date.now(), html });
     return c.html(html);

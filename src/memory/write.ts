@@ -24,6 +24,7 @@ const extractionSchema = z.object({
       text: z.string().describe("One short third-person sentence"),
       due: z.string().nullable().describe("YYYY-MM-DD for commitments or moved outcomes, else null"),
       at: z.string().nullable().describe("Time of day the promise is due, HH:MM 24h, if the user gave one, else null"),
+      remind: z.string().nullable().describe("commitments only: HH:MM 24h the user asked to be reminded, when that is earlier than the deadline; else null"),
       ref: z.string().nullable().describe("Promise id for outcomes, else null"),
       status: z.enum(["kept", "broken", "partial", "moved"]).nullable().describe("Outcome status, else null"),
       chain: z
@@ -93,7 +94,9 @@ export async function extractMemories(opts: {
         m.chain && coin && amount && /^\d+(\.\d+)?$/.test(amount) && Number(amount) > 0
           ? serializeCheck({ kind: m.chain.kind, coin, amount, toName: m.chain.kind === "pay" ? (m.chain.recipient ?? undefined) : undefined })
           : undefined;
-      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, chk, text });
+      // A reminder only makes sense before a timed deadline on that day.
+      const rem = at && m.remind && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.remind) && m.remind < at ? m.remind : undefined;
+      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, rem, chk, text });
     } else if (m.kind === "outcome") {
       const ref = m.ref?.replace(/^#/, "");
       if (ref && opts.closed?.[ref]) continue; // already recorded (e.g. via the check-in button)

@@ -1,7 +1,9 @@
 /**
  * Beyond the evening check-in:
  *  - A heads-up 30 minutes before a timed promise is due, then a check at the
- *    exact deadline time ("by 3pm" -> 14:30 heads-up, 15:00 check).
+ *    exact deadline time ("by 3pm" -> 14:30 heads-up, 15:00 check). When the
+ *    person asked for a reminder ("remind me at 9, it starts at 10"), that
+ *    reminder replaces the heads-up and the check waits for the event itself.
  *  - A weekly follow-through summary every Sunday evening (and /week on demand).
  *
  * Timed promises are mirrored in local state as they are written to Walrus, so
@@ -26,10 +28,11 @@ export function trackRecords(userId: number | string, records: MemoryRecord[]): 
   updateUser(userId, (u) => {
     u.timed ??= {};
     for (const r of relevant) {
-      if (r.kind === "commitment") u.timed[r.id!] = { text: r.text, due: r.due!, at: r.at! };
+      if (r.kind === "commitment") u.timed[r.id!] = { text: r.text, due: r.due!, at: r.at!, ...(r.rem && r.rem < r.at! ? { rem: r.rem } : {}) };
       else if (r.status === "moved" && r.due) {
         const prev = u.timed[r.ref!];
-        if (r.at && prev) u.timed[r.ref!] = { ...prev, due: r.due, at: r.at };
+        // A moved promise keeps no old reminder time: it was set for the old deadline.
+        if (r.at && prev) u.timed[r.ref!] = { text: prev.text, due: r.due, at: r.at };
         else delete u.timed[r.ref!]; // moved to a day with no time: the evening check-in covers it
       } else delete u.timed[r.ref!];
     }
@@ -51,8 +54,12 @@ export const HEADS_UP_MINUTES = 30;
 
 const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
-/** When the heads-up for a promise is due: [date, "HH:MM"], 30 minutes before (may be the day before). */
+/**
+ * When the heads-up for a promise is due: [date, "HH:MM"]. The reminder time the
+ * person asked for, or else 30 minutes before the deadline (may be the day before).
+ */
 export function headsUpAt(p: TimedPromise): [string, string] {
+  if (p.rem && p.rem < p.at) return [p.due, p.rem];
   let m = toMin(p.at) - HEADS_UP_MINUTES;
   let date = p.due;
   if (m < 0) {
@@ -79,6 +86,16 @@ export function headsUpNow(
   });
 }
 
+/** The heads-up message: the reminder they asked for, or the 30-minute warning. Pure, for tests. */
+export function headsUpText(id: string, p: TimedPromise): string {
+  if (p.rem && p.rem < p.at) {
+    const mins = toMin(p.at) - toMin(p.rem);
+    const lead = mins >= 60 && mins % 60 === 0 ? `${mins / 60} hour${mins === 60 ? "" : "s"}` : `${mins} minutes`;
+    return `🔔 Your reminder: ${clause(p.text)}, at ${p.at} (${lead} from now).\n#${id} · Time to get ready. I'll check in at ${p.at}.`;
+  }
+  return `⏳ ${HEADS_UP_MINUTES} minutes left.\n#${id} · ${clause(p.text)} (due ${p.at})\nYou've got this. I'll check in at ${p.at}.`;
+}
+
 /** Send heads-ups and exact-time deadline reminders. Reads local state only (no Walrus calls). */
 export async function runDeadlineReminders(api: Api): Promise<void> {
   for (const [userId, user] of allUsers()) {
@@ -91,7 +108,7 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     if (stale.length) updateUser(userId, (u) => stale.forEach((id) => delete u.timed![id]));
     for (const [id, p] of headsUpNow(timed, today, now, user.warned ?? {}, user.closed ?? {})) {
       try {
-        await api.sendMessage(user.chatId, `⏳ ${HEADS_UP_MINUTES} minutes left.\n#${id} · ${clause(p.text)} (due ${p.at})\nYou've got this. I'll check in at ${p.at}.`);
+        await api.sendMessage(user.chatId, headsUpText(id, p));
         console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
       } catch (err) {
         console.warn(`[remind] heads-up user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
@@ -103,7 +120,7 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     // Chain-verified promises get their deadline verdict from Sui instead (chain/promises.ts).
     for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {}).filter(([id]) => !user.chain?.[id])) {
       try {
-        await api.sendMessage(user.chatId, `⏰ It's ${p.at}, deadline time.\n#${id} · ${clause(p.text)}\nDid you do it?`, {
+        await api.sendMessage(user.chatId, `⏰ It's ${p.at}${p.rem ? "" : ", deadline time"}.\n#${id} · ${clause(p.text)}\n${p.rem ? "Did you make it?" : "Did you do it?"}`, {
           reply_markup: outcomeKeyboard(id),
         });
         console.log(`[remind] user ${userId} #${id} at ${p.at}`);

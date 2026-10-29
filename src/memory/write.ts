@@ -45,6 +45,19 @@ const extractionSchema = z.object({
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * The evening check-in time taken from Anchor's own reply ("I'll ask at 19:00")
+ * is not the person's deadline. True when `at` is that time and the person never
+ * said its hour (as 19, 7 or 7pm) in what they wrote. Pure, for tests.
+ */
+export function borrowedCheckinTime(at: string, userMessage: string, previousUser?: string): boolean {
+  const h = config.CHECKIN_HOUR;
+  if (at !== `${String(h).padStart(2, "0")}:00`) return false;
+  const said = `${userMessage} ${previousUser ?? ""}`;
+  const h12 = h % 12 || 12;
+  return !new RegExp(`(^|\\D)(${h}|${h12})(\\D|$)`).test(said);
+}
+
 /** Ask Gemini which durable facts the latest exchange contains, as typed Anchor records. */
 export async function extractMemories(opts: {
   userMessage: string;
@@ -80,7 +93,7 @@ export async function extractMemories(opts: {
     const text = m.text.trim();
     if (!text) continue;
     const due = m.due && ISO.test(m.due) ? m.due : undefined;
-    const at = m.at && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.at) ? m.at : undefined;
+    const at = m.at && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.at) && !borrowedCheckinTime(m.at, opts.userMessage, opts.previous?.user) ? m.at : undefined;
     if (m.kind === "habit") {
       const rep = (m.rep ?? "").replace(/\s+/g, "").toLowerCase();
       const ok = /^([1-7])\/(day|week)$/.exec(rep);

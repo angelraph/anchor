@@ -56,6 +56,10 @@ ul.list li{display:flex;justify-content:space-between;gap:12px;padding:11px 12px
 .switch button{flex:1;border:0;background:none;color:var(--ash);padding:9px;border-radius:999px;font-size:14px;font-weight:600}
 .switch button.on{background:var(--iris);color:#fff}
 .switch button.off.on{background:#2a2b33}
+.qbox{position:relative;margin-top:12px}.qbox input{padding-right:44px}
+.qclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;border-radius:999px;background:#1a1b23;color:var(--mist);font-size:14px}
+.anslabel{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ash);margin:0 0 8px;min-height:14px}
+.anslabel.on{color:var(--verdant)}
 .answer{min-height:70px;font-size:15px;line-height:1.5;color:var(--mist);padding:12px;border-radius:12px;background:#0d0e14;border:1px solid var(--line);transition:opacity .2s}
 input,textarea{width:100%;background:#0d0e14;border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:12px;font-size:15px;font-family:inherit}
 input:focus,textarea:focus{outline:none;border-color:var(--iris)}
@@ -88,10 +92,11 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
   <section class="card"><div class="label">open promises</div><ul class="list" id="open"></ul></section>
   <section class="card" id="habitsCard"><div class="label">habits & streaks</div><div id="habits"></div></section>
   <section class="card"><div class="label">what I've learned about you</div><div id="learned"></div></section>
-  <section class="card"><div class="label">the memory switch</div><p class="muted">Ask anything. See what I'd say if I didn't remember you, then flip the switch.</p>
-    <div style="margin-top:12px" class="row"><input id="q" maxlength="300" placeholder="Should I start running too?"></div>
+  <section class="card"><div class="label">the memory switch</div><p class="muted">Ask anything. You'll see a stranger's answer first, then it flips to mine, the one that remembers you. Tap either side to compare. Just a preview: nothing here is saved.</p>
+    <div class="qbox"><input id="q" maxlength="300" enterkeyhint="send" placeholder="Should I start running too?"><button id="qClear" class="qclear" aria-label="Clear the question" hidden>✕</button></div>
     <button class="btn" id="ask">Ask both ways</button>
     <div class="switch"><button class="off" id="swOff">Memory OFF</button><button id="swOn" class="on">Memory ON ⚓</button></div>
+    <div class="anslabel" id="ansLabel"></div>
     <div class="answer" id="answer"><span class="empty">Your answer appears here.</span></div></section>
   <section class="card"><div class="label">weekly follow-through</div><div class="bars" id="bars"></div></section>
   <section class="card" id="proofCard"><div class="label">photo proof · encrypted on walrus</div><div class="gallery" id="gallery"></div></section>
@@ -183,13 +188,21 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
   const load = () => api("/api/app/me").then((r) => r.json()).then(render).catch((e) => { $("loading").replaceChildren(el("p", "err", e.message)); });
   load();
 
-  let answers = null, showOn = true;
+  let answers = null, showOn = true, flip = 0;
   const show = () => { $("swOn").classList.toggle("on", showOn); $("swOff").classList.toggle("on", !showOn); if (!answers) return; const a = $("answer"); a.style.opacity = "0";
+    $("ansLabel").textContent = showOn ? "With your memory ⚓ (" + answers.recalled + " memories recalled)" : "Without memory: a stranger answering";
+    $("ansLabel").classList.toggle("on", showOn);
     setTimeout(() => { a.textContent = showOn ? answers.on : answers.off; a.style.opacity = "1"; }, 150); };
-  $("swOn").onclick = () => { showOn = true; haptic(); show(); };
-  $("swOff").onclick = () => { showOn = false; haptic(); show(); };
-  $("ask").onclick = async () => { const q = $("q").value.trim() || $("q").placeholder; $("ask").disabled = true; $("answer").textContent = "Thinking both ways…";
-    try { answers = await (await api("/api/app/compare", { method: "POST", body: JSON.stringify({ q }) })).json(); showOn = false; show(); setTimeout(() => { showOn = true; show(); haptic(); }, 2600); }
+  $("swOn").onclick = () => { clearTimeout(flip); showOn = true; haptic(); show(); };
+  $("swOff").onclick = () => { clearTimeout(flip); showOn = false; haptic(); show(); };
+  const q = $("q"), qClear = $("qClear");
+  const syncClear = () => { qClear.hidden = !q.value; };
+  q.oninput = syncClear;
+  q.onfocus = () => setTimeout(() => q.select(), 0); // typing replaces the last question
+  qClear.onclick = () => { q.value = ""; syncClear(); q.focus(); };
+  q.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); q.blur(); $("ask").click(); } };
+  $("ask").onclick = async () => { const text = q.value.trim() || q.placeholder; $("ask").disabled = true; clearTimeout(flip); answers = null; $("ansLabel").textContent = ""; $("answer").textContent = "Thinking both ways…";
+    try { answers = await (await api("/api/app/compare", { method: "POST", body: JSON.stringify({ q: text }) })).json(); showOn = false; show(); flip = setTimeout(() => { showOn = true; show(); haptic(); }, 3500); }
     catch (e) { $("answer").textContent = e.message; } finally { $("ask").disabled = false; } };
 
   $("connect").onclick = async () => { const msg = $("ownMsg"); msg.replaceChildren(el("p", "muted", "Checking your key and copying your memories…")); $("connect").disabled = true;

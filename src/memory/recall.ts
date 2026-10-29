@@ -27,6 +27,7 @@ const stableCache = new Map<string, { at: number; memories: RecalledMemory[] }>(
 /** Drop cached recalls (after the person moves their memory to another account). */
 export function forgetCachedRecalls(userId: number | string) {
   stableCache.delete(String(userId));
+  sweepCache.delete(String(userId));
 }
 
 async function stableRecall(userId: number | string): Promise<RecalledMemory[]> {
@@ -113,7 +114,34 @@ export async function recallForTurn(userId: number | string, message: string): P
   const groups = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   if (groups.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
   const memories = mergeAndFilter(userId, ...groups, pendingFor(userId)).sort((a, b) => a.distance - b.distance);
-  return { memories, commitments: withRecentOutcomes(userId, commitmentStates(memories)) };
+  // A promise recalled for this message may arrive without its outcome (a different recall
+  // surfaced it), and would wrongly look open. The broad sweep decides open vs closed.
+  const sweep = await commitmentSweep(userId).catch(() => [] as CommitmentState[]);
+  return { memories, commitments: withRecentOutcomes(userId, mergeStates(commitmentStates(memories), sweep)) };
+}
+
+/** Promises by id, each with its outcome from whichever list has one. Pure, for tests. */
+export function mergeStates(fromTurn: CommitmentState[], fromSweep: CommitmentState[]): CommitmentState[] {
+  const byId = new Map<string, CommitmentState>();
+  for (const s of [...fromSweep, ...fromTurn]) {
+    const id = s.commitment.id;
+    if (!id) continue;
+    const prev = byId.get(id);
+    byId.set(id, prev ? { commitment: prev.commitment, outcome: prev.outcome ?? s.outcome } : s);
+  }
+  return [...byId.values()];
+}
+
+/** The broad promise sweep, reused for two minutes so every message doesn't pay two more recalls. */
+const sweepCache = new Map<string, { at: number; states: CommitmentState[] }>();
+const SWEEP_MS = 2 * 60_000;
+async function commitmentSweep(userId: number | string): Promise<CommitmentState[]> {
+  const key = String(userId);
+  const hit = sweepCache.get(key);
+  if (hit && Date.now() - hit.at < SWEEP_MS) return hit.states;
+  const states = await recallCommitments(userId);
+  sweepCache.set(key, { at: Date.now(), states });
+  return states;
 }
 
 /** Broad sweep of a user's commitments and outcomes (for /promises and check-ins). */

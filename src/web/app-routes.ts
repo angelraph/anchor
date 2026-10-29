@@ -25,6 +25,7 @@ import { progress } from "../habits.js";
 import { clause, effectiveDue, isOpen, type CommitmentState } from "../memory/types.js";
 import { readProof } from "../proof.js";
 import { allGroups, getUser, proofsOf, tzOf, updateUser, userByCardCode } from "../state.js";
+import { DEMO_USER, demoCompare, demoDashboard, demoStates } from "../demo.js";
 import { appPage, cardPage } from "./app-page.js";
 import { clientIp, rateLimit, verifyInitData } from "./guard.js";
 
@@ -154,7 +155,7 @@ const cardCache = new Map<string, { at: number; html: string }>();
 export function registerAppRoutes(app: Hono) {
   app.get("/app", (c) => {
     c.header("Cache-Control", "no-store");
-    return c.html(appPage());
+    return c.html(appPage({ demo: config.DEMO_MODE }));
   });
 
   app.use("/api/app/*", bodyLimit({ maxSize: 16 * 1024, onError: (c) => c.json({ error: "too large" }, 413) }));
@@ -163,6 +164,8 @@ export function registerAppRoutes(app: Hono) {
     (fn: (c: Context, uid: string) => Response | Promise<Response>) =>
     async (c: Context): Promise<Response> => {
       if (!rateLimit(`ip:${clientIp(c)}`, 120, 60_000)) return c.json({ error: "slow down" }, 429);
+      // Demo mode has no Telegram and no real people: everyone sees the sample person.
+      if (config.DEMO_MODE) return fn(c, String(DEMO_USER));
       const user = verifyInitData(c.req.header("x-telegram-init-data") ?? "", config.TELEGRAM_BOT_TOKEN);
       if (!user) return c.json({ error: "Open this inside Telegram." }, 401);
       if (!getUser(user.id)) return c.json({ error: "Start a chat with Anchor first." }, 403);
@@ -170,9 +173,10 @@ export function registerAppRoutes(app: Hono) {
       return fn(c, String(user.id));
     };
 
-  app.get("/api/app/me", guarded(async (c, uid) => c.json(await dashboard(uid))));
+  app.get("/api/app/me", guarded(async (c, uid) => c.json(config.DEMO_MODE ? demoDashboard(summarize) : await dashboard(uid))));
 
   app.post("/api/app/compare", guarded(async (c, uid) => {
+    if (config.DEMO_MODE) return c.json(demoCompare());
     if (!rateLimit(`compare:${uid}`, 6, 10 * 60_000)) return c.json({ error: "Give the memory switch a few minutes' rest." }, 429);
     const { q } = (await c.req.json().catch(() => ({}))) as { q?: unknown };
     const message = typeof q === "string" ? q.trim().slice(0, 300) : "";
@@ -196,6 +200,7 @@ export function registerAppRoutes(app: Hono) {
   }));
 
   app.post("/api/app/memory", guarded(async (c, uid) => {
+    if (config.DEMO_MODE) return c.json({ error: "This is the demo. In the live bot (t.me/Anchor_daBot) this moves your memory into your own Walrus Memory account." }, 400);
     if (!rateLimit(`memory:${uid}`, 5, 10 * 60_000)) return c.json({ error: "Too many tries, wait a few minutes." }, 429);
     const { accountId, key } = (await c.req.json().catch(() => ({}))) as { accountId?: unknown; key?: unknown };
     if (typeof accountId !== "string" || typeof key !== "string") return c.json({ error: "Account ID and delegate key are both needed." }, 400);
@@ -247,7 +252,7 @@ export function registerAppRoutes(app: Hono) {
     if (!found) return c.html(cardPage(null), 404);
     const [uid, u] = found;
     const today = todayIn(tzOf(uid));
-    const states = await recallCommitments(uid).catch(() => [] as CommitmentState[]);
+    const states = config.DEMO_MODE ? demoStates(today) : await recallCommitments(uid).catch(() => [] as CommitmentState[]);
     const s = summarize(states, u.closed ?? {}, today);
     const streak = Math.max(s.keptRun, ...Object.values(u.habits ?? {}).filter((h) => h.active).map((h) => h.streak));
     const html = cardPage({ name: u.firstName || "Someone", kept: s.kept30, closed: s.closed30, streak, weeks: s.weeks, bot: config.BOT_USERNAME || "Anchor_daBot" });

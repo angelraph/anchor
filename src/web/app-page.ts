@@ -14,7 +14,10 @@ const BASE_CSS = `
 html,body{background:var(--void);color:var(--bone);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 `;
 
-export function appPage(): string {
+export function appPage(opts: { demo?: boolean } = {}): string {
+  const demoBanner = opts.demo
+    ? `<div class="demo">Demo with a sample person, Ada. Nothing here is real or saved. The live Anchor is <a href="https://t.me/Anchor_daBot">t.me/Anchor_daBot</a>.</div>`
+    : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Anchor</title><link rel="icon" href="/logo.svg" type="image/svg+xml">
@@ -76,11 +79,13 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
 .empty{color:var(--ash);font-size:14px}
 .err{color:var(--rose);font-size:14px;margin-top:8px}.ok{color:var(--verdant);font-size:14px;margin-top:8px}
 #gate{display:none;text-align:center;padding:80px 16px}
+.demo{font-size:13px;line-height:1.45;color:var(--saffron);border:1px solid #3b2a1a;background:#140f06;border-radius:14px;padding:10px 12px;margin-bottom:14px}.demo a{color:var(--saffron)}
 .skeleton{height:110px;border-radius:20px;background:linear-gradient(90deg,#0b0c11,#13141b,#0b0c11);background-size:200% 100%;animation:sh 1.2s infinite;margin-bottom:14px}
 @keyframes sh{to{background-position:-200% 0}}
 </style></head>
-<body><main>
+<body data-demo="${opts.demo ? "1" : ""}"><main>
 <header><div class="brand">${logoSvg(24)}<span>Anchor</span></div><span class="badge" id="memBadge">Walrus Memory</span></header>
+${demoBanner}
 <div id="gate"><h1>Open Anchor inside Telegram</h1><p class="muted" style="margin-top:12px">This dashboard opens from the bot: <a style="color:var(--saffron)" href="https://t.me/Anchor_daBot">t.me/Anchor_daBot</a>, then tap the Anchor button.</p></div>
 <div id="loading"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
 <div id="app" hidden>
@@ -113,11 +118,14 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
 </main>
 <script>
 (() => {
-  const tg = window.Telegram && window.Telegram.WebApp;
+  const demo = document.body.dataset.demo === "1";
+  // Outside Telegram (the demo), a stand-in for the few Telegram calls the app makes.
+  const tg = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) ? window.Telegram.WebApp
+    : demo ? { initData: "", ready() {}, expand() {}, showAlert: (m) => alert(m), openTelegramLink: (u) => window.open(u, "_blank", "noopener") } : null;
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const haptic = () => { try { tg.HapticFeedback.impactOccurred("light"); } catch {} };
-  if (!tg || !tg.initData) { $("loading").hidden = true; $("gate").style.display = "block"; return; }
+  if (!tg) { $("loading").hidden = true; $("gate").style.display = "block"; return; }
   tg.ready(); tg.expand(); try { tg.setHeaderColor("#000000"); tg.setBackgroundColor("#000000"); } catch {}
   const api = async (path, opts = {}) => {
     const res = await fetch(path, { ...opts, headers: { "x-telegram-init-data": tg.initData, ...(opts.body ? { "content-type": "application/json" } : {}) } });
@@ -141,7 +149,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--iris)}
     const s = d.summary;
     ring(s.kept30, s.closed30);
     $("heroLine").textContent = s.closed30 ? "Kept " + s.kept30 + " of " + s.closed30 : "Hi " + (d.name || "there");
-    $("heroSub").textContent = s.closed30 ? (s.kept30 === s.closed30 ? "Every single one. Keep going." : "promises, " + (d.name ? d.name + ". " : "") + "Every one counts.") : "Make a promise in the chat and it shows up here.";
+    $("heroSub").textContent = s.closed30 ? (s.kept30 === s.closed30 ? "Every single one. Keep going." : "promises in the last 30 days. Every one counts.") : "Make a promise in the chat and it shows up here.";
     $("sOpen").textContent = d.open.length; $("sStreak").textContent = d.bestStreak;
     $("sWeek").textContent = (s.weeks[s.weeks.length - 1] || { kept: 0 }).kept;
 

@@ -127,6 +127,14 @@ section{padding:clamp(60px,10vw,120px) 0}
 .stat b{display:block;font-size:clamp(56px,8vw,96px);font-weight:400;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums}
 .stat span{display:block;margin-top:12px;font-size:14px;font-weight:600;letter-spacing:.025em;text-transform:uppercase;color:var(--ash)}
 
+/* a day with Anchor */
+.day{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:48px}
+.moment{border:1px solid #1f2030;border-radius:22px;padding:24px;background:linear-gradient(180deg,#0b0c14 0%,#07080c 100%);transition:border-color .2s,transform .2s}
+.moment:hover{border-color:var(--iris);transform:translateY(-2px)}
+.moment time{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;letter-spacing:.06em;color:var(--saffron);margin-bottom:12px}
+.moment h3{font-size:21px;font-weight:500;letter-spacing:-0.01em;margin-bottom:10px}
+.moment p{font-size:15.5px;font-weight:300;line-height:1.55;color:var(--mist)}
+
 /* steps */
 .steps{list-style:none;counter-reset:s}
 .steps li{display:grid;grid-template-columns:96px 1fr;gap:24px;padding:36px 0}
@@ -271,6 +279,7 @@ footer a:hover{color:var(--bone)}
     <nav>
       <a class="link" href="#replay">Demo</a>
       <a class="link" href="#how">How it works</a>
+      <a class="link" href="#day">A day with Anchor</a>
       <a class="link" href="#chain">On-chain</a>
       <a class="link" href="#proof">Proof</a>
       <a class="link" href="#vision">Vision</a>
@@ -337,6 +346,28 @@ footer a:hover{color:var(--bone)}
         <li><div><h3>Anchor checks in first</h3><p>When it's due, Anchor messages you. Did it, partly, didn't, or move it: one tap records the outcome.</p></div></li>
         <li><div><h3>It learns what works for you</h3><p>Excuses become patterns. Wins become strategy. Next time, Anchor reminds you what actually worked.</p></div></li>
       </ol>
+    </div>
+  </section>
+
+  <section id="day">
+    <div class="wrap">
+      <span class="label">A day with Anchor</span>
+      <h2 class="h-lg">Most apps wait for you. Anchor comes to you.</h2>
+      <p class="body muted" style="margin-top:24px">One ordinary day, start to finish. Everything below works today, in Telegram, for free.</p>
+      <div class="day">
+        <article class="moment"><time>08:00</time><h3>☀️ The morning brief</h3><p>What you promised for today, your habits and streaks, how the week is going, and one thing Anchor learned that helps: "you focus best with your phone in another room."</p></article>
+        <article class="moment"><time>09:12</time><h3>🎙 A voice note on the bus</h3><p>"I'll finish the pitch deck by 3pm, remind me at 2." No typing. Anchor hears it, and turns it into a promise with a reminder.</p></article>
+        <article class="moment"><time>14:00</time><h3>🔔 The reminder you asked for</h3><p>Right on time, in your own time zone. At 15:00 it asks how it went, and you answer with one tap.</p></article>
+        <article class="moment"><time>15:04</time><h3>📸 Proof, not just a "yes"</h3><p>Send a screenshot of the sent email or a gym selfie. Anchor matches it to the promise, marks it kept, and stores the photo encrypted on Walrus. Only you can open it again.</p></article>
+        <article class="moment"><time>15:05</time><h3>🤝 Your buddy cheers</h3><p>Invite a friend with /buddy. They hear when you keep or miss a promise, and can cheer or nudge you with one tap. They never see your chats.</p></article>
+        <article class="moment"><time>18:30</time><h3>👥 Your study group</h3><p>Add Anchor to a group chat. /promise in front of everyone, a deadline check only the promiser can answer, and /board crowns the week.</p></article>
+        <article class="moment"><time>20:00</time><h3>💰 Money the chain can check</h3><p>"I'll save ₦20,000 this month." Anchor reads your Sui wallet through Tatum, in your currency. Stake on it if you dare: the money sits in a Move contract nobody can touch.</p></article>
+        <article class="moment"><time>21:00</time><h3>🌙 The honest check-in</h3><p>Anything still open gets one question. Missed it? Anchor asks what got in the way, remembers, and brings it up before you plan the next one.</p></article>
+        <article class="moment"><time>Sunday</time><h3>🧾 Your week, signed</h3><p>Kept, partly, missed, your follow-through score and one insight. With /report it's signed and published to Walrus: proof anyone can verify.</p></article>
+        <article class="moment"><time>Anytime</time><h3>📱 The Anchor app</h3><p>Tap the Anchor button in the chat: a follow-through ring, a calendar of kept days, streaks, what Anchor learned about you, and the memory switch that shows the same answer with and without memory.</p></article>
+        <article class="moment"><time>Always</time><h3>🗝 Your memory, your account</h3><p>Encrypted on Walrus in a space only you have. Move it into your own Walrus Memory account with /mymemory, or take it into Claude Code and other AI tools over MCP.</p></article>
+        <article class="moment"><time>Anywhere</time><h3>🌍 Your language, your clock</h3><p>Write in Pidgin, Yoruba, Igbo, Hausa, Swahili, French, Arabic or anything else, and Anchor answers in kind, on your own time zone.</p></article>
+      </div>
     </div>
   </section>
 

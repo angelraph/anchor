@@ -50,9 +50,6 @@ Try it. No sign-up, no wallet:
 👉 t.me/Anchor_daBot
 
 Tell it one thing you keep putting off. It will remember.
-
----
-
 ## Single post (for sharing with friends and communities)
 
 I built a Telegram bot that remembers your promises and holds you to them ⚓
@@ -62,9 +59,6 @@ Tell Anchor what you'll do and by when. It checks in when it's due and learns wh
 Free, no sign-up: t.me/Anchor_daBot
 
 Built on @WalrusProtocol memory #WalrusMemory
-
----
-
 ## Message to send friends (WhatsApp / Telegram)
 
 Hey! I built a bot for a hackathon and I need a few real people to try it for 3 days 🙏
@@ -72,9 +66,6 @@ Hey! I built a bot for a hackathon and I need a few real people to try it for 3 
 It's called Anchor. You tell it something you keep putting off ("I'll go to the gym tomorrow at 6am"), and it remembers, checks in with you in the evening, and learns what helps you actually do it.
 
 Just open t.me/Anchor_daBot, press Start, and chat with it normally a few times a day. Tap the buttons when it checks in. That's all. Thank you!
-
----
-
 ## Reddit post (for the Promo Prize: a community outside the Walrus/Sui ecosystem, e.g. r/SideProject)
 
 **Title:** I built a Telegram accountability bot that actually remembers your promises between conversations
@@ -90,10 +81,6 @@ It's free and open source, and I'd love feedback from people who struggle with f
 Bot: t.me/Anchor_daBot
 Code: github.com/angelraph/anchor
 Write-up: [ARTICLE LINK]
-
-
----
-
 # Total Recall (Tatum × Walrus) launch
 
 ## X thread

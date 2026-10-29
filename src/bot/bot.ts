@@ -1,4 +1,11 @@
+import { randomBytes } from "node:crypto";
 import { sequentialize } from "@grammyjs/runner";
+import { downloadFile, judgePhoto, transcribe } from "../media.js";
+import { connectOwnMemory, disconnectOwnMemory } from "../memory/own.js";
+import { MORNING_HOUR, morningBrief } from "../morning.js";
+import { storeProof } from "../proof.js";
+import { GROUP_COMMANDS, registerGroupCommands } from "./group-commands.js";
+import { FOLLOW, recordOutcome, type Settled } from "./outcomes.js";
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
 import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
 import { weeklySummary } from "../reminders.js";
@@ -12,7 +19,7 @@ import { storeMemories } from "../memory/write.js";
 import { getUser, tzOf, updateUser, upsertUser } from "../state.js";
 import { isOverloadError } from "../llm/model.js";
 import { analyzeFallback } from "../memory/write.js";
-import { chatTurn, enqueue, generateReply, noteExchange } from "./conversation.js";
+import { chatTurn, enqueue, generateReply } from "./conversation.js";
 import { CHAIN_COMMANDS, CHAIN_HELP, registerChainCommands } from "./chain-commands.js";
 import { ONBOARDING_COMMANDS, registerOnboarding } from "./onboarding.js";
 import { HABIT_COMMANDS, registerHabitCommands } from "./habit-commands.js";
@@ -28,8 +35,12 @@ const HELP = `Here's how I work:
 • I remember it on Walrus, and when it's due I'll message you first and ask how it went.
 • Over time I learn your patterns, what derails you and what actually works, and I use them.
 • Money promises in USDC, USDsui, SUI or WAL can be verified on your Sui wallet, so the chain reports them, not you.
+• Talk instead of typing: send a voice note. Done something? Send a photo as proof.
 
 Commands
+/app: your promises, streaks and what I've learned, in one place
+/morning: your morning brief now (/morning off to stop the daily one)
+/mymemory: move your memory into your own Walrus Memory account
 /promises: your open and finished promises
 /memory: everything I remember about you
 /why: the exact memories behind my last reply
@@ -42,6 +53,7 @@ Commands
 /tour: a two-minute tour
 /habit gym 3x a week: a habit with a streak (/habits lists them)
 /buddy: invite a friend to hold you accountable
+Groups: add me to a group chat, then /promise and /board there
 ${CHAIN_HELP}`;
 
 async function sendLong(ctx: Context, text: string, extra?: Parameters<Context["reply"]>[1]) {
@@ -88,13 +100,57 @@ const KIND_LABEL: Record<MemoryKind | "note", string> = {
 /** Candidates offered by /forget, keyed by user then memory hash. */
 const forgetCandidates = new Map<string, Map<string, string>>();
 
+/** The mini app's URL, when this server has a public https address. */
+export const appUrl = () => (/^https:\/\//.test(config.PUBLIC_URL) ? `${config.PUBLIC_URL.replace(/\/$/, "")}/app` : "");
+
+interface PendingPhoto {
+  userId: number;
+  bytes: Uint8Array;
+  mediaType: string;
+  description: string;
+  shows: "done" | "partial" | "unclear";
+}
+/** Photos waiting for the person to say which promise they prove (in memory, 30 minutes). */
+const pendingPhotos = new Map<string, PendingPhoto & { expires: number }>();
+
+function putPendingPhoto(p: PendingPhoto): string {
+  const now = Date.now();
+  for (const [k, v] of pendingPhotos) if (v.expires < now || v.userId === p.userId) pendingPhotos.delete(k);
+  const id = randomBytes(6).toString("hex");
+  pendingPhotos.set(id, { ...p, expires: now + 30 * 60_000 });
+  return id;
+}
+
+function takePendingPhoto(id: string, userId: number): PendingPhoto | undefined {
+  const p = pendingPhotos.get(id);
+  if (!p || p.userId !== userId || p.expires < Date.now()) return undefined;
+  pendingPhotos.delete(id);
+  return p;
+}
+
+/** Store the photo (encrypted, on Walrus) and record the outcome it proves. */
+async function acceptPhoto(ctx: Context, promiseId: string, p: PendingPhoto) {
+  const status: Settled = p.shows === "partial" ? "partial" : "kept";
+  const proof = await storeProof(String(p.userId), promiseId, p.bytes, p.mediaType, p.description);
+  const res = await recordOutcome(p.userId, promiseId, status, { pic: proof.id, note: `Photo proof: ${clause(p.description)}` });
+  if ("error" in res) {
+    await ctx.reply(res.error);
+    return;
+  }
+  const stored = proof.jobId
+    ? "The photo is encrypted and stored on Walrus: only you can open it again (in /app)."
+    : "(I couldn't store the photo this time, but the outcome is recorded.)";
+  await ctx.reply(`📸 Proof accepted: ${clause(p.description)}.\n#${promiseId} · ${res.text} is ${status === "kept" ? "kept ✅" : "partly kept 🟡"}\n${stored}\n\n${FOLLOW[status]}`);
+}
+
 export function createBot(): Bot {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
 
   // A slow Walrus call for one person never blocks another, but each chat stays in order.
   bot.use(sequentialize((ctx) => ctx.chat?.id.toString()));
 
-  // Anchor is a 1:1 accountability partner, ignore groups.
+  // Groups get their own small command set (group-commands.ts); everything else is 1:1.
+  registerGroupCommands(bot);
   bot.use(async (ctx, next) => {
     if (ctx.chat && ctx.chat.type !== "private") return;
     if (!ctx.from) return;
@@ -316,36 +372,86 @@ export function createBot(): Bot {
       return;
     }
 
-    const states = await recallCommitments(userId);
-    const state = states.find((s) => s.commitment.id === id);
-    if (!state) {
-      await ctx.reply(`I couldn't find promise #${id} anymore.`);
-      return;
-    }
-    if (!isOpen(state) || getUser(userId)?.closed?.[id!]) {
-      await ctx.reply(`#${id} is already marked as ${state.outcome?.status ?? getUser(userId)?.closed?.[id!]}.`);
-      return;
-    }
-    const verb = { kept: "Kept the promise", partial: "Partly kept the promise", broken: "Did not keep the promise" }[status as "kept" | "partial" | "broken"];
-    const promiseText = clause(state.commitment.text);
-    const today = todayIn(tzOf(userId));
-    void enqueue(`write:${userId}`, () =>
-      storeMemories(userId, [
-        { kind: "outcome", date: today, ref: id, status: status as "kept" | "partial" | "broken", text: `${verb}: ${promiseText}` },
-      ]),
-    ).catch((err) => console.error(`[memory] background write failed for ${userId}:`, err));
-    updateUser(userId, (u) => {
-      u.awaitingOutcome = u.awaitingOutcome.filter((x) => x !== id);
-      (u.closed ??= {})[id!] = status!;
-    });
-    const follow = {
-      kept: "Noted, that's a kept promise. 💪 What made it work this time? I'll remember it for next time.",
-      partial: "Noted. Partial still counts for something. What did you get done, and what stopped the rest?",
-      broken: "Thanks for being honest, I've noted it. What got in the way? Knowing that is how we fix it.",
-    }[status as "kept" | "partial" | "broken"];
-    noteExchange(userId, `(tapped "${{ kept: "Did it", partial: "Partly", broken: "Didn't" }[status as "kept" | "partial" | "broken"]}" for #${id}: ${promiseText})`, follow);
-    await ctx.reply(follow);
+    const res = await recordOutcome(userId, id!, status as Settled);
+    await ctx.reply("error" in res ? res.error : FOLLOW[status as Settled]);
   });
+
+  // Photo proof chooser: pf:<pendingId>:<promiseId> | pf:<pendingId>:none
+  bot.callbackQuery(/^pf:([\w]+):([a-z0-9]+)$/, async (ctx) => {
+    touch(ctx);
+    const [, pid, promiseId] = ctx.match as RegExpMatchArray;
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageReplyMarkup().catch(() => undefined);
+    const pending = takePendingPhoto(pid!, ctx.from.id);
+    if (!pending) {
+      await ctx.reply("That photo expired, send it again.");
+      return;
+    }
+    if (promiseId === "none") {
+      await ctx.reply("Okay, I won't count it as proof.");
+      return;
+    }
+    await withTyping(ctx, () => acceptPhoto(ctx, promiseId!, pending));
+  });
+
+  bot.command("mymemory", async (ctx) => {
+    touch(ctx);
+    const userId = String(ctx.from!.id);
+    const parts = ctx.match.trim().split(/\s+/).filter(Boolean);
+    const own = getUser(userId)?.ownMemory;
+    if (parts[0]?.toLowerCase() === "off") {
+      await ctx.reply(disconnectOwnMemory(userId) ? "Done. I'm back on Anchor's Walrus Memory account. Everything already in your own account stays yours." : "You're already on Anchor's account.");
+      return;
+    }
+    if (parts.length >= 2) {
+      // The message holds a secret key: take it out of the chat first.
+      await ctx.deleteMessage().catch(() => undefined);
+      const [accountId, key] = parts as [string, string];
+      await withTyping(ctx, async () => {
+        try {
+          const copied = await connectOwnMemory(userId, accountId, key, { copy: true });
+          await ctx.reply(`🗝 Connected. Your memory now lives in your own Walrus Memory account (${accountId.slice(0, 8)}…), in the "anchor" namespace.${copied ? ` I copied ${copied} memories over.` : ""}\n\nI deleted your message so the key isn't left in this chat. The key is stored encrypted, and you can revoke it any time on memory.walrus.xyz. /mymemory off switches back.`);
+        } catch (err) {
+          await ctx.reply(`${err instanceof Error ? err.message : "That didn't work."}\n\n(I deleted your message so the key isn't left in this chat.)`);
+        }
+      });
+      return;
+    }
+    const kb = appUrl() ? new InlineKeyboard().webApp("🗝 Connect in the app", `${appUrl()}#memory`) : undefined;
+    await ctx.reply(
+      own
+        ? `🗝 Your memory lives in your own Walrus Memory account (${own.accountId.slice(0, 8)}…) since ${own.since.slice(0, 10)}.\n/mymemory off switches back to Anchor's account.`
+        : `🗝 Own your memory.\n\nRight now your memories are encrypted on Walrus in Anchor's account, in a space only you have. You can move them into your OWN Walrus Memory account, so they're yours outright and other apps you trust can use them too.\n\n1. Sign in at memory.walrus.xyz\n2. Create a delegate key, copy its private key and your account ID\n3. Connect in the app below (safest), or send:\n/mymemory <account ID> <delegate private key>\n(I delete that message right away.)`,
+      { reply_markup: kb, link_preview_options: { is_disabled: true } },
+    );
+  });
+
+  bot.command("app", async (ctx) => {
+    touch(ctx);
+    const url = appUrl();
+    if (!url) {
+      await ctx.reply("The app isn't switched on for this Anchor yet (it needs a public https URL).");
+      return;
+    }
+    await ctx.reply("📱 Your promises, streaks, what I've learned about you, and the memory switch, all in one place:", {
+      reply_markup: new InlineKeyboard().webApp("Open Anchor", url),
+    });
+  });
+
+  bot.command("morning", async (ctx) => {
+    touch(ctx);
+    const arg = ctx.match.trim().toLowerCase();
+    if (arg === "off" || arg === "on") {
+      updateUser(ctx.from!.id, (u) => (u.morning = arg === "on"));
+      await ctx.reply(arg === "on" ? `☀️ Morning brief on: every day at ${MORNING_HOUR}:00 your time.` : "Morning brief off. /morning on brings it back.");
+      return;
+    }
+    await withTyping(ctx, async () => {
+      await ctx.reply(await morningBrief(ctx.from!.id), { link_preview_options: { is_disabled: true } });
+    });
+  });
+
+  bot.command("promise", (ctx) => ctx.reply("Just tell me here what you'll do and by when. /promise is for groups: add me to a group chat and everyone can promise in front of each other."));
 
   // Forget buttons: f:<memoryHash>
   bot.callbackQuery(/^f:([a-z0-9]+)$/, async (ctx) => {
@@ -375,42 +481,105 @@ export function createBot(): Bot {
   registerHabitCommands(bot, withTyping);
   registerBuddyCommands(bot);
 
+  /** A normal message, typed or spoken: reply with memory, learn in the background. */
+  async function converse(ctx: Context, text: string) {
+    const user = touch(ctx);
+    const userId = ctx.from!.id;
+    let turn;
+    try {
+      turn = await chatTurn(userId, user.firstName, text, (t) => ctx.reply(t, { link_preview_options: { is_disabled: true } }));
+    } catch (err) {
+      if (!isOverloadError(err)) throw err;
+      // Google's AI is overloaded: no reply possible, but don't lose what they said.
+      console.error(`[bot] no model available for user ${userId}; saving the message via Walrus analyze`);
+      void enqueue(`write:${userId}`, () =>
+        analyzeFallback(userId, text, "").catch((e) =>
+          console.error(`[memory] analyze fallback failed for user ${userId}:`, e instanceof Error ? e.message : e),
+        ),
+      );
+      await ctx.reply(
+        "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I did save what you just told me to memory. Please send me another message in a minute.",
+      );
+      return;
+    }
+    const n = turn.context?.memories.length ?? 0;
+    const footer = n > 0 ? `\n\n⚓ ${n} memor${n === 1 ? "y" : "ies"} · /why` : "";
+    await sendLong(ctx, turn.reply + footer);
+  }
+
   bot.on("message:text", async (ctx) => {
     if (ctx.message.text.startsWith("/")) {
       await ctx.reply("I don't know that command. /help lists what I can do.");
       return;
     }
-    const user = touch(ctx);
-    const userId = ctx.from.id;
-    await enqueue(`turn:${userId}`, () =>
+    await enqueue(`turn:${ctx.from.id}`, () => withTyping(ctx, () => converse(ctx, ctx.message.text.slice(0, 4000))));
+  });
+
+  // Voice promises: "I'll finish two chapters tonight", said instead of typed.
+  bot.on(["message:voice", "message:audio"], async (ctx) => {
+    touch(ctx);
+    const media = ctx.message.voice ?? ctx.message.audio!;
+    if ((media.duration ?? 0) > 300 || (media.file_size ?? 0) > 15 * 1024 * 1024) {
+      await ctx.reply("That's a long one. Keep voice notes under 5 minutes and I'll listen.");
+      return;
+    }
+    await enqueue(`turn:${ctx.from.id}`, () =>
       withTyping(ctx, async () => {
-        let turn;
+        let transcript: string;
         try {
-          turn = await chatTurn(userId, user.firstName, ctx.message.text, (text) =>
-            ctx.reply(text, { link_preview_options: { is_disabled: true } }),
-          );
+          transcript = await transcribe(await downloadFile(ctx.api, media.file_id), media.mime_type ?? "audio/ogg");
         } catch (err) {
-          if (!isOverloadError(err)) throw err;
-          // Google's AI is overloaded: no reply possible, but don't lose what they said.
-          console.error(`[bot] no model available for user ${userId}; saving the message via Walrus analyze`);
-          void enqueue(`write:${userId}`, () =>
-            analyzeFallback(userId, ctx.message.text, "").catch((e) =>
-              console.error(`[memory] analyze fallback failed for user ${userId}:`, e instanceof Error ? e.message : e),
-            ),
-          );
-          await ctx.reply(
-            "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I did save what you just told me to memory. Please send me another message in a minute.",
-          );
+          console.error(`[voice] ${ctx.from.id}:`, err instanceof Error ? err.message : err);
+          await ctx.reply("I couldn't hear that one properly. Try again, or type it.");
           return;
         }
-        const n = turn.context?.memories.length ?? 0;
-        const footer = n > 0 ? `\n\n⚓ ${n} memor${n === 1 ? "y" : "ies"} · /why` : "";
-        await sendLong(ctx, turn.reply + footer);
+        if (!transcript) {
+          await ctx.reply("I couldn't make out any words in that. Try again, or type it.");
+          return;
+        }
+        await ctx.reply(`🎙 I heard: "${transcript.slice(0, 600)}"`);
+        await converse(ctx, transcript.slice(0, 4000));
       }),
     );
   });
 
-  bot.on("message", (ctx) => ctx.reply("I only understand text for now, type it out and I'll remember it."));
+  // Photo proof: a gym selfie, a screenshot of the sent email, the finished page.
+  bot.on("message:photo", async (ctx) => {
+    touch(ctx);
+    const userId = ctx.from.id;
+    await enqueue(`turn:${userId}`, () =>
+      withTyping(ctx, async () => {
+        const open = (await recallCommitments(userId)).filter(isOpen).filter((s) => s.commitment.id && !getUser(userId)?.closed?.[s.commitment.id]);
+        if (!open.length) {
+          await ctx.reply("Nice photo! I don't have an open promise it could prove, though. Tell me what you'll do and by when, then send the proof when it's done.");
+          return;
+        }
+        const size = ctx.message.photo.at(-1)!;
+        const bytes = await downloadFile(ctx.api, size.file_id);
+        const list = open.slice(0, 15).map((s) => ({ id: s.commitment.id!, text: clause(s.commitment.text) }));
+        let v;
+        try {
+          v = await judgePhoto(bytes, "image/jpeg", ctx.message.caption ?? "", list);
+        } catch (err) {
+          if (!isOverloadError(err)) throw err;
+          await ctx.reply("My AI brain is overloaded right now, so I can't look at photos. Send it again in a minute.");
+          return;
+        }
+        const pending = { userId, bytes, mediaType: "image/jpeg", description: v.description, shows: v.shows };
+        if (v.promiseId && v.shows !== "unclear") {
+          await acceptPhoto(ctx, v.promiseId, pending);
+          return;
+        }
+        const pid = putPendingPhoto(pending);
+        const kb = new InlineKeyboard();
+        for (const p of list.slice(0, 6)) kb.text(`#${p.id} ${p.text.slice(0, 28)}`, `pf:${pid}:${p.id}`).row();
+        kb.text("Not a proof", `pf:${pid}:none`);
+        await ctx.reply(`📸 I see: ${v.description}\nWhich promise does this prove?`, { reply_markup: kb });
+      }),
+    );
+  });
+
+  bot.on("message", (ctx) => ctx.reply("I understand text, voice notes and photos (send a photo as proof that you kept a promise)."));
 
   bot.catch(async (err) => {
     console.error(
@@ -426,8 +595,13 @@ export function createBot(): Bot {
   return bot;
 }
 
+export { GROUP_COMMANDS };
+
 export const BOT_COMMANDS = [
+  { command: "app", description: "Open your Anchor dashboard" },
   { command: "promises", description: "Your open and finished promises" },
+  { command: "morning", description: "Your morning brief" },
+  { command: "mymemory", description: "Own your memory (your Walrus account)" },
   { command: "memory", description: "Everything Anchor remembers about you" },
   { command: "why", description: "Memories behind the last reply" },
   { command: "compare", description: "Answer with vs without memory" },

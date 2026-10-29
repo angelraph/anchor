@@ -49,7 +49,7 @@ export function removeBuddies(ownerId: string): number {
 export function buddyMessage(ownerName: string, r: MemoryRecord, share: boolean): { text: string; good: boolean } | undefined {
   const what = (t: string) => (share ? `: ${clause(t.replace(/^(Kept|Partly kept|Did not keep) the promise(, verified on Sui)?:\s*/i, ""))}` : "");
   if (r.kind === "outcome" && r.status && r.status !== "moved") {
-    if (r.status === "kept") return { text: `🟢 ${ownerName} kept a promise${what(r.text)}${r.proof ? " (verified on Sui)" : ""}`, good: true };
+    if (r.status === "kept") return { text: `🟢 ${ownerName} kept a promise${what(r.text)}${r.proof ? " (verified on Sui)" : r.pic ? " (with photo proof)" : ""}`, good: true };
     if (r.status === "partial") return { text: `🟡 ${ownerName} partly kept a promise${what(r.text)}`, good: true };
     return { text: `🔴 ${ownerName} missed a promise${what(r.text)}`, good: false };
   }

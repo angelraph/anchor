@@ -9,9 +9,10 @@ import { trackChainRecords } from "../chain/promises.js";
 import { noteStored } from "../learning.js";
 import { trackHabitRecords } from "../habits.js";
 import { notifyBuddies } from "../buddies.js";
+import { notifyGroups } from "../groups.js";
 import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
-import { memwal, namespaceFor, withRetry } from "./client.js";
+import { memoryFor, withRetry } from "./client.js";
 import { notePending, recall } from "./recall.js";
 import { newCommitmentId, normalise, serialize, similarity, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
 
@@ -146,6 +147,7 @@ export async function storeMemories(userId: number | string, records: MemoryReco
   trackChainRecords(userId, records); // money promises get verified on Sui
   trackHabitRecords(userId, records); // recurring promises get daily asks and streaks
   notifyBuddies(userId, records); // friends hear about kept and missed promises
+  notifyGroups(userId, records); // and so do groups the promise was made in
   noteStored(records);
   return storeRaw(userId, records.map((r) => serialize(r)));
 }
@@ -159,13 +161,13 @@ export async function storeMemories(userId: number | string, records: MemoryReco
 export async function storeRaw(userId: number | string, raws: string[]): Promise<string[]> {
   if (raws.length === 0) return [];
   notePending(userId, raws); // usable right away, before Walrus finishes indexing
-  const namespace = namespaceFor(userId);
+  const { client, namespace } = memoryFor(userId);
   let pending = raws;
   const stored: string[] = [];
   try {
     for (let attempt = 1; attempt <= 2 && pending.length; attempt++) {
       const res = await withRetry("rememberBulkAndWait", () =>
-        memwal.rememberBulkAndWait(
+        client.rememberBulkAndWait(
           pending.map((text) => ({ text, namespace })),
           { timeoutMs: 120_000 },
         ),
@@ -198,9 +200,10 @@ export async function storeRaw(userId: number | string, raws: string[]): Promise
  * exchange so the conversation is still remembered, just without Anchor's types.
  */
 export async function analyzeFallback(userId: number | string, userMessage: string, assistantReply: string): Promise<number> {
+  const { client, namespace } = memoryFor(userId);
   const res = await withRetry("analyze", () =>
-    memwal.analyze(`User: ${userMessage}\nAssistant: ${assistantReply}`, {
-      namespace: namespaceFor(userId),
+    client.analyze(`User: ${userMessage}\nAssistant: ${assistantReply}`, {
+      namespace,
       occurredAt: new Date(),
     }),
   );

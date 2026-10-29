@@ -52,6 +52,8 @@ export interface MemoryRecord {
   rep?: string;
   /** Sui transaction digest or Walrus blob id that proves an outcome or report. */
   proof?: string;
+  /** Photo proof of an outcome: id of the encrypted photo stored on Walrus (see proof.ts). */
+  pic?: string;
   text: string;
 }
 
@@ -79,6 +81,7 @@ export function serialize(record: MemoryRecord): string {
   if (record.chk && !/\s/.test(record.chk)) fields.push(`chk:${record.chk}`);
   if (record.rep && /^\d+\/(day|week)$/.test(record.rep)) fields.push(`rep:${record.rep}`);
   if (record.proof && /^[\w-]+$/.test(record.proof)) fields.push(`proof:${record.proof}`);
+  if (record.pic && /^[\w-]+$/.test(record.pic)) fields.push(`pic:${record.pic}`);
   const text = record.text.replace(/\s+/g, " ").trim();
   return `[${record.kind}] ${record.date}${fields.length ? " " + fields.join(" ") : ""} | ${text}`;
 }
@@ -102,6 +105,7 @@ export function parse(raw: string): MemoryRecord {
     else if (key === "chk") record.chk = value;
     else if (key === "rep" && /^\d+\/(day|week)$/.test(value!)) record.rep = value;
     else if (key === "proof") record.proof = value;
+    else if (key === "pic") record.pic = value;
   }
   return record;
 }

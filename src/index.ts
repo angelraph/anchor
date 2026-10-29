@@ -1,5 +1,7 @@
 import { run } from "@grammyjs/runner";
-import { BOT_COMMANDS, createBot } from "./bot/bot.js";
+import { appUrl, BOT_COMMANDS, createBot, GROUP_COMMANDS } from "./bot/bot.js";
+import { runGroupNudges, setGroupApi } from "./groups.js";
+import { runMorning } from "./morning.js";
 import { runChainChecks } from "./chain/promises.js";
 import { anchorAddress } from "./chain/signer.js";
 import { maintainStakes } from "./chain/stakes.js";
@@ -53,6 +55,15 @@ async function main() {
   await retry("setMyCommands", () => bot.api.setMyCommands(BOT_COMMANDS)).catch((err) =>
     console.warn(`[startup] setMyCommands skipped: ${redact(err).split("\n")[0]}`),
   );
+  await retry("setMyCommands groups", () => bot.api.setMyCommands(GROUP_COMMANDS, { scope: { type: "all_group_chats" } })).catch((err) =>
+    console.warn(`[startup] group commands skipped: ${redact(err).split("\n")[0]}`),
+  );
+  // The menu button beside the message box opens the mini app.
+  if (appUrl()) {
+    await retry("setChatMenuButton", () => bot.api.setChatMenuButton({ menu_button: { type: "web_app", text: "Anchor", web_app: { url: appUrl() } } })).catch((err) =>
+      console.warn(`[startup] menu button skipped: ${redact(err).split("\n")[0]}`),
+    );
+  }
   await retry("setMyDescription", () =>
     bot.api.setMyDescription(
       "I'm Anchor, tell me what you'll do and by when. I remember it on Walrus, check in when it's due, and learn what makes you follow through.",
@@ -64,6 +75,7 @@ async function main() {
 
   startWebServer(bot.api);
   setBuddyApi(bot.api);
+  setGroupApi(bot.api);
   startCheckinScheduler(bot.api);
   setInterval(() => void maintainStakes(bot.api, todayIn(config.TIMEZONE)).catch((err) => console.error("[stake] maintenance failed:", err)), 30 * 60_000);
   setInterval(() => void drainOutbox().catch((err) => console.error("[memwal] outbox drain failed:", err)), 10 * 60_000);
@@ -78,6 +90,9 @@ async function main() {
     void runWeekly(bot.api).catch((err) => console.error("[weekly] failed:", err));
     // Habits: settle finished days/weeks into streaks (mornings, local time).
     void runHabitSettlement(bot.api).catch((err) => console.error("[habits] failed:", err));
+    // Group deadline checks, and each person's 08:00 morning brief.
+    void runGroupNudges(bot.api).catch((err) => console.error("[groups] failed:", err));
+    void runMorning(bot.api).catch((err) => console.error("[morning] failed:", err));
   }, 60_000);
 
   // Updates run concurrently across users; bot.ts keeps each chat in order.

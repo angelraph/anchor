@@ -1,5 +1,5 @@
 import { getUser } from "../state.js";
-import { memwal, namespaceFor, withRetry } from "./client.js";
+import { memoryFor, withRetry } from "./client.js";
 import { commitmentStates, mergeMemories, parse, type CommitmentState, type OutcomeStatus, type RecalledMemory } from "./types.js";
 
 /** Memories written recently, usable before Walrus finishes indexing them (~30 s). */
@@ -24,6 +24,11 @@ export function pendingFor(userId: number | string): RecalledMemory[] {
 const STABLE_MS = 10 * 60_000;
 const stableCache = new Map<string, { at: number; memories: RecalledMemory[] }>();
 
+/** Drop cached recalls (after the person moves their memory to another account). */
+export function forgetCachedRecalls(userId: number | string) {
+  stableCache.delete(String(userId));
+}
+
 async function stableRecall(userId: number | string): Promise<RecalledMemory[]> {
   const key = String(userId);
   const hit = stableCache.get(key);
@@ -45,10 +50,11 @@ interface RecallOpts {
 
 /** One recall against the user's namespace, parsed into Anchor records. */
 export async function recall(userId: number | string, query: string, opts: RecallOpts = {}): Promise<RecalledMemory[]> {
+  const { client, namespace } = memoryFor(userId);
   const res = await withRetry("recall", () =>
-    memwal.recall({
+    client.recall({
       query,
-      namespace: namespaceFor(userId),
+      namespace,
       limit: opts.limit ?? 8,
       maxDistance: opts.maxDistance,
       sort: opts.sort,

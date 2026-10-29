@@ -16,8 +16,8 @@ const { cleanReply } = await import("../src/bot/conversation.js");
 
 describe("reply cleanup", () => {
   it("turns em dashes and spaced en dashes into commas, keeps ranges", () => {
-    expect(cleanReply("Phone in another room right after dinner—I'll remember that.")).toBe("Phone in another room right after dinner, I'll remember that.");
-    expect(cleanReply("Good plan — go for it")).toBe("Good plan, go for it");
+    expect(cleanReply("Phone in another room right after dinner\u2014I'll remember that.")).toBe("Phone in another room right after dinner, I'll remember that.");
+    expect(cleanReply("Good plan \u2014 go for it")).toBe("Good plan, go for it");
     expect(cleanReply("Tuesday – Friday works")).toBe("Tuesday, Friday works");
     expect(cleanReply("2–3 times a week, **really**")).toBe("2–3 times a week, really");
   });

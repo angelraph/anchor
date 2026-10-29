@@ -134,9 +134,9 @@ async function tatum<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** Upload a file to Walrus mainnet through Tatum (POST /v4/data/storage/upload). */
-export async function uploadToWalrus(filename: string, body: string, mimeType = "application/json"): Promise<UploadJob> {
+export async function uploadToWalrus(filename: string, body: string | Uint8Array, mimeType = "application/json"): Promise<UploadJob> {
   const form = new FormData();
-  form.append("file", new Blob([body], { type: mimeType }), filename);
+  form.append("file", new Blob([typeof body === "string" ? body : new Uint8Array(body)], { type: mimeType }), filename);
   return tatum<UploadJob>("/v4/data/storage/upload", { method: "POST", body: form });
 }
 

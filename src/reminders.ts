@@ -18,8 +18,7 @@ import { recall, recallCommitments } from "./memory/recall.js";
 import { clause, effectiveDue, isOpen, type CommitmentState, type MemoryRecord } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser, type TimedPromise } from "./state.js";
 
-// ---------------------------------------------------------------- tracking
-
+// tracking
 /** Mirror timed commitments (and their outcomes) into local state as they are stored. */
 export function trackRecords(userId: number | string, records: MemoryRecord[]): void {
   const relevant = records.filter((r) => (r.kind === "commitment" && r.id && r.due && r.at) || (r.kind === "outcome" && r.ref));
@@ -120,8 +119,7 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------- weekly
-
+// weekly
 export interface WeekStats {
   kept: CommitmentState[];
   partial: CommitmentState[];

@@ -217,12 +217,16 @@ export interface CardData {
 }
 
 export function cardPage(d: CardData | null): string {
-  const title = d ? (d.closed ? `${d.name} kept ${d.kept} of ${d.closed} promises this month ⚓` : `${d.name} is keeping their promises with Anchor ⚓`) : "Anchor ⚓ holds you to your word";
+  const title = d ? (d.closed ? `${d.name} kept ${d.kept} of ${d.closed} promises in the last 30 days ⚓` : `${d.name} is keeping their promises with Anchor ⚓`) : "Anchor ⚓ holds you to your word";
   const desc = "Anchor is a free Telegram bot that remembers what you said you'd do, checks in when it's due, and learns what helps you follow through.";
   const bot = d?.bot ?? "Anchor_daBot";
   const max = Math.max(1, ...(d?.weeks ?? []).map((w) => w.closed));
   const bars = (d?.weeks ?? [])
-    .map((w) => `<div class="b"><i style="height:${((w.closed - w.kept) / max) * 60}px"></i><i class="k" style="height:${(w.kept / max) * 60}px"></i></div>`)
+    // Only draw a part that has something in it: an empty "missed" part would show as a cap on the bar.
+    .map(
+      (w) =>
+        `<div class="b">${w.closed > w.kept ? `<i class="m" style="height:${((w.closed - w.kept) / max) * 60}px"></i>` : ""}${w.kept ? `<i class="k" style="height:${(w.kept / max) * 60}px"></i>` : ""}</div>`,
+    )
     .join("");
   const pct = d && d.closed ? Math.round((d.kept / d.closed) * 100) : null;
   return `<!doctype html>
@@ -239,7 +243,7 @@ body{min-height:100vh;display:flex;align-items:center;justify-content:center;pad
 h1{font-size:22px;font-weight:500;line-height:1.3;margin:14px 0 6px}
 p{color:var(--ash);line-height:1.5;font-size:15px}
 .bars{display:flex;align-items:flex-end;gap:6px;height:64px;margin:22px 0}
-.b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}.b i{display:block;background:#2a2340;border-radius:4px;min-height:2px}.b i.k{background:var(--verdant)}
+.b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;border-bottom:2px solid #1f2030}.b i{display:block;border-radius:4px}.b i.k{background:var(--verdant)}.b i.m{background:var(--rose)}
 .cta{display:block;text-align:center;background:var(--iris);color:#fff;text-decoration:none;font-weight:600;padding:14px;border-radius:14px;margin-top:22px}
 .s{color:var(--saffron);font-family:var(--mono);font-size:13px;margin-top:8px}
 </style></head><body><div class="c">

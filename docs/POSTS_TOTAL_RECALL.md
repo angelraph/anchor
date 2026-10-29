@@ -166,4 +166,4 @@ Thanks to Tatum and Walrus Foundation for the infrastructure that made this poss
 
 What's one promise you keep making to yourself? I'd love to hear it in the comments.
 
-#TotalRecall #Sui #Walrus #Web3 #AIAgents #Accountability #BuildInPublic
+\#TotalRecall #Sui #Walrus #Web3 #AIAgents #Accountability #BuildInPublic

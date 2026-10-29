@@ -227,6 +227,15 @@ describe("share card", () => {
     const html = cardPage({ name: "<script>x</script>", kept: 3, closed: 4, streak: 2, weeks: [], bot: "Anchor_daBot" });
     expect(html).not.toContain("<script>x");
     expect(html).toContain("&#60;script&#62;");
-    expect(html).toContain("kept 3 of 4");
+    expect(html).toContain("kept 3 of 4 promises in the last 30 days");
+    expect(html).not.toContain("this month");
+  });
+  it("draws no empty caps on the bars", () => {
+    const html = cardPage({ name: "Angel", kept: 6, closed: 6, streak: 6, weeks: [{ week: "2026-10-05", kept: 3, closed: 3 }, { week: "2026-10-12", kept: 0, closed: 0 }, { week: "2026-10-19", kept: 1, closed: 2 }], bot: "Anchor_daBot" });
+    const bars = html.match(/<div class="b">.*?<\/div>/g)!;
+    expect(bars[0]).toContain('class="k"');
+    expect(bars[0]).not.toContain('class="m"');
+    expect(bars[1]).toBe('<div class="b"></div>');
+    expect(bars[2]).toContain('class="m"');
   });
 });

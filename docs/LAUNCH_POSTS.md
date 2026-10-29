@@ -192,7 +192,7 @@ Next time my person promises something, Anchor will remember me, and what helped
 
 Make one: t.me/Anchor_daBot
 Code: github.com/angelraph/anchor
-#TotalRecall #Sui #Walrus
+\#TotalRecall #Sui #Walrus
 
 ## LinkedIn
 
@@ -214,3 +214,106 @@ It's live and open source, with habits and streaks, buddies, your own timezone a
 Make a promise: t.me/Anchor_daBot · Code: github.com/angelraph/anchor
 
 Built for Total Recall with @Tatum and @Walrus Foundation. #TotalRecall #Sui #Walrus #AIagents
+
+# A day with Anchor: everything it does today (post-submission, Oct 29)
+
+The whole product told as one ordinary day, so a stranger understands it in a minute and a judge sees every Walrus, Sui and Tatum piece in use. Copy each block as it is.
+
+## X post (X Premium, one long post)
+
+```text
+Most apps wait for you to open them.
+
+Anchor ⚓ comes to you.
+
+It's a free Telegram bot that remembers what you said you'd do, and holds you to it. Here's what one ordinary day with it looks like 👇
+
+☀️ 08:00 · The morning brief
+"Good morning, Angel. Today you promised: send 2 job applications, gym at 6pm. Habit: reading, 3/5 this week. 💡 Remember: you focus best with your phone in another room."
+Every day, on your own clock, wherever you live.
+
+🎙 09:12 · You're on a bus, hands full
+You send a voice note: "I'll finish the pitch deck by 3pm, remind me at 2."
+Anchor hears it, saves it, and at 2pm it really does remind you. At 3pm it asks: did you do it?
+
+📸 15:04 · Done
+You don't type "yes". You send a screenshot of the sent email.
+Anchor looks at it, matches it to the promise, marks it kept ✅ and stores the photo encrypted on Walrus. Only you can ever open it again.
+
+🤝 15:05 · Your buddy gets a ping
+"🟢 Angel kept a promise (with photo proof)." One tap and they cheer you on.
+
+👥 18:30 · Your study group
+Someone types /promise finish chapter 3 by Friday. At the deadline the group sees a check only they can answer. Sunday, /board crowns the week. 🥇
+
+💰 20:00 · Money, without the guilt trip
+"I'll save ₦20,000 this month." Link your Sui wallet and Anchor reads the balance itself through Tatum, priced in naira. You never report it. The chain does.
+
+Want real pressure? /stake puts money on it, locked in a Move contract on Sui that even I can't touch. Keep the promise, it comes back. Miss it, it goes to someone you chose.
+
+🌙 21:00 · The check-in
+Anything still open gets one honest question. Missed it? Anchor asks what got in the way, and remembers. Next time you plan, it brings that up before you fall into the same trap.
+
+📱 Anytime · Open the app
+Tap the Anchor button in the chat: your follow-through ring, a calendar of kept days, streaks, what Anchor has learned about you, and the memory switch. Ask one question and watch the answer change when memory turns on.
+
+That memory is the whole point. It lives on Walrus, in a space only you have, and you can move it into your own Walrus Memory account any time with /mymemory. Your memory, not mine.
+
+It speaks your language too: Pidgin, Yoruba, Igbo, Hausa, Swahili, French, Arabic, whatever you write in.
+
+For the builders:
+🧠 Walrus Memory: per-person encrypted memory, recalled before every reply
+🗄 Walrus storage via Tatum: photo proofs and signed weekly reports
+⛓ Sui via Tatum: money promises judged from on-chain evidence
+🔒 Move escrow, published immutable: trustless stakes
+🤖 x402 on Sui: AI agents pay $0.01 to read a signed follow-through record
+🔌 MCP: the same memory inside Claude Code and other AI tools
+
+Try it in 10 seconds: t.me/Anchor_daBot
+Press Start and tell it one thing you keep putting off.
+
+It will remember. Even if you don't. ⚓
+
+Built for #TotalRecall with @Tatum_io and @WalrusFoundation on @SuiNetwork
+Open source: github.com/angelraph/anchor
+```
+
+## LinkedIn
+
+```text
+Most apps wait for you to open them. I wanted to build one that comes to you.
+
+Anchor is a free Telegram bot that remembers what you said you'd do, and holds you to it. The easiest way to explain it is one ordinary day:
+
+08:00. A morning brief arrives: what you promised for today, how your habits are going, and one thing Anchor has learned that helps you. "You focus best with your phone in another room."
+
+09:12. You're on a bus, so you send a voice note instead of typing: "I'll finish the pitch deck by 3pm, remind me at 2." At 2pm you get the reminder. At 3pm it asks how it went.
+
+15:04. You don't type "done". You send a screenshot of the sent email. Anchor checks it, marks the promise kept, and stores the photo encrypted on Walrus, where only you can open it again. Your accountability buddy gets a ping and cheers you on.
+
+18:30. In your study group, a friend types /promise finish chapter 3 by Friday. At the deadline the whole group sees the check, and only they can answer it. On Sunday, /board shows who kept their word.
+
+20:00. Money goals work too. "I'll save ₦20,000 this month." With a linked Sui wallet, Anchor reads the balance itself, in naira, so nobody has to self-report. For extra pressure you can stake money on a promise, locked in a smart contract that even I can't touch: kept, it comes back; missed, it goes to someone you chose.
+
+21:00. Anything still open gets one honest question, and if something got in the way, Anchor remembers it, so the next plan is better than the last.
+
+Anytime, the Anchor app opens right inside Telegram: a follow-through ring, a calendar of kept days, your streaks, what Anchor has learned about you, and a memory switch that shows the same answer with and without your memory. That difference is the whole idea.
+
+A few things I cared about:
+• Your memory belongs to you. It's encrypted on Walrus, and you can move it into your own Walrus Memory account at any time.
+• It works wherever you are: your own time zone, and it replies in your language, from Pidgin and Yoruba to French and Arabic.
+• Nothing is a black box: you can see what it remembers, why it said what it said, and delete anything.
+
+Under the hood it's built on Walrus (memory and file storage), Sui (on-chain verification and a Move escrow), Tatum (Sui RPC, Walrus Storage and exchange rates), Gemini, and x402 so AI agents can pay to read a signed follow-through record when a user opts in.
+
+Try it: t.me/Anchor_daBot. Press Start and tell it one thing you keep putting off.
+
+It will remember, even if you don't.
+
+Open source: github.com/angelraph/anchor
+Built for the Total Recall hackathon by Tatum and Walrus Foundation.
+
+#Accountability #Productivity #AI #Walrus #Sui #TotalRecall
+```
+
+On LinkedIn, type @ and pick Tatum, Walrus Foundation and Sui from the suggestions so they're tagged.

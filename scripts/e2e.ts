@@ -6,6 +6,10 @@
  *
  *   npx tsx scripts/e2e.ts
  */
+// Tests spend their own Gemini quota, never the live bot's: set GEMINI_TEST_API_KEY in .env.
+if (process.env.GEMINI_TEST_API_KEY) process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GEMINI_TEST_API_KEY;
+else console.warn("[e2e] GEMINI_TEST_API_KEY is not set: this run uses the live bot's Gemini quota");
+process.env.GEMINI_BACKUP_API_KEYS = "";
 process.env.MEMWAL_NAMESPACE_PREFIX = "anchor:smoke:";
 process.env.DATA_DIR = "./data/smoke";
 // Stake links need a public URL; the escrow part calls the web app in-process, not this host.

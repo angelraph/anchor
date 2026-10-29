@@ -154,9 +154,19 @@ Memories are stored as single readable lines with a typed header, so they embed 
 | `/learning` | How Anchor learned you, week by week |
 | `/connect` | A token for the MCP server / API, to use your Anchor memory in other tools |
 
+## Try it in one minute (no keys)
+
+```bash
+git clone https://github.com/angelraph/anchor && cd anchor
+npm install
+npm run demo
+```
+
+Then open http://localhost:3000 (the website) and http://localhost:3000/app (the Anchor app, with a sample person, Ada: calendar, streaks, what Anchor learned, and the memory switch). Demo mode needs no `.env` and talks to no outside service. The real thing is the bot: <https://t.me/Anchor_daBot>.
+
 ## Run it yourself (about 10 minutes)
 
-**Requirements:** Node 20+ and three credentials (five for the on-chain features).
+**Requirements:** Node 20+ and three credentials (five for the on-chain features). Every setting is listed, with what it does, in [.env.example](.env.example). Tip: add `GEMINI_BACKUP_API_KEYS` (keys from other Google projects) so the bot keeps answering when one key's free daily quota runs out.
 
 1. **Walrus Memory:** sign in at <https://memory.walrus.xyz>, create a delegate key, and copy the **private key** and **account ID** (the account object ID, not your wallet address).
 2. **Telegram:** message [@BotFather](https://t.me/BotFather), run `/newbot`, and copy the token.

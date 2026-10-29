@@ -2,6 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     { "name": "web", "runtimeExecutable": "npx", "runtimeArgs": ["tsx", "scripts/preview-web.ts"], "port": 3000 },
+    { "name": "demo", "runtimeExecutable": "npx", "runtimeArgs": ["tsx", "scripts/demo.ts"], "port": 3000 },
     { "name": "app", "runtimeExecutable": "node", "runtimeArgs": ["--env-file=C:/Users/Admin/Desktop/anchor/.env", "--import", "tsx", "scripts/preview-app.ts"], "port": 3001 }
   ]
 }

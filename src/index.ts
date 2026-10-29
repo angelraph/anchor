@@ -36,6 +36,14 @@ async function retry<T>(label: string, fn: () => Promise<T>, attempts = 5): Prom
 }
 
 async function main() {
+  // DEMO_MODE=1: the website and app on sample data, no bot and no keys (also: npm run demo).
+  if (config.DEMO_MODE) {
+    const { seedDemo } = await import("./demo.js");
+    seedDemo();
+    startWebServer();
+    console.log("[demo] demo mode: website and app on sample data; Telegram, Gemini, Walrus and Sui are not contacted");
+    return;
+  }
   // Walrus being slow at boot must not keep the bot offline; recall/save handle outages themselves.
   await retry("memwal health", () => memwal.health(), 3).then(
     (h) => console.log(`[memwal] relayer ${config.MEMWAL_SERVER_URL} is ${h.status ?? "up"}`),

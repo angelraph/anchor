@@ -2,13 +2,24 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { LanguageModel } from "ai";
 import { config } from "../config.js";
 
-const google = createGoogleGenerativeAI({ apiKey: config.GOOGLE_GENERATIVE_AI_API_KEY });
+/**
+ * The main key first, then backup keys (GEMINI_BACKUP_API_KEYS). Free keys have
+ * a daily quota per model: when one runs out, the same models on the next key
+ * answer instead, so people never see "my AI brain is out of quota".
+ */
+const KEYS = [config.GOOGLE_GENERATIVE_AI_API_KEY, ...config.GEMINI_BACKUP_API_KEYS.split(",").map((s) => s.trim())].filter(
+  (k, i, all) => k && all.indexOf(k) === i,
+);
 
 /** Primary Gemini model first, then fallbacks for when Google returns 503 "high demand". */
 const MODEL_IDS = [config.GEMINI_MODEL, ...config.GEMINI_FALLBACK_MODELS.split(",").map((s) => s.trim())].filter(
   (id, i, all) => id && all.indexOf(id) === i,
 );
-const models = MODEL_IDS.map((id) => ({ id, model: google(id) }));
+/** Every model on every key; `id` names the pair (model#key), so cooldowns and speeds stay per key. */
+const models = KEYS.flatMap((apiKey, k) => {
+  const google = createGoogleGenerativeAI({ apiKey });
+  return MODEL_IDS.map((m) => ({ id: k ? `${m}#${k + 1}` : m, key: k, model: google(m) }));
+});
 
 /** Per-model time limit; past it we fail over instead of making the user wait. */
 export const LLM_TIMEOUT_MS = 12_000;
@@ -59,8 +70,10 @@ async function tryChain<T>(call: (model: LanguageModel) => Promise<T>, all: bool
   // On the second pass, or if every model is cooling down, try them all.
   // Fastest known healthy model first. Untried models count as 4 s (the
   // primary as 0 s, so it is tried first until we learn otherwise).
+  // Backup keys come after every model of the main key (+ 60 s each), so they are
+  // only used once the main key's models are cooling down or slow.
   const order = (all || !healthy.length ? models : healthy)
-    .map((m, i) => ({ m, i, ms: speed.get(m.id) ?? (i === 0 ? 0 : 4_000) }))
+    .map((m, i) => ({ m, i, ms: (speed.get(m.id) ?? (i === 0 ? 0 : 4_000)) + m.key * 60_000 }))
     .sort((a, b) => a.ms - b.ms || a.i - b.i)
     .map((x) => x.m);
   let lastError: unknown;

@@ -15,6 +15,7 @@ import { config } from "../config.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client.js";
 import { metrics } from "../state.js";
+import { demoStats } from "../demo.js";
 import { registerChainRoutes } from "./chain-routes.js";
 import { registerAppRoutes } from "./app-routes.js";
 import { securityHeaders } from "./guard.js";
@@ -56,6 +57,7 @@ function refresh(): Promise<void> {
 const snapshot = (): NamespaceStat[] => cache?.stats ?? [];
 
 async function stats(): Promise<NamespaceStat[]> {
+  if (config.DEMO_MODE) return demoStats();
   if (cache && Date.now() - cache.at < 5 * 60_000) return cache.stats;
   if (cache) {
     void refresh(); // serve the last numbers now, update in the background
@@ -129,6 +131,7 @@ export function createWebApp(api?: Api): Hono {
     }
   });
   app.get("/health", async (c) => {
+    if (config.DEMO_MODE) return c.json({ ok: true, demo: true, note: "Demo mode: sample data, no Walrus or Sui calls. The live bot is https://t.me/Anchor_daBot" });
     const memory = await memwal.health().then(
       (h) => ({ ok: true, ...h }),
       (e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),

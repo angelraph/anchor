@@ -241,6 +241,25 @@ describe("a deadline only comes from what the person said", () => {
   });
 });
 
+describe("setup and demo mode", () => {
+  it(".env.example lists every setting the app reads", async () => {
+    const { readFileSync } = await import("node:fs");
+    const schema = readFileSync("src/config.ts", "utf8");
+    const keys = [...schema.matchAll(/^\s{2}([A-Z][A-Z0-9_]+): z\./gm)].map((m) => m[1]!);
+    const example = readFileSync(".env.example", "utf8");
+    expect(keys.length).toBeGreaterThan(15);
+    expect(keys.filter((k) => !new RegExp(`^${k}=`, "m").test(example))).toEqual([]);
+  });
+  it("the demo person's numbers add up the same way the real dashboard's do", async () => {
+    const { demoDashboard, demoStates, demoCompare } = await import("../src/demo.js");
+    const d = demoDashboard(summarize);
+    expect(d.summary.closed30).toBe(demoStates().filter((s) => s.outcome).length);
+    expect(d.open).toHaveLength(3);
+    expect(d.summary.weeks).toHaveLength(8);
+    expect(demoCompare().on).not.toMatch(/locked in|i've noted|i'll check in|scheduled/i);
+  });
+});
+
 describe("bot profile texts", () => {
   it("fit Telegram's limits", async () => {
     const { BOT_ABOUT, BOT_DESCRIPTION } = await import("../src/bot/bot.js");

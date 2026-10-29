@@ -8,7 +8,7 @@ import { config } from "../config.js";
 import { todayIn } from "../dates.js";
 import { storeMemories } from "../memory/write.js";
 import { getUser, tzOf, updateUser, upsertUser } from "../state.js";
-import { describeZone, placeName, resolveTimezone } from "../timezone.js";
+import { describeZone, placeName, resolveTimezone, type ZoneResult } from "../timezone.js";
 import { chatTurn, enqueue } from "./conversation.js";
 
 function touch(ctx: Context) {
@@ -75,9 +75,14 @@ export function registerOnboarding(bot: Bot, withTyping: <T>(ctx: Context, work:
       return;
     }
     await withTyping(ctx, async () => {
-      const tz = await resolveTimezone(arg).catch(() => undefined);
+      const found = await resolveTimezone(arg).catch(() => ({}) as ZoneResult);
+      const tz = found.tz;
       if (!tz) {
-        await ctx.reply(`I couldn't place "${arg.slice(0, 40)}". Try a city ("/timezone Nairobi") or an offset ("/timezone UTC+3").`);
+        await ctx.reply(
+          found.multiZone
+            ? `${placeName(arg) ?? "That place"} has more than one time zone, so tell me your city, e.g. /timezone Perth or /timezone Chicago.`
+            : `I couldn't place "${arg.slice(0, 40)}". Try your city ("/timezone Nairobi") or an offset ("/timezone UTC+3", "/timezone UTC+5:30").`,
+        );
         return;
       }
       const place = placeName(arg);

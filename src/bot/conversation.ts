@@ -106,7 +106,7 @@ export function cleanReply(text: string): string {
     text
       .replace(/\*\*(.+?)\*\*/g, "$1")
       .replace(/^#+\s*/gm, "")
-      .replace(/\s*—\s*/g, ", ")
+      .replace(/\s*\u2014\s*/g, ", ")
       .replace(/ – /g, ", ")
       .trim() ||
     "Sorry, I lost my words for a second there. Could you say that again in a different way?"

@@ -16,6 +16,8 @@ import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client.js";
 import { metrics } from "../state.js";
 import { registerChainRoutes } from "./chain-routes.js";
+import { registerAppRoutes } from "./app-routes.js";
+import { securityHeaders } from "./guard.js";
 import { registerMeRoutes } from "./me-routes.js";
 import { logoSvg } from "./logo.js";
 import { renderPage } from "./page.js";
@@ -109,6 +111,8 @@ export function startWebServer(api?: Api) {
 /** The whole web app without listening on a port (the e2e script calls it with app.request). */
 export function createWebApp(api?: Api): Hono {
   const app = new Hono();
+  app.use("*", securityHeaders);
+  registerAppRoutes(app);
   registerChainRoutes(app, () => api);
   registerMeRoutes(app, () => api);
   app.get("/", async (c) => c.html(renderPage(proofJson(await stats()))));

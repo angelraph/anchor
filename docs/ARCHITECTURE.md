@@ -57,7 +57,6 @@ A timer ticks every minute; at `CHECKIN_HOUR` in `TIMEZONE` it:
 - **Telegram 409 conflict** (two instances during a redeploy): polling restarts instead of silently stopping.
 - **Deadlines:** prompts get the full local clock, so "by 6am" said at 23:59 resolves to the next morning.
 
-
 ## Chain-verified promises (Total Recall)
 
 **Why the chain?** Memory made Anchor a good coach, but it still relied on self-reports. Money promises leave evidence, so for those the wallet is the source of truth and Walrus Memory keeps the verdict with its proof.

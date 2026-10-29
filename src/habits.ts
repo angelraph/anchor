@@ -17,8 +17,7 @@ import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { clause, newCommitmentId, type MemoryRecord } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser, type Habit } from "./state.js";
 
-// ---------------------------------------------------------------- pure rules
-
+// pure rules
 /** The period a date belongs to: the day itself, or the Monday of its week. */
 export const periodKey = (per: Habit["per"], date: string) => (per === "day" ? date : weekOf(date));
 
@@ -73,8 +72,7 @@ export function parseRepQuick(input: string): { text: string; per: Habit["per"];
   return null;
 }
 
-// ---------------------------------------------------------------- creating habits
-
+// creating habits
 const parseSchema = z.object({
   text: z.string().describe("What the habit is, short, e.g. 'Go to the gym'"),
   per: z.enum(["day", "week"]),
@@ -118,8 +116,7 @@ export function trackHabitRecords(userId: number | string, records: MemoryRecord
   });
 }
 
-// ---------------------------------------------------------------- marking and asking
-
+// marking and asking
 export function habitKeyboard(id: string): InlineKeyboard {
   return new InlineKeyboard().text("✅ Done today", `h:${id}:done`).text("❌ Not today", `h:${id}:skip`);
 }

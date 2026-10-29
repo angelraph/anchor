@@ -76,6 +76,13 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 - **Accountability buddies**: `/buddy` gives you an invite link; your buddy sees what you kept and missed (only what you allow) and can cheer or nudge you with one tap.
 - **Real money values through Tatum's Data API**: `/money NGN` shows your wallet in your currency, and promises can be in it too ("save ₦50,000 by December", "spend under $30 this week").
 - **Guided tour** (`/tour`): seven steps from first promise to stakes, for people who've never used a crypto wallet.
+- **The Anchor app inside Telegram** (menu button or `/app`): a follow-through ring, a five-week calendar of kept and missed days, open promises, habit streaks, what Anchor has learned about you, weekly bars, your photo proofs, and **the memory switch**: ask one question and flip between the answer without memory and the answer with it. A **share card** (`/c/<code>`) shows only your first name and your numbers.
+- **Photo proof for any promise**: send a gym selfie, the screenshot of the sent email, the finished page. Gemini matches it to the open promise, the outcome is recorded, and the photo is **encrypted and stored on Walrus through Tatum's Storage API**, readable only by you.
+- **Voice promises**: send a voice note instead of typing; Anchor transcribes it and treats it like any message.
+- **Group mode**: add Anchor to a study group, team or family chat. `/promise` in front of everyone, a deadline check only the promiser can answer, kept or missed announced however it was answered (in private, by photo, or by the chain), and a weekly `/board`. Groups never see anyone's memories.
+- **Bring your own Walrus Memory** (`/mymemory`): move your memory into your own Walrus Memory account; Anchor checks the delegate key, copies your memories over, and from then on reads and writes only there. The key is stored encrypted and the message holding it is deleted.
+- **The morning brief**: at 08:00 your time, what's due today, your habits and streaks, how the week is going, and one thing Anchor learned that helps today (`/morning off` stops it).
+- **Hardened**: mini app sign-in verified against Telegram's signature on every call (constant time, 24 hour expiry), per-person and per-IP rate limits, request size limits, a strict Content Security Policy, AES-256-GCM encryption at rest with per-person keys, and owner-only access to proofs and group checks.
 - **Signed weekly reports** published to Walrus via Tatum's Storage API, verifiable by anyone at `/report/<jobId>`.
 - **Agent payments**: AI agents pay per read (x402) for the signed follow-through record of people who opt in. Discovery at `/.well-known/x402`, a reference client in `scripts/agent-pay.ts`.
 - **Money patterns learned from the chain** ("sends out most USDC on Saturdays") and stored on Walrus as patterns that shape later advice.
@@ -91,9 +98,7 @@ Full list with file pointers: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md).
 ### Roadmap
 1. **WhatsApp**, where most of our first users already live (needs a Meta Business account and number)
 2. **Monthly reflections** built from long-term memory
-3. **Group commitments**: a team or study group staking on a shared goal through the escrow
-4. **Bring your own memory**: connect your own Walrus Memory account so your data is fully yours (portable to other tools already works through `/connect` and MCP)
-5. **Voice notes**: make a promise by talking; Anchor transcribes and remembers it
+3. **Group stakes**: a team staking into one shared escrow pot
 
 ## What memory does in Anchor
 
@@ -123,7 +128,12 @@ Memories are stored as single readable lines with a typed header, so they embed 
 ### Commands
 | | |
 |---|---|
+| `/app` | The Anchor app: calendar, streaks, what Anchor learned, the memory switch, photo proofs |
 | `/promises` | Open and finished promises, plus your follow-through rate |
+| `/morning [on\|off]` | Your morning brief now, or switch the daily one |
+| `/mymemory` | Move your memory into your own Walrus Memory account (`/mymemory off` to switch back) |
+| 🎙 voice note · 📸 photo | Promise by talking; prove a promise with a photo |
+| In a group: `/promise`, `/board`, `/open` | Promise in front of the group, the week's board, what's still open |
 | `/memory` | Everything Anchor remembers, grouped by type, with your total memory count on Walrus |
 | `/why` | The exact memories (with Walrus blob IDs) behind the last reply |
 | `/compare <msg>` | The same message answered **without** and **with** memory, side by side |
@@ -223,6 +233,11 @@ Hono         ──► / (site + proof) · /proof.json · /health
 | `src/chain/promises.ts` | Preparing checks, the verifier loop, verdicts written to Walrus with proof |
 | `src/chain/x402.ts` | x402 v2 `exact` on Sui: requirements, verification (signature, simulation, balance change), settlement |
 | `src/chain/stakes.ts` | Stake lifecycle and payouts signed by Anchor's key |
+| `src/web/app-routes.ts`, `src/web/app-page.ts`, `src/web/guard.ts` | The mini app, its API, the share card, and request protection |
+| `src/proof.ts`, `src/media.ts`, `src/secrets.ts` | Photo proof (encrypted on Walrus via Tatum), voice transcription, encryption at rest |
+| `src/groups.ts`, `src/bot/group-commands.ts` | Group mode |
+| `src/memory/own.ts`, `src/memory/client.ts` | Bring your own Walrus Memory |
+| `src/morning.ts` | The daily morning brief |
 | `move/anchor_escrow`, `src/chain/escrow.ts` | The Move escrow (9 Move tests) and its TypeScript side: build, check-then-execute, settle |
 | `src/chain/report.ts` | Signed reports, Tatum Storage API upload, verification |
 | `src/learning.ts` | Learning-loop counters, `/learning` timeline, money patterns from the chain |

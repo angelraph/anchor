@@ -447,8 +447,9 @@ GET /.well-known/x402${p.anchorAddress ? `\npayTo ${esc(p.anchorAddress.slice(0,
         <li><div><h3>Live: weekly follow-through</h3><p>Every Sunday: kept, partly kept, missed, your follow-through %, and one insight from memory. Or send /week any time.</p></div></li>
         <li><div><h3>Live: promises the chain verifies</h3><p>Money promises close themselves from Sui evidence, priced in your own currency through Tatum. Stakes sit in a Move escrow, and weekly reports are signed and stored on Walrus.</p></div></li>
         <li><div><h3>Live: habits, streaks and buddies</h3><p>"Gym 3 times a week" becomes a streak Anchor keeps count of, on your own clock. Invite a buddy who sees what you kept and can cheer or nudge you with one tap.</p></div></li>
+        <li><div><h3>Live: the Anchor app, photo proof, voice and groups</h3><p>Open the app from the chat to see your calendar, streaks and what Anchor learned, and flip the memory switch. Prove any promise with a photo, stored encrypted on Walrus. Promise by voice note, or in front of your study group.</p></div></li>
+        <li><div><h3>Live: a morning brief, and memory you own</h3><p>Every morning at 08:00 your time: what's due, your streaks, one thing that helps. And with /mymemory your memory moves into your own Walrus Memory account.</p></div></li>
         <li><div><h3>Next: WhatsApp</h3><p>Anchor where most people already chat.</p></div></li>
-        <li><div><h3>Next: memory you own</h3><p>Connect your own Walrus Memory account so your promises and patterns travel with you to any app.</p></div></li>
       </ol>
     </div>
   </section>

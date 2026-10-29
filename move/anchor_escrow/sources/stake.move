@@ -117,8 +117,7 @@ public fun reclaim<T>(stake: Stake<T>, clock: &Clock, ctx: &mut TxContext) {
     id.delete();
 }
 
-// ---------------------------------------------------------------- read-only
-
+// read-only
 public fun payer<T>(s: &Stake<T>): address { s.payer }
 public fun beneficiary<T>(s: &Stake<T>): address { s.beneficiary }
 public fun arbiter<T>(s: &Stake<T>): address { s.arbiter }

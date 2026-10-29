@@ -113,6 +113,46 @@ export interface UserState {
   apiTokenHash?: string;
   /** Latest published report. */
   lastReport?: { blobId: string; at: string; week: string };
+  /** The person's own Walrus Memory account; the delegate key is stored encrypted (secrets.ts). */
+  ownMemory?: { accountId: string; keySealed: string; serverUrl?: string; since: string };
+  /** Morning brief: on unless set to false (/morning off). */
+  morning?: boolean;
+  /** Local date of the last morning brief. */
+  lastMorning?: string;
+  /** Public code of this person's share card (/c/<code>), made when they first share. */
+  cardCode?: string;
+}
+
+/** A photo that proves a promise was kept, stored encrypted on Walrus through Tatum. */
+export interface Proof {
+  id: string;
+  userId: string;
+  promiseId: string;
+  /** Tatum upload job; the Walrus blob is found through it. */
+  jobId?: string;
+  mediaType: string;
+  /** What the photo shows, in one sentence (from Gemini). */
+  description: string;
+  sha256: string;
+  at: string;
+}
+
+/** A promise made in a group chat: the group hears how it went. */
+export interface GroupPromise {
+  userId: string;
+  text: string;
+  due?: string;
+  at?: string;
+  status?: string;
+  createdAt: string;
+  /** Set once the deadline nudge was posted in the group. */
+  nudged?: boolean;
+}
+
+export interface GroupState {
+  title: string;
+  members: string[];
+  promises: Record<string, GroupPromise>;
 }
 
 export type StakeStatus = "awaiting_payment" | "held" | "refunded" | "forfeited" | "expired" | "payout_failed";
@@ -168,6 +208,9 @@ interface StateFile {
   /** Buddy invites: token -> { userId (who invites), expires (ms) } */
   invites?: Record<string, { userId: string; expires: number }>;
   metrics?: Metrics;
+  proofs?: Record<string, Proof>;
+  /** Group chats Anchor is in, by chat id. */
+  groups?: Record<string, GroupState>;
 }
 
 const dir = config.DATA_DIR;
@@ -243,8 +286,7 @@ export function takeOutbox(): Array<[string, string[]]> {
   return entries;
 }
 
-// ---------------------------------------------------------------- stakes
-
+// stakes
 export function putStake(stake: Stake) {
   (state.stakes ??= {})[stake.token] = stake;
   persist();
@@ -265,8 +307,7 @@ export function allStakes(): Stake[] {
   return Object.values(state.stakes ?? {});
 }
 
-// ---------------------------------------------------------------- wallet links
-
+// wallet links
 export function putLinkToken(token: string, userId: string, ttlMs = 30 * 60_000) {
   state.linkTokens ??= {};
   const now = Date.now();
@@ -286,8 +327,7 @@ export function consumeLinkToken(token: string) {
   persist();
 }
 
-// ---------------------------------------------------------------- metrics
-
+// metrics
 export function metrics(): Metrics {
   state.metrics ??= {
     since: new Date().toISOString(),
@@ -313,14 +353,64 @@ export function userByTokenHash(hash: string): [string, UserState] | undefined {
   return Object.entries(state.users).find(([, u]) => u.apiTokenHash === hash);
 }
 
-// ---------------------------------------------------------------- buddy invites
-
+// buddy invites
 export function putInvite(token: string, userId: string, ttlMs: number) {
   state.invites ??= {};
   const now = Date.now();
   for (const [t, v] of Object.entries(state.invites)) if (v.expires < now) delete state.invites[t];
   state.invites[token] = { userId, expires: now + ttlMs };
   persist();
+}
+
+// Photo proofs
+
+export function putProof(p: Proof) {
+  (state.proofs ??= {})[p.id] = p;
+  persist();
+}
+
+export function getProof(id: string): Proof | undefined {
+  return state.proofs?.[id];
+}
+
+export function proofsOf(userId: string): Proof[] {
+  return Object.values(state.proofs ?? {}).filter((p) => p.userId === userId);
+}
+
+// Groups
+
+export function getGroup(chatId: number | string): GroupState | undefined {
+  return state.groups?.[String(chatId)];
+}
+
+/** Get or create the group's state, keeping its title current. */
+export function upsertGroup(chatId: number | string, title: string): GroupState {
+  state.groups ??= {};
+  const g = (state.groups[String(chatId)] ??= { title, members: [], promises: {} });
+  g.title = title || g.title;
+  persist();
+  return g;
+}
+
+export function updateGroup(chatId: number | string, fn: (g: GroupState) => void) {
+  const g = state.groups?.[String(chatId)];
+  if (!g) return;
+  fn(g);
+  persist();
+}
+
+export function allGroups(): Array<[string, GroupState]> {
+  return Object.entries(state.groups ?? {});
+}
+
+export function removeGroup(chatId: number | string) {
+  delete state.groups?.[String(chatId)];
+  persist();
+}
+
+/** The person whose share card this is. */
+export function userByCardCode(code: string): [string, UserState] | undefined {
+  return Object.entries(state.users).find(([, u]) => u.cardCode === code);
 }
 
 /** The inviter, if the invite is still valid. Consumes it. */

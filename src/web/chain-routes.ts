@@ -167,7 +167,7 @@ export function registerChainRoutes(app: Hono, getApi: () => Api | undefined) {
     }
   });
 
-  // ------------------------------------------------------------ wallet link
+  // wallet link
   app.get("/link/:token", (c) => {
     const token = c.req.param("token");
     const ok = !!peekLinkToken(token);
@@ -215,7 +215,7 @@ export function registerChainRoutes(app: Hono, getApi: () => Api | undefined) {
     return c.json({ ok: true });
   });
 
-  // ------------------------------------------------------------ stakes (x402)
+  // stakes (x402)
   app.get("/stake/:token", (c) => {
     const s = getStake(c.req.param("token"));
     if (!s) return c.html(shell("Stake · Anchor", `<h1>Stake not found.</h1><p>Run /stake again in Telegram.</p>`), 404);
@@ -309,7 +309,7 @@ ${
     }
   });
 
-  // ------------------------------------------------------------ agents (x402)
+  // agents (x402)
   app.get("/x402/record/:address", async (c) => {
     if (!anchorAddress || !reportsEnabled()) return c.json({ error: "records are not enabled on this server" }, 503);
     let addr: string;
@@ -353,7 +353,7 @@ ${
     }),
   );
 
-  // ------------------------------------------------------------ report verifier
+  // report verifier
   app.get("/report/:jobId", async (c) => {
     const jobId = c.req.param("jobId");
     if (!config.TATUM_API_KEY) return c.html(shell("Report · Anchor", `<h1>Reports aren't enabled here.</h1>`), 503);

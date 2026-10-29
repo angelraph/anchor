@@ -1,5 +1,7 @@
 import { MemWal } from "@mysten-incubation/memwal";
 import { config } from "../config.js";
+import { openText } from "../secrets.js";
+import { getUser } from "../state.js";
 
 /** One MemWal client for the whole app; every call passes the user's namespace. */
 export const memwal = MemWal.create({
@@ -12,6 +14,31 @@ export const memwal = MemWal.create({
 /** Each Telegram user gets an isolated Walrus Memory namespace. */
 export function namespaceFor(userId: number | string): string {
   return `${config.MEMWAL_NAMESPACE_PREFIX}${userId}`;
+}
+
+/** Namespace Anchor uses inside a person's own Walrus Memory account. */
+export const OWN_NAMESPACE = "anchor";
+
+const ownClients = new Map<string, { since: string; client: MemWal }>();
+
+export function ownClient(accountId: string, key: string, serverUrl?: string): MemWal {
+  return MemWal.create({ key, accountId, serverUrl: serverUrl || config.MEMWAL_SERVER_URL, namespace: OWN_NAMESPACE });
+}
+
+/**
+ * Where this person's memories live: Anchor's account (their own namespace in
+ * it), or their own Walrus Memory account if they connected one (/mymemory).
+ */
+export function memoryFor(userId: number | string): { client: MemWal; namespace: string; own: boolean } {
+  const own = getUser(userId)?.ownMemory;
+  if (!own) return { client: memwal, namespace: namespaceFor(userId), own: false };
+  const key = String(userId);
+  let hit = ownClients.get(key);
+  if (!hit || hit.since !== own.since) {
+    hit = { since: own.since, client: ownClient(own.accountId, openText("memwal-key", key, own.keySealed), own.serverUrl) };
+    ownClients.set(key, hit);
+  }
+  return { client: hit.client, namespace: OWN_NAMESPACE, own: true };
 }
 
 const hidden = new Set(config.HIDDEN_USER_IDS.split(",").map((s) => s.trim()).filter(Boolean));

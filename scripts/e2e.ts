@@ -38,10 +38,11 @@ const chat = { id: USER, type: "private" as const, first_name: "Judge" };
 // A second person, for buddies.
 const FRIEND = USER + 1;
 const friend = { from: { id: FRIEND, is_bot: false, first_name: "Kemi" }, chat: { id: FRIEND, type: "private" as const, first_name: "Kemi" } };
-const judge = { from, chat };
+type Who = { from: typeof from; chat: { id: number; type: "private"; first_name: string } | { id: number; type: "supergroup"; title: string } };
+const judge: Who = { from, chat };
 let updateId = 1;
 
-async function say(text: string, who = judge) {
+async function say(text: string, who: Who = judge) {
   const entities = text.startsWith("/") ? [{ type: "bot_command" as const, offset: 0, length: text.split(" ")[0]!.length }] : undefined;
   const before = sent.length;
   const t = Date.now();
@@ -49,7 +50,7 @@ async function say(text: string, who = judge) {
   report(`${who === judge ? "" : `(${who.from.first_name}) `}> ${text}`, before, t);
 }
 
-async function tap(data: string, who = judge) {
+async function tap(data: string, who: Who = judge) {
   const before = sent.length;
   const t = Date.now();
   await bot.handleUpdate({
@@ -69,9 +70,9 @@ function report(label: string, before: number, t: number) {
     console.log("   " + to + (s.text ?? "").replace(/\n/g, "\n   "));
     if (s.buttons?.length) console.log("   buttons: " + s.buttons.join(" | "));
     if (/Something went wrong/.test(s.text ?? "")) failures.push(`${label}: error reply`);
-    if (/[—]/.test(s.text ?? "")) failures.push(`${label}: em dash in reply`);
+    if (/[\u2014]/.test(s.text ?? "")) failures.push(`${label}: em dash in reply`);
   }
-  if (out.length === 0 && !label.startsWith("[tap")) failures.push(`${label}: no reply`);
+  if (out.length === 0 && !label.includes("[tap")) failures.push(`${label}: no reply`);
 }
 
 const settle = () => enqueue(`write:${USER}`, async () => undefined);
@@ -142,7 +143,7 @@ await say("/stake");
 await say("/report");
 await say("/connect");
 
-// ---------------------------------------------------------------- newer features
+// Newer features
 const lastText = () => sent.filter((s) => s.method === "sendMessage").at(-1)?.text ?? "";
 const toChat = (id: number, since: number) => sent.slice(since).filter((s) => s.method === "sendMessage" && s.chatId === id);
 
@@ -246,6 +247,121 @@ else {
     }
   }
 }
+
+// Daily-use features
+const { readFileSync } = await import("node:fs");
+const { createHmac } = await import("node:crypto");
+const { setFileFetcher } = await import("../src/media.js");
+const { readProof } = await import("../src/proof.js");
+const { runGroupNudges, setGroupApi } = await import("../src/groups.js");
+const st = await import("../src/state.js");
+const web = (await import("../src/web/server.js")).createWebApp(bot.api);
+setGroupApi(bot.api);
+const fixtures: Record<string, string> = { voice: "test/fixtures/voice-promise.wav", photo: "test/fixtures/cv-sent.jpg" };
+setFileFetcher(async (_api, fileId) => new Uint8Array(readFileSync(fixtures[fileId]!)));
+
+async function sendMsg(extra: Record<string, unknown>, label: string, who: Who = judge) {
+  const before = sent.length;
+  const t = Date.now();
+  await bot.handleUpdate({ update_id: updateId++, message: { message_id: ++msgId, date: Math.floor(Date.now() / 1000), chat: who.chat, from: who.from, ...extra } } as never);
+  report(label, before, t);
+}
+
+// Voice promise: a spoken note becomes a promise.
+await sendMsg({ voice: { file_id: "voice", file_unique_id: "v1", duration: 4, mime_type: "audio/wav" } }, "[voice note]");
+await settle();
+if (!sent.some((s) => /🎙 I heard: .*chapters/i.test(s.text ?? ""))) failures.push("voice: not transcribed");
+
+// Photo proof: promise, then a screenshot of the sent emails.
+await say("I'll send my CV to two more companies today.");
+await settle();
+let mark = sent.length;
+await sendMsg({ photo: [{ file_id: "photo", file_unique_id: "p1", width: 375, height: 812 }], caption: "done!" }, "[photo proof]");
+const chooser = sent.slice(mark).find((s) => s.buttons?.some((b) => b.includes("=>pf:")));
+if (chooser) {
+  const pick = chooser.buttons!.find((b) => /CV/i.test(b) && !b.endsWith(":none")) ?? chooser.buttons![0]!;
+  await tap(pick.split("=>")[1]!);
+}
+await settle();
+const proof = st.proofsOf(String(USER)).at(-1);
+if (!sent.slice(mark).some((s) => /Proof accepted/.test(s.text ?? ""))) failures.push("photo: proof not accepted");
+else if (!proof?.jobId) failures.push("photo: not stored on Walrus");
+else {
+  // Read it back from Walrus once certified, decrypted for its owner only.
+  let back: Awaited<ReturnType<typeof readProof>>;
+  for (let i = 0; i < 12 && !back; i++) {
+    back = await readProof(proof.id, String(USER)).catch(() => undefined);
+    if (!back) await new Promise((r) => setTimeout(r, 10_000));
+  }
+  if (!back) failures.push("photo: not readable from Walrus within 2 minutes");
+  else if (!Buffer.from(back.bytes).equals(readFileSync(fixtures.photo!))) failures.push("photo: Walrus copy doesn't match");
+  else console.log(`\n   photo proof round trip: encrypted on Walrus (job ${proof.jobId}), decrypted back byte for byte`);
+  if (await readProof(proof.id, String(FRIEND)).catch(() => undefined)) failures.push("photo: someone else could read the proof");
+}
+
+// Morning brief.
+await say("/morning");
+if (!/Good morning/.test(lastText())) failures.push("/morning: no brief");
+
+// Own memory: bad input is refused, and the message holding a key is deleted.
+mark = sent.length;
+await say(`/mymemory ${process.env.MEMWAL_ACCOUNT_ID} ${"ab".repeat(32)}`);
+if (!sent.slice(mark).some((s) => s.method === "deleteMessage")) failures.push("/mymemory: message with the key not deleted");
+if (!/rejected|Couldn't reach/.test(lastText())) failures.push("/mymemory: a wrong key was not refused");
+if (st.getUser(USER)?.ownMemory) failures.push("/mymemory: switched to an account with a wrong key");
+
+// Group mode: added to a group, a promise in front of everyone, the deadline check, the board.
+const GROUP = -1_000_000_000_000 - Math.floor(Math.random() * 1_000_000);
+const groupChat = { id: GROUP, type: "supergroup" as const, title: "Study Squad" };
+const inGroup = { from, chat: groupChat };
+const kemiInGroup = { from: friend.from, chat: groupChat };
+const botUser = { id: 1, is_bot: true, first_name: "Anchor" };
+mark = sent.length;
+await bot.handleUpdate({ update_id: updateId++, my_chat_member: { chat: groupChat, from, date: 0, old_chat_member: { user: botUser, status: "left" }, new_chat_member: { user: botUser, status: "member" } } } as never);
+if (!toChat(GROUP, mark).some((s) => /\/promise/.test(s.text ?? ""))) failures.push("group: no welcome");
+mark = sent.length;
+await sendMsg({ text: "hello everyone", entities: undefined }, "[tap] (group chatter, no reply expected)", inGroup);
+if (toChat(GROUP, mark).length) failures.push("group: replied to ordinary chatter");
+await say("/promise finish chapter 3 of my thesis today", inGroup);
+const gp = Object.entries(st.getGroup(GROUP)?.promises ?? {})[0];
+if (!toChat(GROUP, mark).some((s) => /📌/.test(s.text ?? "")) || !gp) failures.push("group: /promise not recorded");
+else {
+  const { addDays, todayIn } = await import("../src/dates.js");
+  st.updateGroup(GROUP, (g) => (g.promises[gp[0]]!.due = addDays(todayIn("Africa/Lagos"), -1))); // pretend the deadline passed yesterday
+  mark = sent.length;
+  await runGroupNudges(bot.api);
+  const nudge = toChat(GROUP, mark).find((s) => s.buttons?.some((b) => b.includes("=>g:")));
+  if (!nudge) failures.push("group: no deadline check");
+  else {
+    const kept = nudge.buttons!.find((b) => b.endsWith(":kept"))!.split("=>")[1]!;
+    mark = sent.length;
+    await tap(kept, kemiInGroup);
+    if (!sent.slice(mark).some((s) => s.method === "answerCallbackQuery" && /Only/.test(s.text ?? ""))) failures.push("group: someone else could answer my check");
+    mark = sent.length;
+    await tap(kept, inGroup);
+    await settle();
+    if (!toChat(GROUP, mark).some((s) => /✅ .* kept:/.test(s.text ?? ""))) failures.push("group: kept not announced");
+  }
+}
+await say("/board", inGroup);
+if (!/🥇/.test(lastText())) failures.push("group: /board empty");
+
+// Mini app API: signed initData opens the dashboard; anything else is refused.
+const initData = (() => {
+  const fields: Record<string, string> = { auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id: USER, first_name: "Judge" }) };
+  const check = Object.keys(fields).sort().map((k) => `${k}=${fields[k]}`).join("\n");
+  const secret = createHmac("sha256", "WebAppData").update(process.env.TELEGRAM_BOT_TOKEN!).digest();
+  return new URLSearchParams({ ...fields, hash: createHmac("sha256", secret).update(check).digest("hex") }).toString();
+})();
+const me = await web.request("/api/app/me", { headers: { "x-telegram-init-data": initData } });
+const dash = (await me.json()) as { open?: unknown[]; done?: Array<{ pic: string | null }>; proofs?: unknown[]; summary?: { closed30: number }; groups?: string[] };
+if (me.status !== 200 || !dash.summary) failures.push(`app: dashboard ${me.status}`);
+else {
+  console.log(`\n   app dashboard: ${dash.open?.length} open, ${dash.done?.length} finished, ${dash.proofs?.length} photo proofs, groups ${JSON.stringify(dash.groups)}`);
+  if (!dash.proofs?.length || !dash.done?.some((d) => d.pic)) failures.push("app: photo proof missing from the dashboard");
+  if (!dash.groups?.includes("Study Squad")) failures.push("app: group missing from the dashboard");
+}
+if ((await web.request("/api/app/me", { headers: { "x-telegram-init-data": initData.replace(/hash=\w/, "hash=0") } })).status !== 401) failures.push("app: a forged sign-in got in");
 
 await say("/stats");
 await say("/help");

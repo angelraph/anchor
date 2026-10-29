@@ -1,9 +1,6 @@
 # Anchor launch posts (Total Recall)
 
 Fill in `<video link>` and `<blog link>` before posting. Every number and link below is real as of 2026-10-27.
-
----
-
 ## X (Premium long post)
 
 I made a promise to myself, put 1 USDC on it, and let the blockchain decide if I kept it.
@@ -18,9 +15,6 @@ No button. No "did you do it?" The chain answered, and paid me back:
 suiscan.xyz/mainnet/tx/2M7yM4QNQRr2XHWXVM8pikG4hxPaCQtt2n84ejM636To
 
 Not a mockup. Sui mainnet, this morning. Here's the whole story 🧵⚓
-
-—
-
 Most of us don't lack goals.
 We lack follow-through.
 
@@ -33,9 +27,6 @@ We say it. Nobody remembers. Including us.
 Reminder apps fire once and get swiped away. AI chatbots forget you the moment the chat ends. Coaches work, but most people can't afford one.
 
 So I built Anchor.
-
-—
-
 ⚓ What Anchor is
 
 A Telegram accountability partner that actually remembers you.
@@ -50,9 +41,6 @@ Next week it says things like:
 "Last time you skipped because you stayed up late on your phone. The week it worked, you went at 7am with Kemi. Same plan?"
 
 That's memory doing real work, not decoration.
-
-—
-
 ⛓ The new part: promises the chain can verify
 
 For promises about money, your word shouldn't be the evidence.
@@ -75,9 +63,6 @@ It understands four kinds of money promises:
 🛑 cap ("don't spend more than 30 USDC this week")
 
 In USDC, USDsui (Sui's native dollar), SUI or WAL.
-
-—
-
 💸 Put money on your word
 
 Want real pressure?
@@ -93,9 +78,6 @@ Anchor never keeps a cent. The chain is the referee.
 My real stake from today, and the payout when I kept it:
 stake → suiscan.xyz/mainnet/tx/MusNBtgHF3KDMoNXMatgm1Lf2bQXJX9UnnRwV4AiAUM
 payout → suiscan.xyz/mainnet/tx/2M7yM4QNQRr2XHWXVM8pikG4hxPaCQtt2n84ejM636To
-
-—
-
 🤖 Agents can pay for your track record
 
 With your permission, AI agents (a lender's, a coach's, a hiring tool's) can buy your signed follow-through record.
@@ -104,25 +86,16 @@ They pay $0.01 per read over x402, settled in USDC on Sui. They get counts and o
 
 A real agent paid for my record today:
 suiscan.xyz/mainnet/tx/5kE6mngkpmvSAEo7azBMHBKduGqmNw2scUfY9N8VD5s6
-
-—
-
 🧾 Proof you own
 
 Every week Anchor can sign your follow-through report with its Sui key and store it on Walrus through Tatum's Storage API.
 
 Anyone can download it from Walrus and verify the signature. Portable proof that you do what you say.
-
-—
-
 🔌 Your memory, everywhere
 
 /connect and the same memory works inside Claude Code and other AI tools over MCP.
 
 Promise something to your coding assistant ("ship the refactor by Friday 5pm") and Anchor follows up with you in Telegram at 5pm.
-
-—
-
 🛠 Built for Total Recall (Oct 20 → Nov 10)
 
 • Chain-verified money promises through Tatum's Sui RPC
@@ -143,9 +116,6 @@ Walkthrough: <video link>
 Full write-up: <blog link>
 
 What's one promise you keep breaking? Tell Anchor. It'll remember. ⚓
-
----
-
 ## LinkedIn
 
 **I let the blockchain decide whether I kept my word.**

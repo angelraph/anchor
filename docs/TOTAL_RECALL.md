@@ -35,6 +35,13 @@ For money promises it doesn't anymore. "Save 50 USDC by Friday", "pay Tobi back 
 | **Habits and streaks** | Recurring promises (daily or N times a week), asked about at check-in, settled per period, with `[habit]` and `[streak]` memories on Walrus. | `src/habits.ts`, `src/bot/habit-commands.ts` |
 | **Accountability buddies** | Invite links, kept/missed notifications to a buddy (with the owner's permission), one-tap cheer and nudge back. | `src/buddies.ts`, `src/bot/buddy-commands.ts` |
 | **Guided tour** | `/tour`: seven steps, with a live demo of a promise and its check. | `src/bot/onboarding.ts` |
+| **Anchor mini app** | Inside Telegram: follow-through ring, kept/missed calendar, habit streaks, what Anchor learned, weekly bars, photo proofs, and the memory switch (one question, answered without and with Walrus Memory). Public share card with first name and numbers only. | `src/web/app-routes.ts`, `src/web/app-page.ts` |
+| **Photo proof on Walrus** | Any promise can be proved with a photo. Gemini matches it to the open promise; the photo is encrypted per person (AES-256-GCM) and stored on Walrus through Tatum's Storage API; the outcome memory carries `pic:<id>`. | `src/proof.ts`, `src/media.ts` |
+| **Voice promises** | Voice notes are transcribed by Gemini and handled like typed messages. | `src/media.ts` |
+| **Group mode** | `/promise` in a group, deadline checks only the promiser can answer, outcomes announced from any door, a weekly `/board`. | `src/groups.ts`, `src/bot/group-commands.ts` |
+| **Bring your own Walrus Memory** | `/mymemory` or the app: the delegate key is verified against the account, memories are copied over, and every recall and save goes to the person's own account. | `src/memory/own.ts` |
+| **Morning brief** | 08:00 local: due today, habits, the week so far, one lesson from memory. | `src/morning.ts` |
+| **Security** | Telegram initData verification, rate and size limits, strict CSP, encryption at rest, owner-only proofs and group checks. | `src/web/guard.ts`, `src/secrets.ts` |
 
 ## Live evidence on Sui mainnet (2026-10-27)
 

@@ -6,6 +6,8 @@ import { MORNING_HOUR, morningBrief } from "../morning.js";
 import { storeProof } from "../proof.js";
 import { GROUP_COMMANDS, registerGroupCommands } from "./group-commands.js";
 import { FOLLOW, recordOutcome, type Settled } from "./outcomes.js";
+import { presence } from "../attention.js";
+import { tomorrowFor, welcomeBack } from "../welcome.js";
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
 import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
 import { weeklySummary } from "../reminders.js";
@@ -155,6 +157,57 @@ export function createBot(): Bot {
     if (ctx.chat && ctx.chat.type !== "private") return;
     if (!ctx.from) return;
     await next();
+  });
+
+  // Back after a quiet stretch (or after "still with me?"): answer them first, then one
+  // welcome-back card with everything that slipped, and Anchor resumes as normal.
+  bot.use(async (ctx, next) => {
+    const id = ctx.from?.id;
+    const before = id ? getUser(id) : undefined;
+    const returning = !!before && (!!before.paused || presence(before.lastSeen) === "away");
+    await next();
+    if (!returning || !id || ctx.callbackQuery?.data?.startsWith("wb:")) return;
+    updateUser(id, (u) => delete u.paused);
+    await welcomeBack(ctx.api, id).catch((err) => console.warn(`[welcome] ${id}:`, err instanceof Error ? err.message : err));
+  });
+
+  // The welcome-back card's buttons: wb:kept | wb:broken | wb:moved | wb:each
+  bot.callbackQuery(/^wb:(kept|broken|moved|each)$/, async (ctx) => {
+    touch(ctx);
+    const choice = (ctx.match as RegExpMatchArray)[1]!;
+    const userId = ctx.from.id;
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageReplyMarkup().catch(() => undefined);
+    const ids = getUser(userId)?.welcome ?? [];
+    updateUser(userId, (u) => delete u.welcome);
+    if (!ids.length) {
+      await ctx.reply("That list is already cleared. /promises shows where things stand.");
+      return;
+    }
+    if (choice === "each") {
+      await withTyping(ctx, () => checkInUser(ctx.api, String(userId), { force: true }));
+      return;
+    }
+    if (choice === "moved") {
+      const tomorrow = tomorrowFor(userId);
+      void enqueue(`write:${userId}`, () =>
+        storeMemories(
+          userId,
+          ids.map((id) => ({ kind: "outcome" as const, date: todayIn(tzOf(userId)), ref: id, status: "moved" as const, due: tomorrow, text: `Moved to ${tomorrow} after time away` })),
+        ),
+      ).catch((err) => console.error(`[welcome] move failed for ${userId}:`, err));
+      updateUser(userId, (u) => (u.awaitingOutcome = u.awaitingOutcome.filter((x) => !ids.includes(x))));
+      await ctx.reply(`📅 Moved ${ids.length === 1 ? "it" : `all ${ids.length}`} to tomorrow. Fresh start. I'll ask about ${ids.length === 1 ? "it" : "them"} tomorrow evening.`);
+      return;
+    }
+    const status = choice as "kept" | "broken";
+    let done = 0;
+    for (const id of ids) if (!("error" in (await recordOutcome(userId, id, status)))) done++;
+    await ctx.reply(
+      status === "kept"
+        ? `✅ Nice. ${done === 1 ? "One kept promise" : `${done} kept promises`} added to your record. Welcome back. What's next?`
+        : `Done, ${done === 1 ? "it's" : "they're"} cleared. No judgement, life happens. What's one thing you'll do today?`,
+    );
   });
 
   bot.command("start", async (ctx) => {

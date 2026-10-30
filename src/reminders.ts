@@ -11,6 +11,7 @@
  */
 import { generateText } from "ai";
 import type { Api } from "grammy";
+import { allowed, nudge } from "./attention.js";
 import { outcomeKeyboard } from "./checkins.js";
 import { config } from "./config.js";
 import { addDays, hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
@@ -108,8 +109,8 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     if (stale.length) updateUser(userId, (u) => stale.forEach((id) => delete u.timed![id]));
     for (const [id, p] of headsUpNow(timed, today, now, user.warned ?? {}, user.closed ?? {})) {
       try {
-        await api.sendMessage(user.chatId, headsUpText(id, p));
-        console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
+        // A reminder they asked for always goes out; the automatic 30-minute warning respects attention.
+        if (await nudge(api, userId, p.rem ? "reminder" : "headsup", headsUpText(id, p))) console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
       } catch (err) {
         console.warn(`[remind] heads-up user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
       }
@@ -120,10 +121,11 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     // Chain-verified promises get their deadline verdict from Sui instead (chain/promises.ts).
     for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {}).filter(([id]) => !user.chain?.[id])) {
       try {
-        await api.sendMessage(user.chatId, `⏰ It's ${p.at}${p.rem ? "" : ", deadline time"}.\n#${id} · ${clause(p.text)}\n${p.rem ? "Did you make it?" : "Did you do it?"}`, {
+        // Skipped while they're away: the welcome-back card asks about it instead.
+        const sent = await nudge(api, userId, "deadline", `⏰ It's ${p.at}${p.rem ? "" : ", deadline time"}.\n#${id} · ${clause(p.text)}\n${p.rem ? "Did you make it?" : "Did you do it?"}`, {
           reply_markup: outcomeKeyboard(id),
         });
-        console.log(`[remind] user ${userId} #${id} at ${p.at}`);
+        if (sent) console.log(`[remind] user ${userId} #${id} at ${p.at}`);
       } catch (err) {
         console.warn(`[remind] user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
       }
@@ -224,8 +226,7 @@ export async function runWeekly(api: Api): Promise<void> {
       u.lastWeekly = today; // marked first, so a slow send can't be repeated next minute
     });
     try {
-      await api.sendMessage(user.chatId, await weeklySummary(userId));
-      console.log(`[weekly] sent to ${userId}`);
+      if (allowed(userId, "weekly") && (await nudge(api, userId, "weekly", await weeklySummary(userId)))) console.log(`[weekly] sent to ${userId}`);
     } catch (err) {
       console.warn(`[weekly] user ${userId} failed:`, err instanceof Error ? err.message : err);
     }
@@ -239,7 +240,7 @@ export async function runWeekly(api: Api): Promise<void> {
       if (reportsEnabled()) {
         try {
           const { job } = await publishReport(userId, { publicTexts: false });
-          await api.sendMessage(user.chatId, `🧾 This week's signed report is on Walrus: ${reportPageUrl(job.jobId)}`, { link_preview_options: { is_disabled: true } });
+          await nudge(api, userId, "weekly", `🧾 This week's signed report is on Walrus: ${reportPageUrl(job.jobId)}`, { link_preview_options: { is_disabled: true } });
         } catch (err) {
           console.warn(`[weekly] report for ${userId} failed:`, err instanceof Error ? err.message : err);
         }

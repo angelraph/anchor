@@ -13,6 +13,7 @@ import { doneIn, periodKey, progress } from "./habits.js";
 import { mergeAndFilter, recall, recallCommitments } from "./memory/recall.js";
 import { clause, effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser } from "./state.js";
+import { allowed, nudge } from "./attention.js";
 
 export const MORNING_HOUR = 8;
 const ACTIVE_MS = 14 * 86_400_000;
@@ -72,9 +73,10 @@ export async function runMorning(api: Api): Promise<void> {
     const tz = tzOf(userId);
     const today = todayIn(tz);
     if (u.lastMorning === today || hourIn(tz) !== MORNING_HOUR) continue;
+    if (!allowed(userId, "morning")) continue; // quiet or away: no brief (it waits until they're back)
     updateUser(userId, (x) => (x.lastMorning = today));
     try {
-      await api.sendMessage(u.chatId, await morningBrief(userId), { link_preview_options: { is_disabled: true } });
+      await nudge(api, userId, "morning", await morningBrief(userId), { link_preview_options: { is_disabled: true } });
     } catch (err) {
       console.warn(`[morning] ${userId}:`, err instanceof Error ? err.message.slice(0, 120) : err);
     }

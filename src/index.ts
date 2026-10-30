@@ -2,6 +2,7 @@ import { run } from "@grammyjs/runner";
 import { appUrl, BOT_ABOUT, BOT_COMMANDS, BOT_DESCRIPTION, createBot, GROUP_COMMANDS } from "./bot/bot.js";
 import { runGroupNudges, setGroupApi } from "./groups.js";
 import { runMorning } from "./morning.js";
+import { runAttention } from "./attention.js";
 import { runChainChecks } from "./chain/promises.js";
 import { anchorAddress } from "./chain/signer.js";
 import { maintainStakes } from "./chain/stakes.js";
@@ -103,6 +104,8 @@ async function main() {
     // Group deadline checks, and each person's 08:00 morning brief.
     void runGroupNudges(bot.api).catch((err) => console.error("[groups] failed:", err));
     void runMorning(bot.api).catch((err) => console.error("[morning] failed:", err));
+    // Away for two days: one "still with me?", then quiet until they're back.
+    void runAttention(bot.api).catch((err) => console.error("[attention] failed:", err));
   }, 60_000);
 
   // Updates run concurrently across users; bot.ts keeps each chat in order.

@@ -230,6 +230,16 @@ describe("open or closed is decided by the broad sweep", () => {
   });
 });
 
+describe("promise words stay human", () => {
+  it("drops a raw date and an invented end-of-day time, keeps a time they gave", async () => {
+    const { cleanPromiseText } = await import("../src/memory/write.js");
+    expect(cleanPromiseText("Tunde promised to drink two litres of water by 2026-10-30", false)).toBe("Tunde promised to drink two litres of water");
+    expect(cleanPromiseText("Promised to drink water by 23:59", false)).toBe("Promised to drink water");
+    expect(cleanPromiseText("Promised to submit the build by 06:00", true)).toBe("Promised to submit the build by 06:00");
+    expect(cleanPromiseText("Promised to save 5 USDC by November 6, 2026", false)).toBe("Promised to save 5 USDC by November 6, 2026");
+  });
+});
+
 describe("a deadline only comes from what the person said", () => {
   it("drops the check-in time borrowed from Anchor's reply, keeps a time they gave", async () => {
     const { borrowedCheckinTime } = await import("../src/memory/write.js");
@@ -257,6 +267,52 @@ describe("setup and demo mode", () => {
     expect(d.open).toHaveLength(3);
     expect(d.summary.weeks).toHaveLength(8);
     expect(demoCompare().on).not.toMatch(/locked in|i've noted|i'll check in|scheduled/i);
+  });
+});
+
+describe("respecting attention", () => {
+  const H = 3_600_000, now = Date.parse("2026-10-30T12:00:00Z");
+  const seen = (hoursAgo: number) => new Date(now - hoursAgo * H).toISOString();
+  const person = (over: Record<string, unknown> = {}) => ({ firstName: "Ada", chatId: 1, lastSeen: seen(2), nudged: {}, awaitingOutcome: [], tombstones: [], ...over }) as import("../src/state.js").UserState;
+  it("knows active, quiet and away", async () => {
+    const { presence } = await import("../src/attention.js");
+    expect([presence(seen(2), now), presence(seen(30), now), presence(seen(72), now)]).toEqual(["active", "quiet", "away"]);
+  });
+  it("active: everything, but at most 4 a day and nothing at night", async () => {
+    const { mayNudge } = await import("../src/attention.js");
+    expect(mayNudge(person(), "morning", "2026-10-30", 9, now)).toBe(true);
+    expect(mayNudge(person({ nudges: { day: "2026-10-30", count: 4 } }), "checkin", "2026-10-30", 19, now)).toBe(false);
+    expect(mayNudge(person({ nudges: { day: "2026-10-29", count: 4 } }), "checkin", "2026-10-30", 19, now)).toBe(true);
+    expect(mayNudge(person(), "headsup", "2026-10-30", 23, now)).toBe(false);
+    expect(mayNudge(person(), "deadline", "2026-10-30", 23, now)).toBe(true); // a time they chose
+  });
+  it("quiet: only the evening check-in and their own deadlines", async () => {
+    const { mayNudge } = await import("../src/attention.js");
+    const q = person({ lastSeen: seen(30) });
+    expect(["morning", "headsup", "habit", "weekly", "buddy", "checkin", "deadline"].map((k) => mayNudge(q, k as never, "2026-10-30", 19, now))).toEqual([false, false, false, false, false, true, true]);
+  });
+  it("away or paused: silence, except reminders they set and their money", async () => {
+    const { mayNudge } = await import("../src/attention.js");
+    for (const u of [person({ lastSeen: seen(72) }), person({ paused: seen(1) })]) {
+      expect(["checkin", "deadline", "morning"].some((k) => mayNudge(u, k as never, "2026-10-30", 19, now))).toBe(false);
+      expect(mayNudge(u, "reminder", "2026-10-30", 23, now)).toBe(true);
+      expect(mayNudge(u, "chain", "2026-10-30", 3, now)).toBe(true);
+    }
+  });
+  it("puts every due promise in ONE check-in, a row of buttons each", async () => {
+    const { groupedCheckin } = await import("../src/checkins.js");
+    const due = [c("a1", "2026-10-28"), c("b2", "2026-10-29"), c("c3", "2026-10-30")].map((s) => ({ ...s, commitment: { ...s.commitment, due: s.commitment.date } }));
+    const one = groupedCheckin(due, "Evening, Ada.");
+    expect(one.text).toMatch(/1\. promise a1[\s\S]*3\. promise c3/);
+    const rows = one.keyboard.inline_keyboard;
+    expect(rows).toHaveLength(3);
+    expect(rows[1]!.map((b) => (b as { callback_data: string }).callback_data)).toEqual(["o:b2:kept", "o:b2:partial", "o:b2:broken", "o:b2:moved"]);
+  });
+  it("welcome back lists what passed, not what's still ahead or already done", async () => {
+    const { missedPromises } = await import("../src/welcome.js");
+    const mk = (id: string, due: string, at?: string) => ({ commitment: { kind: "commitment" as const, id, date: due, due, at, text: id, raw: "", blobId: "", distance: 0 } });
+    const states = [mk("old", "2026-10-27"), mk("timed", "2026-10-30", "09:00"), mk("later", "2026-10-30", "18:00"), mk("today", "2026-10-30"), mk("done", "2026-10-28"), mk("chain", "2026-10-28")];
+    expect(missedPromises(states, { done: "kept" }, ["chain"], "2026-10-30", "12:00").map((s) => s.commitment.id)).toEqual(["old", "timed"]);
   });
 });
 

@@ -59,7 +59,10 @@ export function registerGroupCommands(bot: Bot) {
     const commitments = await recallCommitments(uid).catch(() => []);
     const records = (
       await extractMemories({ userMessage: `${user.firstName || "I"}: ${text}`, assistantReply: "", commitments, tz }).catch(() => [])
-    ).filter((r) => r.kind === "commitment" && r.id);
+    )
+      .filter((r) => r.kind === "commitment" && r.id)
+      // The model sometimes writes "Tunde promised to…" in third person; the announcement already names the person.
+      .map((r) => ({ ...r, text: r.text.replace(/^\p{Lu}[\p{L}'-]*\s+promised to\s+/u, "Promised to ") }));
     if (!records.length) {
       await ctx.reply("I couldn't find a promise in that. Say what you'll do and by when, e.g. /promise send 5 applications by Friday");
       return;
@@ -71,7 +74,7 @@ export function registerGroupCommands(bot: Bot) {
     });
     void enqueue(`write:${uid}`, () => storeMemories(uid, records)).catch((err) => console.error(`[group] storing promise for ${uid} failed:`, err));
     const today = todayIn(tz);
-    const lines = records.map((r) => `📌 ${user.firstName || "Someone"} promised: ${clause(r.text)}${r.due ? ` (${weekdayOf(r.due)} ${r.due}${r.at ? ` ${r.at}` : ""}, ${relativeDay(r.due, today)})` : ""}`);
+    const lines = records.map((r) => `📌 ${user.firstName || "Someone"} ${/^promised to /i.test(r.text) ? `promised to ${clause(r.text).slice("promised to ".length)}` : `promised: ${clause(r.text)}`}${r.due ? ` (${weekdayOf(r.due)} ${r.due}${r.at ? ` ${r.at}` : ""}, ${relativeDay(r.due, today)})` : ""}`);
     await ctx.reply(`${lines.join("\n")}\n\nI'll check in here at the deadline. Everyone's watching 👀`, { reply_parameters: { message_id: ctx.msg.message_id } });
   });
 

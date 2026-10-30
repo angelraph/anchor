@@ -45,6 +45,13 @@ const extractionSchema = z.object({
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Promise words without a raw ISO date, or an invented end-of-day time. Pure, for tests. */
+export function cleanPromiseText(text: string, hasTime: boolean): string {
+  let t = text.replace(/,?\s+(by|on|before|until)\s+\d{4}-\d{2}-\d{2}\b/gi, "");
+  if (!hasTime) t = t.replace(/,?\s+(by|before)\s+(23:59|midnight)\b/i, "");
+  return t.trim();
+}
+
 /**
  * The evening check-in time taken from Anchor's own reply ("I'll ask at 19:00")
  * is not the person's deadline. True when `at` is that time and the person never
@@ -109,7 +116,10 @@ export async function extractMemories(opts: {
           : undefined;
       // A reminder only makes sense before a timed deadline on that day.
       const rem = at && m.remind && /^([01]\d|2[0-3]):[0-5]\d$/.test(m.remind) && m.remind < at ? m.remind : undefined;
-      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, rem, chk, text });
+      // The date and time live in their own fields: no raw "by 2026-10-30" in the words, and
+      // "today" with no time isn't "by 23:59".
+      const words = cleanPromiseText(text, !!at);
+      records.push({ kind: "commitment", date: today, id: newCommitmentId(), due, at, rem, chk, text: words });
     } else if (m.kind === "outcome") {
       const ref = m.ref?.replace(/^#/, "");
       if (ref && opts.closed?.[ref]) continue; // already recorded (e.g. via the check-in button)

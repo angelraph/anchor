@@ -13,6 +13,7 @@ import { mergeAndFilter, recall, recallCommitments } from "./memory/recall.js";
 import { checkinDay, clause, deadlinePassed, effectiveDue, isOpen, type CommitmentState } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser } from "./state.js";
 import { askHabits } from "./habits.js";
+import { allowed, noteNudge, nudge } from "./attention.js";
 
 export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
   return new InlineKeyboard()
@@ -21,6 +22,33 @@ export function outcomeKeyboard(commitmentId: string): InlineKeyboard {
     .row()
     .text("❌ Didn't", `o:${commitmentId}:broken`)
     .text("📅 Move it", `o:${commitmentId}:moved`);
+}
+
+/** At most this many promises in one check-in; the rest wait for /promises. */
+const MAX_IN_ONE = 6;
+
+/**
+ * Several due promises in ONE message: a numbered list, and one row of buttons
+ * per promise (✅ 1 · 🟡 1 · ❌ 1 · 📅 1). Pure, for tests.
+ */
+export function groupedCheckin(due: CommitmentState[], intro: string): { text: string; keyboard: InlineKeyboard } {
+  const shown = due.slice(0, MAX_IN_ONE);
+  if (shown.length === 1) {
+    const s = shown[0]!;
+    const d = effectiveDue(s)!;
+    return { text: `${intro}\n\n#${s.commitment.id} · ${clause(s.commitment.text)}\n(due ${weekdayOf(d)} ${d})`, keyboard: outcomeKeyboard(s.commitment.id!) };
+  }
+  const kb = new InlineKeyboard();
+  const lines = shown.map((s, i) => {
+    const id = s.commitment.id!;
+    const n = i + 1;
+    if (i) kb.row();
+    kb.text(`✅ ${n}`, `o:${id}:kept`).text(`🟡 ${n}`, `o:${id}:partial`).text(`❌ ${n}`, `o:${id}:broken`).text(`📅 ${n}`, `o:${id}:moved`);
+    const d = effectiveDue(s)!;
+    return `${n}. ${clause(s.commitment.text)} (due ${weekdayOf(d)})`;
+  });
+  const more = due.length > shown.length ? `\n…and ${due.length - shown.length} more in /promises` : "";
+  return { text: `${intro}\n\n${lines.join("\n")}${more}\n\n✅ did it · 🟡 partly · ❌ didn't · 📅 move it`, keyboard: kb };
 }
 
 export function dueCommitments(states: CommitmentState[], today: string, now: string): CommitmentState[] {
@@ -40,6 +68,8 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
   const user = getUser(userId);
   const chatId = user?.chatId ?? Number(userId);
   const firstName = user?.firstName ?? "";
+  // The scheduled check-in respects attention (away, quiet hours, daily cap); /checkin always answers.
+  if (!opts.force && !allowed(userId, "checkin")) return 0;
 
   const states = await recallCommitments(userId);
   // Money promises still being watched on Sui are closed by the chain, not by asking.
@@ -72,20 +102,16 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
       abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     }),
   );
-  await api.sendMessage(chatId, text.trim());
-
-  for (const s of due) {
-    const dueDate = effectiveDue(s)!;
-    await api.sendMessage(chatId, `#${s.commitment.id} · ${clause(s.commitment.text)}\n(due ${weekdayOf(dueDate)} ${dueDate})`, {
-      reply_markup: outcomeKeyboard(s.commitment.id!),
-    });
-  }
+  // ONE message for everything due, not one per promise.
+  const one = groupedCheckin(due, text.trim());
+  await api.sendMessage(chatId, one.text, { reply_markup: one.keyboard });
+  if (!opts.force) noteNudge(userId, today);
 
   updateUser(userId, (u) => {
     for (const s of due) u.nudged[s.commitment.id!] = today;
     u.awaitingOutcome = [...new Set([...u.awaitingOutcome, ...due.map((s) => s.commitment.id!)])];
   });
-  return 1 + due.length;
+  return 1;
 }
 
 /** Once a day, nudge recently active users who have nothing due to set a promise. */
@@ -96,10 +122,13 @@ async function maybeGeneralCheckin(api: Api, userId: string, today: string, tz: 
   const activeRecently = Date.now() - lastSeen < 3 * 86_400_000;
   const seenToday = todayIn(tz, new Date(lastSeen)) === today;
   if (!activeRecently || seenToday) return 0;
-  await api.sendMessage(
-    user.chatId,
+  const sent = await nudge(
+    api,
+    userId,
+    "checkin",
     `Evening check-in${user.firstName ? `, ${user.firstName}` : ""}. Nothing is due today, what's one thing you'll get done tomorrow? I'll hold you to it.`,
   );
+  if (!sent) return 0;
   updateUser(userId, (u) => {
     u.lastGeneralCheckin = today;
   });

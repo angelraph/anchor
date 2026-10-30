@@ -121,6 +121,14 @@ export interface UserState {
   ownMemory?: { accountId: string; keySealed: string; serverUrl?: string; since: string };
   /** Morning brief: on unless set to false (/morning off). */
   morning?: boolean;
+  /** Unprompted messages sent on a local day (attention.ts caps them). */
+  nudges?: { day: string; count: number };
+  /** When Anchor went quiet after "still with me?"; cleared as soon as they write. */
+  paused?: string;
+  /** Promises offered in the last "welcome back" card, for its one-tap buttons. */
+  welcome?: string[];
+  /** Buddy news that arrived during this person's night, delivered in the morning. */
+  buddyQueue?: Array<{ text: string; button?: { label: string; data: string } }>;
   /** Local date of the last morning brief. */
   lastMorning?: string;
   /** Public code of this person's share card (/c/<code>), made when they first share. */

@@ -204,6 +204,16 @@ else {
       mark = sent.length;
       await tap(water.split("=>")[1]!);
       await settle();
+      // At night the note waits for the friend's morning: deliver it as their morning would.
+      const state = await import("../src/state.js");
+      if (state.getUser(FRIEND)?.buddyQueue?.length) {
+        const { runAttention } = await import("../src/attention.js");
+        const [morningZone] = [...Array(27).keys()].map((i) => i - 12).map((o) => (o === 0 ? "UTC" : `Etc/GMT${o > 0 ? "-" : "+"}${Math.abs(o)}`)).filter((z) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: z, hour: "numeric", hourCycle: "h23" }).format(new Date())) === 9);
+        state.updateUser(FRIEND, (u) => (u.tz = morningZone ?? u.tz));
+        state.updateUser(USER, (u) => (u.tz = morningZone ?? u.tz));
+        console.log("\n   buddy note held for the friend's night, delivering at their morning");
+        await runAttention(bot.api);
+      }
       const note = toChat(FRIEND, mark).find((s) => s.buttons?.some((b) => b.includes("b:cheer:")));
       if (!note) failures.push("buddy: friend not told about the kept promise");
       else {
@@ -371,7 +381,7 @@ if ((await web.request("/api/app/me", { headers: { "x-telegram-init-data": initD
 const { runDeadlineReminders } = await import("../src/reminders.js");
 const { runMorning } = await import("../src/morning.js");
 const { runCheckins } = await import("../src/checkins.js");
-const { hourIn, timeIn, todayIn: today } = await import("../src/dates.js");
+const { addDays: addDaysTo, hourIn, timeIn, todayIn: today } = await import("../src/dates.js");
 const savesClaim = /locked in|i've noted|i have noted|noted that|i'll check in|i will check in|heads-up|i'll remind|i will remind|scheduled|on your list/i;
 /** A zone where it is `hour` o'clock right now, to run time-of-day jobs without waiting. */
 const zoneAt = (hour: number) => [...Array(27).keys()].map((i) => i - 12).map((o) => (o === 0 ? "UTC" : `Etc/GMT${o > 0 ? "-" : "+"}${Math.abs(o)}`)).find((z) => hourIn(z) === hour);
@@ -395,6 +405,9 @@ const openAnswer = lastText();
 if (/\b(cv|water|chapter 3)\b[^.]*\b(still|open|overdue|haven't|pending)\b|\b(still|open|overdue|pending)\b[^.]*\b(cv|water|chapter 3)\b/i.test(openAnswer)) failures.push(`consistency: a kept promise was called open: "${openAnswer.slice(0, 160)}"`);
 
 // Reminders: a reminder time separate from the deadline, then the check at the event.
+// (Run at midday on the person's clock with a fresh daily allowance: the attention rules are tested below.)
+const midday = zoneAt(12) ?? "Africa/Lagos";
+st.updateUser(USER, (u) => { u.tz = midday; delete u.nudges; });
 await say("I have a call with the bank at 11pm tonight, remind me at 10pm");
 await settle();
 const remId = Object.entries(st.getUser(USER)?.timed ?? {}).find(([, p]) => p.rem)?.[0];
@@ -415,7 +428,7 @@ st.updateUser(USER, (u) => { (u.timed ??= {}).hu01 = { text: "Promised to submit
 mark = sent.length;
 await runDeadlineReminders(bot.api);
 if (!msgsTo(USER, mark).some((t) => /^⏳ 30 minutes left/.test(t))) failures.push("reminder: no 30-minute heads-up");
-st.updateUser(USER, (u) => { delete u.timed!.hu01; (u.closed ??= {}).hu01 = "kept"; });
+st.updateUser(USER, (u) => { delete u.timed!.hu01; (u.closed ??= {}).hu01 = "kept"; u.tz = "Africa/Lagos"; delete u.nudges; });
 
 // Outcome buttons beyond "Did it": partly and move it.
 await say("I'll tidy my desk today.");
@@ -441,7 +454,7 @@ else {
 // Time-of-day jobs, run now by moving the person into a zone where it's that hour.
 const z8 = zoneAt(8), z19 = zoneAt(19);
 if (z8) {
-  st.updateUser(USER, (u) => { u.tz = z8; delete u.lastMorning; u.morning = true; });
+  st.updateUser(USER, (u) => { u.tz = z8; delete u.lastMorning; delete u.nudges; u.morning = true; });
   mark = sent.length;
   await runMorning(bot.api);
   if (!msgsTo(USER, mark).some((t) => /Good morning/.test(t))) failures.push("morning brief: not sent at 08:00 local");
@@ -453,7 +466,7 @@ if (z8) {
   await say("/morning on");
 }
 if (z19) {
-  st.updateUser(USER, (u) => { u.tz = z19; delete u.lastEvening; });
+  st.updateUser(USER, (u) => { u.tz = z19; delete u.lastEvening; delete u.nudges; });
   mark = sent.length;
   await runCheckins(bot.api);
   console.log(`\n   evening check-in at 19:00 local sent ${msgsTo(USER, mark).length} message(s)`);
@@ -516,6 +529,58 @@ if (pic) {
   const img = await web.request(`/api/app/proof/${pic.id}`, { headers: auth });
   if (img.status !== 200 || !Buffer.from(await img.arrayBuffer()).equals(readFileSync(fixtures.photo!))) failures.push(`app: photo proof ${img.status}`);
   else console.log("   app photo proof: decrypted from Walrus through the route, byte for byte");
+}
+
+// Respecting attention: one grouped check-in, then three days away, then back.
+const { runAttention, STILL_WITH_ME } = await import("../src/attention.js");
+const { storeMemories } = await import("../src/memory/write.js");
+const fresh = () => st.updateUser(USER, (u) => { delete u.nudges; delete u.paused; u.lastSeen = new Date().toISOString(); });
+fresh();
+await say("I'll answer two emails today.");
+await settle();
+await say("I'll water the plants today.");
+await settle();
+mark = sent.length;
+await say("/checkin");
+const checkinMsgs = sent.slice(mark).filter((s) => s.method === "sendMessage" && s.chatId === USER);
+const promiseRows = (checkinMsgs.at(-1)?.buttons ?? []).filter((b) => b.includes(":kept")).length;
+if (checkinMsgs.length !== 1) failures.push(`grouped check-in: ${checkinMsgs.length} messages instead of 1`);
+else if (promiseRows < 2) failures.push("grouped check-in: due promises not all in the one message");
+else console.log(`\n   grouped check-in: ${promiseRows} due promises in one message`);
+
+// A promise from yesterday that nobody answered: what the welcome-back card should offer.
+const yday = addDaysTo(today(st.tzOf(USER)), -1);
+await storeMemories(USER, [{ kind: "commitment", date: yday, id: "away1", due: yday, text: "Promised to finish the slides" }]);
+st.updateUser(USER, (u) => { u.lastSeen = new Date(Date.now() - 3 * 86_400_000).toISOString(); delete u.nudges; delete u.paused; delete u.lastEvening; delete u.lastMorning; });
+mark = sent.length;
+if (z19) { st.updateUser(USER, (u) => (u.tz = z19)); await runCheckins(bot.api); }
+if (z8) { st.updateUser(USER, (u) => (u.tz = z8)); await runMorning(bot.api); }
+st.updateUser(USER, (u) => (u.tz = "Africa/Lagos"));
+await runDeadlineReminders(bot.api);
+const whileAway = msgsTo(USER, mark).filter((t) => !/^🔔 Your reminder/.test(t));
+if (whileAway.length) failures.push(`away: ${whileAway.length} unprompted message(s) while away: "${whileAway[0]!.slice(0, 60)}"`);
+const z12 = zoneAt(12);
+if (z12) {
+  st.updateUser(USER, (u) => (u.tz = z12));
+  mark = sent.length;
+  await runAttention(bot.api);
+  await runAttention(bot.api);
+  const still = msgsTo(USER, mark).filter((t) => t === STILL_WITH_ME).length;
+  if (still !== 1) failures.push(`away: "still with me?" sent ${still} times instead of once`);
+  st.updateUser(USER, (u) => (u.tz = "Africa/Lagos"));
+}
+mark = sent.length;
+await say("hi, I'm back");
+const card = sent.slice(mark).find((s) => s.chatId === USER && s.buttons?.some((b) => b.endsWith("wb:kept")));
+if (st.getUser(USER)?.paused) failures.push("back: still paused after writing");
+if (!card || !/slides/i.test(card.text ?? "")) failures.push("back: no welcome-back card with the missed promise");
+else {
+  console.log(`\n   welcome back: ${card.text!.split("\n")[0]}`);
+  mark = sent.length;
+  await tap("wb:kept");
+  await settle();
+  if (st.getUser(USER)?.closed?.away1 !== "kept") failures.push("back: 'Did them all' did not record the missed promise");
+  if (!msgsTo(USER, mark).some((t) => /kept promise/.test(t))) failures.push("back: no confirmation after 'Did them all'");
 }
 
 await say("/stats");

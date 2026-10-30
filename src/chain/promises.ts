@@ -11,6 +11,7 @@
  */
 import type { Api } from "grammy";
 import { InlineKeyboard } from "grammy";
+import { allowed, noteNudge } from "../attention.js";
 import { outcomeKeyboard } from "../checkins.js";
 import { config } from "../config.js";
 import { addDays, timeIn, todayIn } from "../dates.js";
@@ -226,7 +227,11 @@ export async function runChainChecks(api: Api, opts: { userId?: string; force?: 
           u.nudged[id] = today;
           u.awaitingOutcome = [...new Set([...u.awaitingOutcome, id])];
         });
-        await send(api, user.chatId, `⏰ Deadline for #${id} · ${clause(p.text)}.\nSui shows: ${v.evidence}\nDid you do it another way?`, outcomeKeyboard(id));
+        // A question, not a verdict: it waits for the welcome-back card while they're away.
+        if (allowed(userId, "deadline")) {
+          await send(api, user.chatId, `⏰ Deadline for #${id} · ${clause(p.text)}.\nSui shows: ${v.evidence}\nDid you do it another way?`, outcomeKeyboard(id));
+          noteNudge(userId, today);
+        }
         report.push(`⏰ #${id} · ${clause(p.text)}: ${v.evidence}`);
       } else {
         report.push(`⏳ #${id} · ${clause(p.text)}: ${v.evidence}`);

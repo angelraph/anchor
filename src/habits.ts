@@ -16,6 +16,7 @@ import { weekOf } from "./learning.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { clause, newCommitmentId, type MemoryRecord } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser, type Habit } from "./state.js";
+import { nudge } from "./attention.js";
 
 // pure rules
 /** The period a date belongs to: the day itself, or the Monday of its week. */
@@ -150,18 +151,26 @@ export function habitsToAsk(habits: Record<string, Habit>, today: string): Array
   });
 }
 
-/** Called from the evening check-in. */
+/** Called from the evening check-in: ONE message for all of today's habits. */
 export async function askHabits(api: Api, userId: string): Promise<number> {
   const u = getUser(userId);
   if (!u?.habits) return 0;
   const today = todayIn(tzOf(userId));
   const due = habitsToAsk(u.habits, today);
-  for (const [id, h] of due) {
-    await api
-      .sendMessage(u.chatId, `🔄 Did you ${clause(h.text).replace(/^\w/, (c) => c.toLowerCase())} today?\n${describeRep(h)} · ${progress(h, today)}`, { reply_markup: habitKeyboard(id) })
-      .catch(() => undefined);
-  }
-  return due.length;
+  if (!due.length) return 0;
+  const [[firstId, first]] = due as [[string, Habit]];
+  const text =
+    due.length === 1
+      ? `🔄 Did you ${clause(first.text).replace(/^\w/, (c) => c.toLowerCase())} today?\n${describeRep(first)} · ${progress(first, today)}`
+      : `🔄 Your habits today:\n${due.map(([, h]) => `• ${clause(h.text)}: ${progress(h, today)}`).join("\n")}`;
+  const kb = due.length === 1 ? habitKeyboard(firstId) : new InlineKeyboard();
+  if (due.length > 1)
+    due.forEach(([id, h], i) => {
+      if (i) kb.row();
+      kb.text(`✅ ${clause(h.text).slice(0, 20)}`, `h:${id}:done`).text("❌", `h:${id}:skip`);
+    });
+  const sent = await nudge(api, userId, "habit", text, { reply_markup: kb }).catch(() => false);
+  return sent ? 1 : 0;
 }
 
 /**
@@ -197,7 +206,7 @@ export async function runHabitSettlement(api: Api): Promise<void> {
       const text = s.met
         ? `🔥 Week done: ${clause(h.text)} ${s.count}/${h.times}. Streak: ${s.streak} week${s.streak === 1 ? "" : "s"}${s.streak === h.best && s.streak > 1 ? " (your best)" : ""}.`
         : `Last week: ${clause(h.text)} ${s.count}/${h.times}, so the streak resets. What got in the way? Too ambitious, or a rough week?`;
-      await api.sendMessage(u.chatId, text).catch(() => undefined);
+      await nudge(api, userId, "habit", text).catch(() => undefined);
     }
   }
 }

@@ -12,6 +12,36 @@ import { randomBytes } from "node:crypto";
 import { InlineKeyboard, type Api } from "grammy";
 import { clause, type MemoryRecord } from "./memory/types.js";
 import { getUser, putInvite, takeInvite, updateUser } from "./state.js";
+import { allowed, nudge, presence } from "./attention.js";
+
+type BuddyNote = { text: string; button?: { label: string; data: string } };
+
+/**
+ * Buddy news (a friend kept a promise, a friend cheered you) goes out now if the
+ * person can hear it, waits for the morning if it's their night, and is dropped
+ * if they're away: a quiet friend is not flooded with someone else's week.
+ */
+async function deliver(a: Api, userId: string, note: BuddyNote): Promise<void> {
+  const u = getUser(userId);
+  if (!u) return;
+  if (allowed(userId, "buddy")) {
+    const extra = note.button ? { reply_markup: new InlineKeyboard().text(note.button.label, note.button.data) } : undefined;
+    await nudge(a, userId, "buddy", note.text, extra).catch(() => undefined);
+  } else if (presence(u.lastSeen) !== "away" && !u.paused) {
+    updateUser(userId, (x) => (x.buddyQueue = [...(x.buddyQueue ?? []), note].slice(-5)));
+  }
+}
+
+/** Deliver buddy news held overnight, once the person can hear it (runs every minute). */
+export async function flushBuddyQueue(a: Api, userId: string): Promise<void> {
+  const queued = getUser(userId)?.buddyQueue;
+  if (!queued?.length || !allowed(userId, "buddy")) return;
+  updateUser(userId, (u) => delete u.buddyQueue);
+  for (const q of queued) {
+    const extra = q.button ? { reply_markup: new InlineKeyboard().text(q.button.label, q.button.data) } : undefined;
+    await a.sendMessage(getUser(userId)!.chatId, q.text, extra).catch(() => undefined);
+  }
+}
 
 let api: Api | undefined;
 export const setBuddyApi = (a: Api) => (api = a);
@@ -69,12 +99,8 @@ export function notifyBuddies(ownerId: number | string, records: MemoryRecord[])
   for (const r of records) {
     const m = buddyMessage(name, r, owner.buddyShare !== false);
     if (!m) continue;
-    for (const id of owner.buddies) {
-      const chatId = getUser(id)?.chatId;
-      if (!chatId) continue;
-      const kb = new InlineKeyboard().text(m.good ? "👏 Cheer" : "💬 Nudge", `b:${m.good ? "cheer" : "nudge"}:${ownerId}`);
-      void api.sendMessage(chatId, m.text, { reply_markup: kb }).catch(() => undefined);
-    }
+    const button = { label: m.good ? "👏 Cheer" : "💬 Nudge", data: `b:${m.good ? "cheer" : "nudge"}:${ownerId}` };
+    for (const id of owner.buddies) void deliver(api, id, { text: m.text, button });
   }
 }
 
@@ -85,6 +111,6 @@ export async function sendBuddyReaction(fromId: string, ownerId: string, kind: "
   if (!api || !owner || !(owner.buddies ?? []).includes(fromId)) return false;
   const who = from?.firstName || "Your buddy";
   const text = kind === "cheer" ? `👏 ${who} cheered you on. Keep it going.` : `💬 ${who} is checking on you. Want to move the promise, or try again tomorrow? Just tell me.`;
-  await api.sendMessage(owner.chatId, text).catch(() => undefined);
+  await deliver(api, ownerId, { text });
   return true;
 }

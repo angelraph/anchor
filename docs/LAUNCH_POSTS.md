@@ -238,7 +238,7 @@ Anchor hears it, saves it, and at 2pm it really does remind you. At 3pm it asks:
 
 📸 15:04 · Done
 You don't type "yes". You send a screenshot of the sent email.
-Anchor looks at it, matches it to the promise, marks it kept ✅ and stores the photo encrypted on Walrus. Only you can ever open it again.
+Anchor looks at it, matches it to the promise, marks it kept ✅ and stores the photo encrypted on Walrus. In the app, only you can see it.
 
 🤝 15:05 · Your buddy gets a ping
 "🟢 Angel kept a promise (with photo proof)." One tap and they cheer you on.
@@ -257,7 +257,7 @@ Anything still open gets one honest question. Missed it? Anchor asks what got in
 📱 Anytime · Open the app
 Tap the Anchor button in the chat: your follow-through ring, a calendar of kept days, streaks, what Anchor has learned about you, and the memory switch. Ask one question and watch the answer change when memory turns on.
 
-That memory is the whole point. It lives on Walrus, in a space only you have, and you can move it into your own Walrus Memory account any time with /mymemory. Your memory, not mine.
+That memory is the whole point. It lives on Walrus, in your own space inside Anchor's account, and you can move it into your own Walrus Memory account any time with /mymemory.
 
 It speaks your language too: Pidgin, Yoruba, Igbo, Hausa, Swahili, French, Arabic, whatever you write in.
 
@@ -289,7 +289,7 @@ Anchor is a free Telegram bot that remembers what you said you'd do, and holds y
 
 09:12. You're on a bus, so you send a voice note instead of typing: "I'll finish the pitch deck by 3pm, remind me at 2." At 2pm you get the reminder. At 3pm it asks how it went.
 
-15:04. You don't type "done". You send a screenshot of the sent email. Anchor checks it, marks the promise kept, and stores the photo encrypted on Walrus, where only you can open it again. Your accountability buddy gets a ping and cheers you on.
+15:04. You don't type "done". You send a screenshot of the sent email. Anchor checks it, marks the promise kept, and stores the photo encrypted on Walrus, and in the app only you can see it. Your accountability buddy gets a ping and cheers you on.
 
 18:30. In your study group, a friend types /promise finish chapter 3 by Friday. At the deadline the whole group sees the check, and only they can answer it. On Sunday, /board shows who kept their word.
 

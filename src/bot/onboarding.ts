@@ -21,7 +21,7 @@ const DEMO_PROMISE = "I'll drink two glasses of water before 9pm today";
 const TOUR: Array<{ title: string; body: string; demo?: boolean }> = [
   {
     title: "1/7 · It remembers you",
-    body: `Tell me what you'll do and by when. I store it as encrypted memory on Walrus, in a namespace only you have, and I recall it before every reply. Next week I'll still know.\n\nTry it now, or tap below for an example promise.`,
+    body: `Tell me what you'll do and by when. I store it as encrypted memory on Walrus, in your own space inside my account, and I recall it before every reply. Next week I'll still know.\n\nTry it now, or tap below for an example promise.`,
     demo: true,
   },
   {

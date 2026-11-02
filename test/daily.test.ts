@@ -308,6 +308,16 @@ describe("respecting attention", () => {
     expect(rows).toHaveLength(3);
     expect(rows[1]!.map((b) => (b as { callback_data: string }).callback_data)).toEqual(["o:b2:kept", "o:b2:partial", "o:b2:broken", "o:b2:moved"]);
   });
+  it("answering one promise leaves the other promises' buttons in place", async () => {
+    const { groupedCheckin, outcomeKeyboard, withoutPromise } = await import("../src/checkins.js");
+    const due = [c("a1", "2026-10-28"), c("b2", "2026-10-29"), c("c3", "2026-10-30")].map((s) => ({ ...s, commitment: { ...s.commitment, due: s.commitment.date } }));
+    const rows = groupedCheckin(due, "Evening, Ada.").keyboard.inline_keyboard as { callback_data?: string }[][];
+    const left = withoutPromise(rows, "a1");
+    expect(left.map((r) => r[0]!.callback_data)).toEqual(["o:b2:kept", "o:c3:kept"]);
+    expect(withoutPromise(withoutPromise(left, "b2"), "c3")).toEqual([]);
+    // A single promise's keyboard has two rows; both go.
+    expect(withoutPromise(outcomeKeyboard("a1").inline_keyboard as { callback_data?: string }[][], "a1")).toEqual([]);
+  });
   it("welcome back lists what passed, not what's still ahead or already done", async () => {
     const { missedPromises } = await import("../src/welcome.js");
     const mk = (id: string, due: string, at?: string) => ({ commitment: { kind: "commitment" as const, id, date: due, due, at, text: id, raw: "", blobId: "", distance: 0 } });

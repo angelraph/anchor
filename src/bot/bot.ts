@@ -9,7 +9,7 @@ import { FOLLOW, recordOutcome, type Settled } from "./outcomes.js";
 import { presence } from "../attention.js";
 import { tomorrowFor, welcomeBack } from "../welcome.js";
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
-import { checkInUser, dueCommitments, outcomeKeyboard } from "../checkins.js";
+import { checkInUser, dueCommitments, outcomeKeyboard, withoutPromise } from "../checkins.js";
 import { weeklySummary } from "../reminders.js";
 import { config } from "../config.js";
 import { relativeDay, timeIn, todayIn, weekdayOf } from "../dates.js";
@@ -140,7 +140,7 @@ async function acceptPhoto(ctx: Context, promiseId: string, p: PendingPhoto) {
     return;
   }
   const stored = proof.jobId
-    ? "The photo is encrypted and stored on Walrus: only you can open it again (in /app)."
+    ? "The photo is encrypted and stored on Walrus. In /app, only you can see it."
     : "(I couldn't store the photo this time, but the outcome is recorded.)";
   await ctx.reply(`📸 Proof accepted: ${clause(p.description)}.\n#${promiseId} · ${res.text} is ${status === "kept" ? "kept ✅" : "partly kept 🟡"}\n${stored}\n\n${FOLLOW[status]}`);
 }
@@ -415,7 +415,8 @@ export function createBot(): Bot {
     const [, id, status] = ctx.match as RegExpMatchArray;
     const userId = ctx.from.id;
     await ctx.answerCallbackQuery();
-    await ctx.editMessageReplyMarkup().catch(() => undefined);
+    const rows = withoutPromise(ctx.callbackQuery.message?.reply_markup?.inline_keyboard ?? [], id!);
+    await ctx.editMessageReplyMarkup(rows.length ? { reply_markup: { inline_keyboard: rows } } : undefined).catch(() => undefined);
 
     if (status === "moved") {
       updateUser(userId, (u) => {
@@ -474,7 +475,7 @@ export function createBot(): Bot {
     await ctx.reply(
       own
         ? `🗝 Your memory lives in your own Walrus Memory account (${own.accountId.slice(0, 8)}…) since ${own.since.slice(0, 10)}.\n/mymemory off switches back to Anchor's account.`
-        : `🗝 Own your memory.\n\nRight now your memories are encrypted on Walrus in Anchor's account, in a space only you have. You can move them into your OWN Walrus Memory account, so they're yours outright and other apps you trust can use them too.\n\n1. Sign in at memory.walrus.xyz\n2. Create a delegate key, copy its private key and your account ID\n3. Connect in the app below (safest), or send:\n/mymemory <account ID> <delegate private key>\n(I delete that message right away.)`,
+        : `🗝 Own your memory.\n\nRight now your memories are encrypted on Walrus in your own space inside Anchor's account, where I can read them to help you. You can move them into your OWN Walrus Memory account, so they're yours outright and other apps you trust can use them too.\n\n1. Sign in at memory.walrus.xyz\n2. Create a delegate key, copy its private key and your account ID\n3. Connect in the app below (safest), or send:\n/mymemory <account ID> <delegate private key>\n(I delete that message right away.)`,
       { reply_markup: kb, link_preview_options: { is_disabled: true } },
     );
   });

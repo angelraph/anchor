@@ -185,7 +185,7 @@ ${demoBanner}
     if (!d.done.length) done.appendChild(el("li", "empty", "Kept and missed promises show up here."));
     for (const p of d.done) { const li = el("li"); li.appendChild(el("span", "", (icon[p.status] || "•") + " " + p.text)); li.appendChild(el("span", "chip", (p.chain ? "⛓ " : "") + (p.pic ? "📸 " : "") + (p.date || ""))); done.appendChild(li); }
 
-    $("ownStatus").textContent = d.ownMemory ? "Your memory lives in your own Walrus Memory account (" + d.ownMemory.account + ") since " + d.ownMemory.since + ". It's yours outright." : "Your memories are encrypted on Walrus in a space only you have, inside Anchor's account. Move them into your own Walrus Memory account and they're yours outright, usable by any app you trust.";
+    $("ownStatus").textContent = d.ownMemory ? "Your memory lives in your own Walrus Memory account (" + d.ownMemory.account + ") since " + d.ownMemory.since + ". It's yours outright." : "Your memories are encrypted on Walrus in your own space inside Anchor's account, where Anchor can read them to help you. Move them into your own Walrus Memory account and they're yours outright, usable by any app you trust.";
     $("ownForm").hidden = !!d.ownMemory; $("disconnect").hidden = !d.ownMemory;
     $("morning").checked = d.morning;
     $("meta").textContent = "Timezone: " + d.tzLabel + (d.wallet ? " · Wallet: " + d.wallet : "") + (d.buddies.length ? " · Buddies: " + d.buddies.join(", ") : "") + (d.groups.length ? " · Groups: " + d.groups.join(", ") : "");

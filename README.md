@@ -13,7 +13,7 @@
 **Try it:** [t.me/Anchor_daBot](https://t.me/Anchor_daBot) · **Live proof page:** [anchor-production-6bb4.up.railway.app](https://anchor-production-6bb4.up.railway.app) · **Write-up:** [Medium](https://medium.com/@uzoechiraphael1/how-i-added-long-term-memory-to-a-telegram-chatbot-so-it-remembers-users-between-sessions-76a7579b20af) · **Launch post:** [X](https://x.com/RaphElevator/status/2107822561358696748)
 
 - **LLM:** Google Gemini (`gemini-3.8-flash`, with automatic Gemini fallbacks) via the Vercel AI SDK
-- **Memory:** Walrus Memory (`@mysten-incubation/memwal`, mainnet relayer). Every user has an isolated, encrypted namespace.
+- **Memory:** Walrus Memory (`@mysten-incubation/memwal`, mainnet relayer). Every user has their own encrypted namespace, kept apart by Anchor's code.
 - **Chain:** Sui mainnet through [Tatum's RPC gateway](https://docs.tatum.io/reference/rpc-sui) (GraphQL): balances, transfer history, SuiNS, transaction simulation and execution
 - **Storage:** signed reports on Walrus mainnet through [Tatum's Storage API](https://docs.tatum.io/reference/storageupload)
 - **Payments:** x402 v2, scheme `exact` on `sui:mainnet` (USDC), verified and settled by Anchor through Tatum; stakes in USDC or USDsui, by x402 or by exact transfer
@@ -41,7 +41,7 @@ Without memory, an accountability bot is just a motivational poster. With memory
 
 ## Vision
 
-An accountability partner **anyone can afford**, inside the messaging app they already use, that **gets better the longer you use it**. It remembers every promise, notices which ones you keep, and learns *your* patterns instead of handing out generic advice. Your memory lives encrypted on Walrus, in your own namespace, not in a database we own, so in the long run it can travel with you to any app.
+An accountability partner **anyone can afford**, inside the messaging app they already use, that **gets better the longer you use it**. It remembers every promise, notices which ones you keep, and learns *your* patterns instead of handing out generic advice. Your memory lives encrypted on Walrus, in your own namespace, and you can move it into your own Walrus Memory account, so in the long run it can travel with you to any app.
 
 ## Current status (October 9, 2026)
 
@@ -77,7 +77,7 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 - **Real money values through Tatum's Data API**: `/money NGN` shows your wallet in your currency, and promises can be in it too ("save ₦50,000 by December", "spend under $30 this week").
 - **Guided tour** (`/tour`): seven steps from first promise to stakes, for people who've never used a crypto wallet.
 - **The Anchor app inside Telegram** (menu button or `/app`): a follow-through ring, a five-week calendar of kept and missed days, open promises, habit streaks, what Anchor has learned about you, weekly bars, your photo proofs, and **the memory switch**: ask one question and flip between the answer without memory and the answer with it. A **share card** (`/c/<code>`) shows only your first name and your numbers.
-- **Photo proof for any promise**: send a gym selfie, the screenshot of the sent email, the finished page. Gemini matches it to the open promise, the outcome is recorded, and the photo is **encrypted and stored on Walrus through Tatum's Storage API**, readable only by you.
+- **Photo proof for any promise**: send a gym selfie, the screenshot of the sent email, the finished page. Gemini matches it to the open promise, the outcome is recorded, and the photo is **encrypted and stored on Walrus through Tatum's Storage API**, and the app shows it only to you.
 - **Voice promises**: send a voice note instead of typing; Anchor transcribes it and treats it like any message.
 - **Group mode**: add Anchor to a study group, team or family chat. `/promise` in front of everyone, a deadline check only the promiser can answer, kept or missed announced however it was answered (in private, by photo, or by the chain), and a weekly `/board`. Groups never see anyone's memories.
 - **Bring your own Walrus Memory** (`/mymemory`): move your memory into your own Walrus Memory account; Anchor checks the delegate key, copies your memories over, and from then on reads and writes only there. The key is stored encrypted and the message holding it is deleted.
@@ -257,7 +257,7 @@ Hono         ──► / (site + proof) · /proof.json · /health
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design decisions and every Walrus Memory and Gemini friction point found while building.
 
 ## Privacy
-Each Telegram user has their own namespace (`anchor:tg:<id>`), and recall never crosses namespaces. Memory contents are encrypted on Walrus. The proof page shows only anonymised hashes and counts. Walrus Memory is append-only, so `/forget` hides a memory from Anchor but does not erase the encrypted blob.
+Each Telegram user has their own namespace (`anchor:tg:<id>`), and recall never crosses namespaces. Memory contents are encrypted on Walrus. By default those namespaces sit in Anchor's Walrus Memory account and Anchor's code keeps them apart, so Anchor can read them; photo proofs and connected delegate keys are encrypted with keys derived from Anchor's own secret. For full control, `/mymemory` moves a person's memory into their own account, where they can revoke Anchor's key; the copy already in Anchor's account stays there. The proof page shows only anonymised hashes and counts. Walrus Memory is append-only, so `/forget` hides a memory from Anchor but does not erase the encrypted blob.
 
 A linked wallet is only read, never controlled: ownership is proven by signing a message, not a transaction. Signed reports are public Walrus files, so promise texts are replaced by SHA-256 hashes unless you ask for `/report public`. Agents can buy your record only after `/record on`, and they get counts and on-chain proofs, never your messages. The `/connect` token is stored hashed and revoked with `/connect off`.
 

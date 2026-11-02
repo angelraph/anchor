@@ -51,6 +51,11 @@ export function groupedCheckin(due: CommitmentState[], intro: string): { text: s
   return { text: `${intro}\n\n${lines.join("\n")}${more}\n\n✅ did it · 🟡 partly · ❌ didn't · 📅 move it`, keyboard: kb };
 }
 
+/** The buttons left once one promise is answered: its rows go, the other promises keep theirs. Pure, for tests. */
+export function withoutPromise<B extends object>(rows: B[][], id: string): B[][] {
+  return rows.filter((row) => !row.some((b) => "callback_data" in b && String(b.callback_data).startsWith(`o:${id}:`)));
+}
+
 export function dueCommitments(states: CommitmentState[], today: string, now: string): CommitmentState[] {
   return states.filter((s) => {
     const day = checkinDay(s, config.CHECKIN_HOUR);

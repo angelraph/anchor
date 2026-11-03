@@ -59,10 +59,7 @@ export function registerGroupCommands(bot: Bot) {
     const commitments = await recallCommitments(uid).catch(() => []);
     const records = (
       await extractMemories({ userMessage: `${user.firstName || "I"}: ${text}`, assistantReply: "", commitments, tz }).catch(() => [])
-    )
-      .filter((r) => r.kind === "commitment" && r.id)
-      // The model sometimes writes "Tunde promised to…" in third person; the announcement already names the person.
-      .map((r) => ({ ...r, text: r.text.replace(/^\p{Lu}[\p{L}'-]*\s+promised to\s+/u, "Promised to ") }));
+    ).filter((r) => r.kind === "commitment" && r.id);
     if (!records.length) {
       await ctx.reply("I couldn't find a promise in that. Say what you'll do and by when, e.g. /promise send 5 applications by Friday");
       return;

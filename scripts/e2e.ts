@@ -7,6 +7,8 @@
  *   npx tsx scripts/e2e.ts
  */
 // Tests spend their own Gemini quota, never the live bot's: set GEMINI_TEST_API_KEY in .env.
+// Load .env now: config.ts only loads it later, too late for this check.
+process.loadEnvFile();
 if (process.env.GEMINI_TEST_API_KEY) process.env.GOOGLE_GENERATIVE_AI_API_KEY = process.env.GEMINI_TEST_API_KEY;
 else console.warn("[e2e] GEMINI_TEST_API_KEY is not set: this run uses the live bot's Gemini quota");
 process.env.GEMINI_BACKUP_API_KEYS = "";
@@ -50,17 +52,26 @@ async function say(text: string, who: Who = judge) {
   const entities = text.startsWith("/") ? [{ type: "bot_command" as const, offset: 0, length: text.split(" ")[0]!.length }] : undefined;
   const before = sent.length;
   const t = Date.now();
-  await bot.handleUpdate({ update_id: updateId++, message: { message_id: ++msgId, date: Math.floor(Date.now() / 1000), chat: who.chat, from: who.from, text, entities } });
+  try {
+    await bot.handleUpdate({ update_id: updateId++, message: { message_id: ++msgId, date: Math.floor(Date.now() / 1000), chat: who.chat, from: who.from, text, entities } });
+  } catch (err) {
+    // One unreachable service fails this step, and the rest of the sweep still runs.
+    failures.push(`${text.split(" ")[0]}: ${err instanceof Error ? err.message : err}`);
+  }
   report(`${who === judge ? "" : `(${who.from.first_name}) `}> ${text}`, before, t);
 }
 
 async function tap(data: string, who: Who = judge) {
   const before = sent.length;
   const t = Date.now();
-  await bot.handleUpdate({
-    update_id: updateId++,
-    callback_query: { id: String(updateId), from: who.from, chat_instance: "x", data, message: { message_id: msgId, date: 0, chat: who.chat, text: "" } },
-  } as never);
+  try {
+    await bot.handleUpdate({
+      update_id: updateId++,
+      callback_query: { id: String(updateId), from: who.from, chat_instance: "x", data, message: { message_id: msgId, date: 0, chat: who.chat, text: "" } },
+    } as never);
+  } catch (err) {
+    failures.push(`[tap ${data}]: ${err instanceof Error ? err.message : err}`);
+  }
   report(`${who === judge ? "" : `(${who.from.first_name}) `}[tap ${data}]`, before, t);
 }
 
@@ -277,7 +288,11 @@ setFileFetcher(async (_api, fileId) => new Uint8Array(readFileSync(fixtures[file
 async function sendMsg(extra: Record<string, unknown>, label: string, who: Who = judge) {
   const before = sent.length;
   const t = Date.now();
-  await bot.handleUpdate({ update_id: updateId++, message: { message_id: ++msgId, date: Math.floor(Date.now() / 1000), chat: who.chat, from: who.from, ...extra } } as never);
+  try {
+    await bot.handleUpdate({ update_id: updateId++, message: { message_id: ++msgId, date: Math.floor(Date.now() / 1000), chat: who.chat, from: who.from, ...extra } } as never);
+  } catch (err) {
+    failures.push(`${label}: ${err instanceof Error ? err.message : err}`);
+  }
   report(label, before, t);
 }
 
@@ -427,7 +442,7 @@ else {
 st.updateUser(USER, (u) => { (u.timed ??= {}).hu01 = { text: "Promised to submit the form", due: today(st.tzOf(USER)), at: (() => { const d = new Date(Date.now() + 20 * 60_000); return new Intl.DateTimeFormat("en-GB", { timeZone: st.tzOf(USER), hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d); })() }; });
 mark = sent.length;
 await runDeadlineReminders(bot.api);
-if (!msgsTo(USER, mark).some((t) => /^⏳ 30 minutes left/.test(t))) failures.push("reminder: no 30-minute heads-up");
+if (!msgsTo(USER, mark).some((t) => /^⏳ (19|20) minutes left/.test(t))) failures.push("reminder: heads-up doesn't say the time really left");
 st.updateUser(USER, (u) => { delete u.timed!.hu01; (u.closed ??= {}).hu01 = "kept"; u.tz = "Africa/Lagos"; delete u.nudges; });
 
 // Outcome buttons beyond "Did it": partly and move it.

@@ -45,9 +45,11 @@ const extractionSchema = z.object({
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Promise words without a raw ISO date, or an invented end-of-day time. Pure, for tests. */
+/** Promise words without the person's name, a raw ISO date, or an invented end-of-day time. Pure, for tests. */
 export function cleanPromiseText(text: string, hasTime: boolean): string {
-  let t = text.replace(/,?\s+(by|on|before|until)\s+\d{4}-\d{2}-\d{2}\b/gi, "");
+  let t = text
+    .replace(/^(?:\p{Lu}[\p{L}'-]*\s+){1,3}promised to\s+/u, "Promised to ")
+    .replace(/,?\s+(by|on|before|until)\s+\d{4}-\d{2}-\d{2}\b/gi, "");
   if (!hasTime) t = t.replace(/,?\s+(by|before)\s+(23:59|midnight)\b/i, "");
   return t.trim();
 }

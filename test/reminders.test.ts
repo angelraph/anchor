@@ -7,7 +7,7 @@ process.env.MEMWAL_PRIVATE_KEY ??= "0".repeat(64);
 process.env.MEMWAL_ACCOUNT_ID ??= "0x" + "0".repeat(64);
 process.env.DATA_DIR = "./data/unit-test";
 
-const { dueNow, headsUpAt, headsUpNow, weekStats, formatWeek } = await import("../src/reminders.js");
+const { deadlineMessage, dueNow, headsUpAt, headsUpGroup, headsUpNow, headsUpText, minutesLeft, weekStats, formatWeek } = await import("../src/reminders.js");
 const { commitmentStates, memoryHash, parse } = await import("../src/memory/types.js");
 
 const mem = (raw: string) => ({ ...parse(raw), raw, blobId: `b-${memoryHash(raw)}`, distance: 0.3 });
@@ -30,6 +30,31 @@ describe("exact-time deadline reminders", () => {
 
   it("waits for the right day", () => {
     expect(dueNow(timed, "2026-10-10", "08:00", {}, {}).map(([id]) => id)).toEqual(["read"]);
+  });
+});
+
+describe("what a heads-up and a deadline say", () => {
+  const a = { text: "Promised to drink beer by 18:04", due: "2026-11-02", at: "18:04" };
+  const b = { text: "Promised to walk out by 18:04", due: "2026-11-02", at: "18:04" };
+
+  it("counts the time really left, across midnight too", () => {
+    expect(minutesLeft(a, "2026-11-02", "18:03")).toBe(1);
+    expect(minutesLeft({ ...a, at: "00:10" }, "2026-11-01", "23:50")).toBe(20);
+    expect(headsUpText("a1", a, 20)).toMatch(/^⏳ 20 minutes left/);
+    expect(headsUpText("a1", a, 1)).toMatch(/^⏳ 1 minute left/);
+  });
+
+  it("puts several heads-ups in one message, each with its own time", () => {
+    const text = headsUpGroup([["a1", a], ["b2", { ...b, at: "18:20" }]], "2026-11-02", "18:00");
+    expect(text).toMatch(/#a1 .*4 minutes left/);
+    expect(text).toMatch(/#b2 .*20 minutes left/);
+  });
+
+  it("asks about promises due together in one message", () => {
+    const one = deadlineMessage([["a1", a], ["b2", b]]);
+    expect(one.text).toMatch(/1\. Promised to drink beer[\s\S]*2\. Promised to walk out/);
+    expect(one.keyboard.inline_keyboard).toHaveLength(2);
+    expect(deadlineMessage([["a1", a]]).text).toMatch(/^⏰ It's 18:04, deadline time/);
   });
 });
 

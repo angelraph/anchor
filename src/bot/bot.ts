@@ -427,7 +427,8 @@ export function createBot(): Bot {
     }
 
     const res = await recordOutcome(userId, id!, status as Settled);
-    await ctx.reply("error" in res ? res.error : FOLLOW[status as Settled]);
+    // Name the promise: with several in one check-in, "that's a kept promise" reads like all of them.
+    await ctx.reply("error" in res ? res.error : `#${id} · ${res.text}\n${FOLLOW[status as Settled]}`);
   });
 
   // Photo proof chooser: pf:<pendingId>:<promiseId> | pf:<pendingId>:none
@@ -552,7 +553,7 @@ export function createBot(): Bot {
         ),
       );
       await ctx.reply(
-        "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I did save what you just told me to memory. Please send me another message in a minute.",
+        "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I'm trying to save what you just told me, but I can't promise it worked, so please send it again in a minute.",
       );
       return;
     }

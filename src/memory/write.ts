@@ -14,7 +14,7 @@ import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memoryFor, withRetry } from "./client.js";
 import { notePending, recall } from "./recall.js";
-import { newCommitmentId, normalise, serialize, similarity, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
+import { newCommitmentId, normalise, serialize, similarity, withoutName, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
 
 const extractionSchema = z.object({
   memories: z.array(
@@ -47,9 +47,7 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Promise words without the person's name, a raw ISO date, or an invented end-of-day time. Pure, for tests. */
 export function cleanPromiseText(text: string, hasTime: boolean): string {
-  let t = text
-    .replace(/^(?:\p{Lu}[\p{L}'-]*\s+){1,3}promised to\s+/u, "Promised to ")
-    .replace(/,?\s+(by|on|before|until)\s+\d{4}-\d{2}-\d{2}\b/gi, "");
+  let t = withoutName(text).replace(/,?\s+(by|on|before|until)\s+\d{4}-\d{2}-\d{2}\b/gi, "");
   if (!hasTime) t = t.replace(/,?\s+(by|before)\s+(23:59|midnight)\b/i, "");
   return t.trim();
 }

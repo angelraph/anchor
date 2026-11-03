@@ -10,9 +10,9 @@
  * the minute-by-minute deadline check costs no Walrus requests at all.
  */
 import { generateText } from "ai";
-import type { Api } from "grammy";
+import type { Api, InlineKeyboard } from "grammy";
 import { allowed, nudge } from "./attention.js";
-import { outcomeKeyboard } from "./checkins.js";
+import { groupedCheckin, outcomeKeyboard } from "./checkins.js";
 import { config } from "./config.js";
 import { addDays, hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
@@ -87,14 +87,40 @@ export function headsUpNow(
   });
 }
 
-/** The heads-up message: the reminder they asked for, or the 30-minute warning. Pure, for tests. */
-export function headsUpText(id: string, p: TimedPromise): string {
+/** A promise made this close to its deadline gets no heads-up: they only just said it. */
+export const MIN_HEADS_UP_MINUTES = 10;
+
+/** Minutes from now until the deadline (the heads-up can start the day before). */
+export function minutesLeft(p: TimedPromise, today: string, now: string): number {
+  return toMin(p.at) - toMin(now) + (p.due === today ? 0 : 24 * 60);
+}
+
+const minutes = (n: number) => `${n} minute${n === 1 ? "" : "s"}`;
+
+/** Several automatic heads-ups in ONE message. Pure, for tests. */
+export function headsUpGroup(items: Array<[string, TimedPromise]>, today: string, now: string): string {
+  const lines = items.map(([id, p]) => `#${id} · ${clause(p.text)} (due ${p.at}, ${minutes(minutesLeft(p, today, now))} left)`);
+  return `⏳ Coming up:\n${lines.join("\n")}\nYou've got this. I'll check in when each one is due.`;
+}
+
+/** The deadline check: one promise as before, several at once in ONE message. Pure, for tests. */
+export function deadlineMessage(items: Array<[string, TimedPromise]>): { text: string; keyboard: InlineKeyboard } {
+  if (items.length === 1) {
+    const [id, p] = items[0]!;
+    return { text: `⏰ It's ${p.at}${p.rem ? "" : ", deadline time"}.\n#${id} · ${clause(p.text)}\n${p.rem ? "Did you make it?" : "Did you do it?"}`, keyboard: outcomeKeyboard(id) };
+  }
+  const states: CommitmentState[] = items.map(([id, p]) => ({ commitment: { kind: "commitment", id, date: p.due, due: p.due, at: p.at, text: p.text, raw: "", blobId: "", distance: 0 } }));
+  return groupedCheckin(states, "⏰ Deadline time. Did you do them?");
+}
+
+/** The heads-up message: the reminder they asked for, or the warning with the time really left. Pure, for tests. */
+export function headsUpText(id: string, p: TimedPromise, left = HEADS_UP_MINUTES): string {
   if (p.rem && p.rem < p.at) {
     const mins = toMin(p.at) - toMin(p.rem);
     const lead = mins >= 60 && mins % 60 === 0 ? `${mins / 60} hour${mins === 60 ? "" : "s"}` : `${mins} minutes`;
     return `🔔 Your reminder: ${clause(p.text)}, at ${p.at} (${lead} from now).\n#${id} · Time to get ready. I'll check in at ${p.at}.`;
   }
-  return `⏳ ${HEADS_UP_MINUTES} minutes left.\n#${id} · ${clause(p.text)} (due ${p.at})\nYou've got this. I'll check in at ${p.at}.`;
+  return `⏳ ${minutes(left)} left.\n#${id} · ${clause(p.text)} (due ${p.at})\nYou've got this. I'll check in at ${p.at}.`;
 }
 
 /** Send heads-ups and exact-time deadline reminders. Reads local state only (no Walrus calls). */
@@ -107,32 +133,45 @@ export async function runDeadlineReminders(api: Api): Promise<void> {
     // Drop promises whose day has passed; the evening check-in owns them now.
     const stale = Object.keys(timed).filter((id) => timed[id]!.due < addDays(today, -1));
     if (stale.length) updateUser(userId, (u) => stale.forEach((id) => delete u.timed![id]));
-    for (const [id, p] of headsUpNow(timed, today, now, user.warned ?? {}, user.closed ?? {})) {
+    const ups = headsUpNow(timed, today, now, user.warned ?? {}, user.closed ?? {});
+    // A reminder they asked for always goes out, on its own.
+    for (const [id, p] of ups.filter(([, p]) => p.rem)) {
       try {
-        // A reminder they asked for always goes out; the automatic 30-minute warning respects attention.
-        if (await nudge(api, userId, p.rem ? "reminder" : "headsup", headsUpText(id, p))) console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
+        if (await nudge(api, userId, "reminder", headsUpText(id, p))) console.log(`[remind] heads-up user ${userId} #${id} for ${p.at}`);
       } catch (err) {
         console.warn(`[remind] heads-up user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
       }
+    }
+    // The automatic warnings respect attention and share one message.
+    const auto = ups.filter(([, p]) => !p.rem && minutesLeft(p, today, now) >= MIN_HEADS_UP_MINUTES);
+    if (auto.length) {
+      try {
+        const [id, p] = auto[0]!;
+        const text = auto.length === 1 ? headsUpText(id, p, minutesLeft(p, today, now)) : headsUpGroup(auto, today, now);
+        if (await nudge(api, userId, "headsup", text)) console.log(`[remind] heads-up user ${userId} ${auto.map(([i]) => `#${i}`).join(" ")}`);
+      } catch (err) {
+        console.warn(`[remind] heads-up user ${userId} failed:`, err instanceof Error ? err.message : err);
+      }
+    }
+    if (ups.length) {
       updateUser(userId, (u) => {
-        (u.warned ??= {})[id] = p.due;
+        for (const [id, p] of ups) (u.warned ??= {})[id] = p.due;
       });
     }
     // Chain-verified promises get their deadline verdict from Sui instead (chain/promises.ts).
-    for (const [id, p] of dueNow(timed, today, now, user.nudged, user.closed ?? {}).filter(([id]) => !user.chain?.[id])) {
+    const due = dueNow(timed, today, now, user.nudged, user.closed ?? {}).filter(([id]) => !user.chain?.[id]);
+    if (due.length) {
       try {
         // Skipped while they're away: the welcome-back card asks about it instead.
-        const sent = await nudge(api, userId, "deadline", `⏰ It's ${p.at}${p.rem ? "" : ", deadline time"}.\n#${id} · ${clause(p.text)}\n${p.rem ? "Did you make it?" : "Did you do it?"}`, {
-          reply_markup: outcomeKeyboard(id),
-        });
-        if (sent) console.log(`[remind] user ${userId} #${id} at ${p.at}`);
+        const one = deadlineMessage(due);
+        if (await nudge(api, userId, "deadline", one.text, { reply_markup: one.keyboard })) console.log(`[remind] user ${userId} ${due.map(([id]) => `#${id}`).join(" ")} at ${now}`);
       } catch (err) {
-        console.warn(`[remind] user ${userId} #${id} failed:`, err instanceof Error ? err.message : err);
+        console.warn(`[remind] user ${userId} deadline failed:`, err instanceof Error ? err.message : err);
       }
       // Mark handled even on failure (e.g. user blocked the bot) so we never spam.
       updateUser(userId, (u) => {
-        u.nudged[id] = today;
-        u.awaitingOutcome = [...new Set([...u.awaitingOutcome, id])];
+        for (const [id] of due) u.nudged[id] = today;
+        u.awaitingOutcome = [...new Set([...u.awaitingOutcome, ...due.map(([id]) => id)])];
       });
     }
   }

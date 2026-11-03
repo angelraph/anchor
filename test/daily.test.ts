@@ -233,7 +233,8 @@ describe("open or closed is decided by the broad sweep", () => {
 describe("promise words stay human", () => {
   it("drops a raw date and an invented end-of-day time, keeps a time they gave", async () => {
     const { cleanPromiseText } = await import("../src/memory/write.js");
-    expect(cleanPromiseText("Tunde promised to drink two litres of water by 2026-10-30", false)).toBe("Tunde promised to drink two litres of water");
+    expect(cleanPromiseText("Tunde promised to drink two litres of water by 2026-10-30", false)).toBe("Promised to drink two litres of water");
+    expect(cleanPromiseText("Angel Raph promised to walk out by 18:04", true)).toBe("Promised to walk out by 18:04");
     expect(cleanPromiseText("Promised to drink water by 23:59", false)).toBe("Promised to drink water");
     expect(cleanPromiseText("Promised to submit the build by 06:00", true)).toBe("Promised to submit the build by 06:00");
     expect(cleanPromiseText("Promised to save 5 USDC by November 6, 2026", false)).toBe("Promised to save 5 USDC by November 6, 2026");

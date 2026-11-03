@@ -427,7 +427,8 @@ export function createBot(): Bot {
     }
 
     const res = await recordOutcome(userId, id!, status as Settled);
-    await ctx.reply("error" in res ? res.error : FOLLOW[status as Settled]);
+    // Name the promise: with several in one check-in, "that's a kept promise" reads like all of them.
+    await ctx.reply("error" in res ? res.error : `#${id} · ${res.text}\n${FOLLOW[status as Settled]}`);
   });
 
   // Photo proof chooser: pf:<pendingId>:<promiseId> | pf:<pendingId>:none

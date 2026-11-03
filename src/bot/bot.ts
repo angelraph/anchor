@@ -553,7 +553,7 @@ export function createBot(): Bot {
         ),
       );
       await ctx.reply(
-        "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I did save what you just told me to memory. Please send me another message in a minute.",
+        "Sorry, my AI brain (Google Gemini) is overloaded right now, so I can't reply properly. I'm trying to save what you just told me, but I can't promise it worked, so please send it again in a minute.",
       );
       return;
     }

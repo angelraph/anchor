@@ -319,6 +319,25 @@ describe("respecting attention", () => {
     // A single promise's keyboard has two rows; both go.
     expect(withoutPromise(outcomeKeyboard("a1").inline_keyboard as { callback_data?: string }[][], "a1")).toEqual([]);
   });
+  it("the morning brief says what's ahead and what passed, in plain words", async () => {
+    const { briefPromises } = await import("../src/morning.js");
+    const mk = (id: string, text: string, due: string, at?: string) => ({ commitment: { kind: "commitment" as const, id, date: due, due, at, text, raw: "", blobId: "", distance: 0 } });
+    const open = [
+      mk("a", "Promised to read one page by 06:42", "2026-11-03", "06:42"),
+      mk("b", "Promised to call mum", "2026-11-03", "18:00"),
+      mk("c", "Promised to tidy the desk", "2026-11-03"),
+      mk("d", "Angel promised to walk out by 18:04", "2026-11-02", "18:04"),
+      mk("e", "Promised to pay rent", "2026-11-05"),
+    ];
+    const { ahead, passed } = briefPromises(open, "2026-11-03", "08:00");
+    expect(ahead).toEqual(["• Call mum (by 18:00)", "• Tidy the desk"]);
+    expect(passed).toEqual(["• Read one page by 06:42 (was due earlier today)", "• Walk out by 18:04 (was due Monday)"]);
+  });
+  it("old promises lose the name when shown, other memories keep theirs", async () => {
+    const { clause } = await import("../src/memory/types.js");
+    expect(clause("Angel promised to walk out by 18:04.")).toBe("Promised to walk out by 18:04");
+    expect(clause("Angel finds reminders helpful.")).toBe("Angel finds reminders helpful");
+  });
   it("welcome back lists what passed, not what's still ahead or already done", async () => {
     const { missedPromises } = await import("../src/welcome.js");
     const mk = (id: string, due: string, at?: string) => ({ commitment: { kind: "commitment" as const, id, date: due, due, at, text: id, raw: "", blobId: "", distance: 0 } });

@@ -130,7 +130,7 @@ describe("habits and streaks", () => {
 describe("accountability buddies", () => {
   it("tells buddies about outcomes, with or without details", () => {
     const kept = { kind: "outcome" as const, date: "2026-10-28", ref: "p1", status: "kept" as const, proof: "abc", text: "Kept the promise, verified on Sui: Angel promised to save 1 USDsui." };
-    expect(buddyMessage("Angel", kept, true)).toEqual({ text: "🟢 Angel kept a promise: Angel promised to save 1 USDsui (verified on Sui)", good: true });
+    expect(buddyMessage("Angel", kept, true)).toEqual({ text: "🟢 Angel kept a promise: save 1 USDsui (verified on Sui)", good: true });
     expect(buddyMessage("Angel", kept, false)?.text).toBe("🟢 Angel kept a promise (verified on Sui)");
     const missed = { kind: "outcome" as const, date: "2026-10-28", ref: "p2", status: "broken" as const, text: "Did not keep the promise: Go to the gym" };
     expect(buddyMessage("Angel", missed, true)).toMatchObject({ good: false });

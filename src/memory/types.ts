@@ -126,7 +126,12 @@ export function memoryHash(raw: string): string {
 
 /** A memory sentence used mid-line: drop its final period so "by 06:00., Thursday" can't happen. */
 export function clause(text: string): string {
-  return text.trim().replace(/[.!]+$/, "");
+  return withoutName(text.trim()).replace(/[.!]+$/, "");
+}
+
+/** "Angel promised to walk out" -> "Promised to walk out": the model sometimes adds the name, and old promises still carry it. */
+export function withoutName(text: string): string {
+  return text.replace(/^(?:\p{Lu}[\p{L}'-]*\s+){1,3}promised to\s+/u, "Promised to ");
 }
 
 export function newCommitmentId(): string {

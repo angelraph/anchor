@@ -6,6 +6,7 @@ import { generateText } from "ai";
 import { InlineKeyboard, type Api } from "grammy";
 import { config } from "./config.js";
 import { hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
+import { safeReply } from "./llm/guard.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { checkinPrompt, formatCommitments, formatMemoryBlock } from "./llm/prompts.js";
 import { listUserNamespaces } from "./memory/client.js";
@@ -108,7 +109,7 @@ export async function checkInUser(api: Api, userId: string, opts: { force?: bool
     }),
   );
   // ONE message for everything due, not one per promise.
-  const one = groupedCheckin(due, text.trim());
+  const one = groupedCheckin(due, safeReply(text.trim(), user?.wallet ? [user.wallet.address] : [], "check-in"));
   await api.sendMessage(chatId, one.text, { reply_markup: one.keyboard });
   if (!opts.force) noteNudge(userId, today);
 

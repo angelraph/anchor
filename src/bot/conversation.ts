@@ -8,6 +8,7 @@ import { shortAddr } from "../chain/sui.js";
 import { noteReply } from "../learning.js";
 import { config } from "../config.js";
 import { todayIn } from "../dates.js";
+import { safeReply } from "../llm/guard.js";
 import { LLM_TIMEOUT_MS, withModel } from "../llm/model.js";
 import { systemPrompt } from "../llm/prompts.js";
 import { recallForTurn, type TurnContext } from "../memory/recall.js";
@@ -96,7 +97,8 @@ export async function generateReply(opts: {
       abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     }),
   );
-  return { reply: cleanReply(text), context };
+  const wallet = getUser(opts.userId)?.wallet;
+  return { reply: safeReply(cleanReply(text), wallet ? [wallet.address] : []), context };
 }
 
 /** Previews answer, but never pretend something was saved or scheduled. */

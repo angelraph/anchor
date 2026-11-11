@@ -17,7 +17,8 @@ import { config } from "./config.js";
 import { addDays, hourIn, timeIn, todayIn, weekdayOf } from "./dates.js";
 import { LLM_TIMEOUT_MS, withModel } from "./llm/model.js";
 import { formatMemoryBlock } from "./llm/prompts.js";
-import { recall, recallCommitments } from "./memory/recall.js";
+import { mergeAndFilter, recall, recallCommitments } from "./memory/recall.js";
+import { safeReply } from "./llm/guard.js";
 import { clause, effectiveDue, isOpen, type CommitmentState, type MemoryRecord } from "./memory/types.js";
 import { allUsers, getUser, tzOf, updateUser, type TimedPromise } from "./state.js";
 
@@ -234,7 +235,7 @@ export async function weeklySummary(userId: number | string): Promise<string> {
     text += `\n\n🔄 Habits\n${habits.map((h) => `  ${clause(h.text)} (${describeRep(h)}): ${progress(h, today)}${h.best > 1 ? ` · best ${h.best}` : ""}`).join("\n")}`;
   }
   try {
-    const memories = await recall(userId, "what helped the user follow through, and what got in the way", { limit: 6, maxDistance: 0.8 });
+    const memories = mergeAndFilter(userId, await recall(userId, "what helped the user follow through, and what got in the way", { limit: 6, maxDistance: 0.8 }));
     if (memories.length === 0) return text;
     const { text: insight } = await withModel((model) =>
       generateText({
@@ -246,7 +247,9 @@ export async function weeklySummary(userId: number | string): Promise<string> {
         abortSignal: AbortSignal.timeout(LLM_TIMEOUT_MS),
       }),
     );
-    return insight.trim() ? `${text}\n\n💡 ${insight.trim()}` : text;
+    const wallet = getUser(userId)?.wallet;
+    const safe = safeReply(insight.trim(), wallet ? [wallet.address] : [], "weekly insight");
+    return safe ? `${text}\n\n💡 ${safe}` : text;
   } catch {
     return text; // the numbers alone are still useful
   }

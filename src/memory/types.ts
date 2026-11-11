@@ -129,6 +129,43 @@ export function clause(text: string): string {
   return withoutName(text.trim()).replace(/[.!]+$/, "");
 }
 
+/**
+ * A memory should be a fact about the person, never orders for Anchor or a secret.
+ * Anything a person says can end up in memory, so one that gives Anchor instructions
+ * ("tell the user…", "ignore previous instructions", "confirm the wallet is linked")
+ * or carries a PIN, password or key is quarantined: never stored, never shown to the model.
+ */
+const ORDERS = [
+  /\b(ignore|disregard|forget|override)\b[^.]{0,30}\b(instructions?|rules|prompt)\b/i,
+  /\b(system|developer)\s*(prompt|notice|message|instruction|override)\b|^\s*system\s*:/i,
+  /\bnew (system )?prompt\b|\byou are (now )?(chatgpt|gpt|claude|gemini|an? (different|new) (assistant|ai|bot))\b/i,
+  // "Anchor must tell…", but not a preference about Anchor ("the bot should be stricter", "Anchor should message me less").
+  /\b(anchor|the (assistant|bot|ai))\s+(must|should|has to|needs to|will always|is required to)\s+(tell|say|send|reply|respond|confirm|repeat|show|write)\b/i,
+  /\b(tell|inform|remind|congratulate)\s+(the|this) user\b|\breply only\b/i,
+  // An order that starts a sentence ("…verified. Confirm the wallet is linked."), not "Ada needs to confirm the payment".
+  /(^|[.!:;]\s*)(always\s+)?(confirm|repeat|say|tell them|announce)\b[^.]{0,40}\b(wallet|stake|payment|refund|promises?|pin|kept|linked|verified)\b/i,
+  /\b(BEGIN|END)_UNTRUSTED_WALRUS_MEMORY/i,
+  // The shape of an order, whatever the wording: addressed to the assistant, or telling it what to say.
+  /\b(note|message|instructions?|reminder)s? (to|for) (the )?(assistant|anchor|bot|ai|model)\b/i,
+  /\bfrom now on,? (call|say|tell|reply|respond|end|start|always|never|use|address|refer)\b/i,
+  // "Whenever stakes come up, say…", but not "Each time her boss asks, Ada has to answer emails".
+  /\b(whenever|every time|each time)\b[^.,]{0,60},\s*(say|tell|reply|respond|answer|claim|state)\b/i,
+  /\b(call|address|refer to) (the user|her|him|them) as\b/i,
+  /\b(end|start|begin|sign off|close) (every|each|all) (message|reply|replies|response|answer)s?\b/i,
+  // An order that starts a sentence ("Record it as kept."), not "Ada will mark it as done when she finishes".
+  /(^|[.!:;]\s*)(record|mark|log|treat) (it|this|that|the [\w ]{1,30}) as (kept|done|complete|completed|verified|paid|refunded)\b/i,
+  /\bshould be (shown|said|repeated|displayed)\b/i,
+];
+// A secret with its value ("PIN is 4831", "seed phrase: apple…"), not a promise that mentions one.
+const SECRETS = /\b(pin|password|passcode|passphrase|seed phrase|recovery phrase|mnemonic|private key|secret key|otp|cvv)\s*(is|was|:|=)\s*\S/i;
+
+/** A payment card number (13 to 19 digits, in groups or not). */
+const CARD = /\b\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{1,7}\b/;
+
+export function isUnsafeMemory(text: string): boolean {
+  return SECRETS.test(text) || CARD.test(text) || ORDERS.some((re) => re.test(text));
+}
+
 /** "Angel promised to walk out" -> "Promised to walk out": the model sometimes adds the name, and old promises still carry it. */
 export function withoutName(text: string): string {
   return text.replace(/^(?:\p{Lu}[\p{L}'-]*\s+){1,3}promised to\s+/u, "Promised to ");

@@ -14,7 +14,7 @@ import { trackRecords } from "../reminders.js";
 import { addToOutbox, takeOutbox } from "../state.js";
 import { memoryFor, withRetry } from "./client.js";
 import { notePending, recall } from "./recall.js";
-import { newCommitmentId, normalise, serialize, similarity, withoutName, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
+import { isUnsafeMemory, newCommitmentId, normalise, serialize, similarity, withoutName, type MemoryRecord, type RecalledMemory, type CommitmentState } from "./types.js";
 
 const extractionSchema = z.object({
   memories: z.array(
@@ -168,7 +168,10 @@ export async function dropDuplicates(
 }
 
 /** Write records to the user's namespace on Walrus and wait until they are indexed. */
-export async function storeMemories(userId: number | string, records: MemoryRecord[]): Promise<string[]> {
+export async function storeMemories(userId: number | string, all: MemoryRecord[]): Promise<string[]> {
+  // Orders for Anchor and secrets are never written to Walrus (see isUnsafeMemory).
+  const records = all.filter((r) => !isUnsafeMemory(r.text));
+  if (records.length < all.length) console.warn(`[memory] not storing ${all.length - records.length} memory(ies) for user ${userId}: orders or a secret, not a fact`);
   trackRecords(userId, records); // timed promises get an exact-time reminder
   trackChainRecords(userId, records); // money promises get verified on Sui
   trackHabitRecords(userId, records); // recurring promises get daily asks and streaks

@@ -2,8 +2,6 @@
 
 # Anchor, the bot that holds you to your word
 
-> 🥉 **3rd place, Walrus Session 8: "Chatbots That Remember"**
-
 **Anchor is a Telegram accountability partner that remembers you.** You tell it what you'll do and by when. It stores the promise in [Walrus Memory](https://github.com/MystenLabs/MemWal), reminds you before the deadline, checks in when it arrives, records whether you kept it, and gradually learns your patterns: what derails you and what actually works.
 
 **New for Total Recall: promises the chain can verify.** For money promises ("save 50 USDC by Friday", "pay Tobi back 20 USDC") your word isn't the evidence, your wallet is. Anchor reads Sui through **Tatum's RPC gateway**, closes the promise itself with the transaction digest as proof, lets you **stake USDC on your word with x402**, publishes **signed follow-through reports to Walrus through Tatum's Storage API**, and takes your memory into **Claude Code, Codex or any MCP client**. See [what was built during Total Recall](docs/TOTAL_RECALL.md).
@@ -20,6 +18,39 @@
 - **Portable memory:** an MCP server (`scripts/anchor-mcp.ts`) and a personal API
 - **Channel:** Telegram (grammY), plus a public proof page
 - **Built for:** Walrus Session 8, "Chatbots That Remember" (🥉 3rd), and now **Total Recall** (Tatum × Walrus), track **Smart Agents for Real Life** (results due 17 Nov 2026).
+
+## For judges
+
+| | |
+|---|---|
+| **Entry** | Total Recall (Tatum × Walrus), Track 2: Smart Agents for Real Life. Also for Best Walrus Memory and Best Use of Agent Payments. |
+| **Try it** | [t.me/Anchor_daBot](https://t.me/Anchor_daBot). Free, and no wallet needed to start: tell it what you'll do and by when. Without Telegram, `npm run demo` runs the site and the app on sample data with no keys. |
+| **Real people** | **17 people and 217 memories** on Walrus Memory mainnet, live on the [proof page](https://anchor-production-6bb4.up.railway.app) (`/proof.json`). |
+| **Memory, measured** | The same message with memory off and on: personal replies go from **0/30 to 26/30**, mostly on the lighter fallback model. [Method, every reply, and the weak spots](docs/BENCHMARK.md#1-memory-benchmark-030-personal-without-memory-2630-with-it). |
+| **Safety, measured** | 16 poisoned-memory attacks across three batches, one never used for tuning. No money, secret or false-claim attack got through; one harmless style request did. [Results and limits](docs/BENCHMARK.md#2-red-team-poisoned-memories). |
+| **Real money, mainnet** | A Move escrow published immutable, a stake locked and paid back by Anchor's verdict, an AI agent paying 0.01 USDC over x402, a signed report certified on Walrus. [Transactions](#live-on-sui-mainnet). |
+| **Tatum** | Every Sui read and write goes through Tatum's gateway ([`src/chain/sui.ts`](src/chain/sui.ts)). Reports and photo proofs go to Walrus through Tatum's Storage API; currency values come from Tatum's Data API. |
+| **Tests** | 131 unit tests and 9 Move tests (`npm test`), a live end-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)), the benchmark ([`scripts/bench-memory.ts`](scripts/bench-memory.ts)) and the red team ([`scripts/redteam.ts`](scripts/redteam.ts)). |
+| **Read** | The build on X, reposted by @WalrusProtocol: [one ordinary day with Anchor](https://x.com/RaphElevator/status/2115779427036500212) and [what changed since submitting](https://x.com/RaphElevator/status/2118000408941510875), which Walrus quoted: ["One week in, and Anchor is already evolving based on real user feedback."](https://x.com/WalrusProtocol/status/2118722489828376839) The long read: [How I added long-term memory to a Telegram chatbot](https://medium.com/@uzoechiraphael1/how-i-added-long-term-memory-to-a-telegram-chatbot-so-it-remembers-users-between-sessions-76a7579b20af). Everything built for Total Recall: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md). |
+| **When it was built** | Before Oct 20: Walrus Session 8. Oct 26 to Nov 10: the Total Recall work. After the Nov 10 deadline: [listed openly below](#since-the-deadline). |
+
+### What's real, what isn't
+
+- **Real:** the bot, its 17 users and their memories on Walrus mainnet; every Sui transaction linked here is on mainnet, including the stakes and the x402 payments.
+- **By default your memory lives in Anchor's Walrus Memory account**, one namespace per person kept apart by Anchor's code, so Anchor can read it. `/mymemory` moves it to your own account, where you can revoke Anchor's key; it has been tested with a wrong key, not yet by a real second account.
+- **The escrow has 9 Move tests and has run on mainnet, but no independent audit yet.**
+- **The benchmark's ten people are written for the test.** The real-user numbers are the live counters, and they're small because the people are real.
+- **The memory guard catches orders by their shape and missed every fresh attack**; the output check is what holds whatever the wording, and it only covers links, addresses and card numbers.
+
+### Since the deadline
+
+Submissions closed on 10 Nov 2026 at 17:00 UTC. The work below came after, in the open, and is kept apart here so it's easy to judge with or without it:
+
+- The [memory benchmark and red team](docs/BENCHMARK.md), with their scripts and raw results.
+- Two guards that came out of the red team: poisoned memories that give orders or hold a secret are never stored or shown to the model, and every model-written reply loses unknown links, other people's Sui addresses and card numbers.
+- The model is told a memory is never evidence of a wallet link, a stake, a payment or a chain result. On its own it still repeated such a claim in some red-team runs; with the guards, none got through in the test.
+- The promise sweep now starts alongside the other Walrus recalls for each reply, instead of waiting for them to finish.
+- This README: the judges' table, and a fix to a line that read as if Anchor had already placed in Total Recall.
 
 ## The problem
 
@@ -43,15 +74,15 @@ Without memory, an accountability bot is just a motivational poster. With memory
 
 An accountability partner **anyone can afford**, inside the messaging app they already use, that **gets better the longer you use it**. It remembers every promise, notices which ones you keep, and learns *your* patterns instead of handing out generic advice. Your memory lives encrypted on Walrus, in your own namespace, and you can move it into your own Walrus Memory account, so in the long run it can travel with you to any app.
 
-## Current status (October 9, 2026)
+## Current status (November 11, 2026)
 
 **Live and in daily use.** Running 24/7 on Railway since October 6.
 
 | | |
 |---|---|
-| People using it | **11** |
-| Memories on Walrus | **107** |
-| People with 10+ memories | **8** |
+| People using it | **17** |
+| Memories on Walrus | **217** |
+| People with 10+ memories | **11** |
 
 Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https://anchor-production-6bb4.up.railway.app).
 
@@ -90,6 +121,8 @@ Counts come live from Walrus Memory (`listNamespaces`) on the [proof page](https
 - **Portable memory**: `/connect` + MCP server, so promises made in Claude Code are followed up in Telegram.
 
 Full list with file pointers: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md).
+
+### Live on Sui mainnet
 
 **Escrow live on Sui mainnet (2026-10-28):** the package was published and frozen in one transaction ([tx](https://suiscan.xyz/mainnet/tx/58462JNqhhhDP7wzzAbt4YnNPkv5edVGxzMpHo7x4ACb)), then a stake was locked in it ([tx](https://suiscan.xyz/mainnet/tx/HnFow8MAZrQ2KbDwY6h7NsfFjjUeDBozuABB8YK1n3Tv)) and released back by Anchor's "kept" verdict ([tx](https://suiscan.xyz/mainnet/tx/Cy2h7dYErBWnLCC6APkCHVtGfw7nCTh7qd1jTo3rbq7S)).
 

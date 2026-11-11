@@ -1,6 +1,6 @@
 import { getUser } from "../state.js";
 import { memoryFor, withRetry } from "./client.js";
-import { commitmentStates, mergeMemories, parse, type CommitmentState, type OutcomeStatus, type RecalledMemory } from "./types.js";
+import { commitmentStates, isUnsafeMemory, mergeMemories, parse, type CommitmentState, type OutcomeStatus, type RecalledMemory } from "./types.js";
 
 /** Memories written recently, usable before Walrus finishes indexing them (~30 s). */
 const PENDING_MS = 5 * 60_000;
@@ -71,7 +71,10 @@ export async function recall(userId: number | string, query: string, opts: Recal
 }
 
 export function mergeAndFilter(userId: number | string, ...groups: RecalledMemory[][]): RecalledMemory[] {
-  return mergeMemories(groups, getUser(userId)?.tombstones ?? []);
+  const merged = mergeMemories(groups, getUser(userId)?.tombstones ?? []);
+  const safe = merged.filter((m) => !isUnsafeMemory(m.text));
+  if (safe.length < merged.length) console.warn(`[memory] quarantined ${merged.length - safe.length} memory(ies) for user ${userId}: orders or a secret, not a fact`);
+  return safe;
 }
 
 /**
@@ -106,6 +109,10 @@ export interface TurnContext {
  *  3. profile: who they are and how they want to be coached
  */
 export async function recallForTurn(userId: number | string, message: string): Promise<TurnContext> {
+  // A promise recalled for this message may arrive without its outcome (a different recall
+  // surfaced it), and would wrongly look open. The broad sweep decides open vs closed, and
+  // starts now, alongside the other recalls, so the reply never waits for it separately.
+  const sweeping = commitmentSweep(userId).catch(() => [] as CommitmentState[]);
   const settled = await Promise.allSettled([
     recall(userId, message, { limit: 8, maxDistance: 0.75 }),
     recall(userId, "promises, commitments, deadlines and whether they were kept or broken", { limit: 8, sort: "recent" }),
@@ -114,9 +121,7 @@ export async function recallForTurn(userId: number | string, message: string): P
   const groups = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
   if (groups.length === 0) throw (settled[0] as PromiseRejectedResult).reason;
   const memories = mergeAndFilter(userId, ...groups, pendingFor(userId)).sort((a, b) => a.distance - b.distance);
-  // A promise recalled for this message may arrive without its outcome (a different recall
-  // surfaced it), and would wrongly look open. The broad sweep decides open vs closed.
-  const sweep = await commitmentSweep(userId).catch(() => [] as CommitmentState[]);
+  const sweep = await sweeping;
   return { memories, commitments: withRecentOutcomes(userId, mergeStates(commitmentStates(memories), sweep)) };
 }
 

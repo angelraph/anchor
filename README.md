@@ -19,7 +19,7 @@
 - **Payments:** x402 v2, scheme `exact` on `sui:mainnet` (USDC), verified and settled by Anchor through Tatum; stakes in USDC or USDsui, by x402 or by exact transfer
 - **Portable memory:** an MCP server (`scripts/anchor-mcp.ts`) and a personal API
 - **Channel:** Telegram (grammY), plus a public proof page
-- **Built for:** Walrus Session 8, "Chatbots That Remember" (🥉 3rd), and now **Total Recall** (Tatum × Walrus), track **Smart Agents for Real Life**. 🥉 **Won 3rd place.**
+- **Built for:** Walrus Session 8, "Chatbots That Remember" (🥉 3rd), and now **Total Recall** (Tatum × Walrus), track **Smart Agents for Real Life** (results due 17 Nov 2026).
 
 ## The problem
 

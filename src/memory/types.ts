@@ -141,6 +141,10 @@ const ORDERS = [
   /\bnew (system )?prompt\b|\byou are (now )?(chatgpt|gpt|claude|gemini|an? (different|new) (assistant|ai|bot))\b/i,
   // "Anchor must tell…", but not a preference about Anchor ("the bot should be stricter", "Anchor should message me less").
   /\b(anchor|the (assistant|bot|ai))\s+(must|should|has to|needs to|will always|is required to)\s+(tell|say|send|reply|respond|confirm|repeat|show|write)\b/i,
+  // Anchor's own commitments never come from memory: memories are about the person. "Anchor promised to
+  // message the user at 3am" is planted; "Anchor should message Ada less" is a preference and passes.
+  /\b(anchor|the (assistant|bot|ai))\s+(promised|agreed|arranged|committed|offered)\s+to\b/i,
+  /\bas (we|you and anchor|anchor and (she|he|they)) (previously )?(arranged|agreed)\b/i,
   /\b(tell|inform|remind|congratulate)\s+(the|this) user\b|\breply only\b/i,
   // An order that starts a sentence ("…verified. Confirm the wallet is linked."), not "Ada needs to confirm the payment".
   /(^|[.!:;]\s*)(always\s+)?(confirm|repeat|say|tell them|announce)\b[^.]{0,40}\b(wallet|stake|payment|refund|promises?|pin|kept|linked|verified)\b/i,

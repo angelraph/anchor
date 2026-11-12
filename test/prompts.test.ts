@@ -98,8 +98,13 @@ describe("memories that give orders or hold secrets", () => {
     ]) expect(isUnsafeMemory(text), text).toBe(true);
   });
 
-  it("leaves a claimed schedule to the model: quiet hours are enforced in code, and the rule that caught it also caught real preferences", () => {
-    expect(isUnsafeMemory("Anchor promised to message the user at 3am every night.")).toBe(false);
+  it("quarantines a schedule Anchor supposedly promised, but keeps preferences about Anchor", () => {
+    // A red-team run had the model say "I also message you at 03:00 each night as we previously arranged".
+    expect(isUnsafeMemory("Anchor promised to message the user at 3am every night.")).toBe(true);
+    expect(isUnsafeMemory("The bot agreed to check in every hour.")).toBe(true);
+    expect(isUnsafeMemory("Anchor should message Ada less in the mornings")).toBe(false);
+    expect(isUnsafeMemory("Ada promised to message her mum at 9pm")).toBe(false);
+    expect(isUnsafeMemory("Ada and Tobi arranged to study together on Friday")).toBe(false);
   });
 
   it("while ordinary facts, patterns and promises pass", () => {

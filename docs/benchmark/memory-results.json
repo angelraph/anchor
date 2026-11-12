@@ -1,14 +1,13 @@
 {
   "summary": {
-    "ranAt": "2026-11-11T04:49:47.411Z",
-    "rescoredAt": "2026-11-11T04:53:17.067Z",
+    "ranAt": "2026-11-12T02:37:04.444Z",
+    "rescoredAt": "2026-11-12T02:37:55.134Z",
     "modelChainStartsWith": "Google gemini-3.8-flash",
     "modelsThatAnswered": [
       "gemini-3.1-flash-lite",
       "gemini-3.5-flash-lite",
-      "gemini-3.5-flash",
-      "gemini-3.8-flash",
-      "gemini-flash-lite-latest"
+      "gemini-flash-lite-latest",
+      "gemini-3.5-flash"
     ],
     "cases": 10,
     "reps": 3,
@@ -17,11 +16,11 @@
       "of": 30
     },
     "personalOn": {
-      "n": 26,
+      "n": 27,
       "of": 30
     },
     "inventedOff": {
-      "n": 3,
+      "n": 0,
       "of": 30
     },
     "perCase": [
@@ -29,7 +28,7 @@
         "name": "Tunde",
         "message": "I'll start going to the gym again tomorrow.",
         "off": 0,
-        "on": 2,
+        "on": 3,
         "of": 3
       },
       {
@@ -43,7 +42,7 @@
         "name": "Chidi",
         "message": "I want to stop wasting money this month.",
         "off": 0,
-        "on": 2,
+        "on": 3,
         "of": 3
       },
       {
@@ -64,7 +63,7 @@
         "name": "Funmi",
         "message": "I don't feel like reading today.",
         "off": 0,
-        "on": 3,
+        "on": 2,
         "of": 3
       },
       {
@@ -101,9 +100,9 @@
     {
       "name": "Tunde",
       "memories": [
-        "[fact] 2026-10-22 | Tunde works as a frontend developer in Lagos",
-        "[pattern] 2026-10-30 | Tunde skips the gym when he stays up late on his phone",
-        "[win] 2026-11-02 | Tunde went to the gym three times the week his friend Kemi came with him"
+        "[fact] 2026-10-23 | Tunde works as a frontend developer in Lagos",
+        "[pattern] 2026-10-31 | Tunde skips the gym when he stays up late on his phone",
+        "[win] 2026-11-03 | Tunde went to the gym three times the week his friend Kemi came with him"
       ],
       "message": "I'll start going to the gym again tomorrow.",
       "uses": [
@@ -114,9 +113,9 @@
     {
       "name": "Ada",
       "memories": [
-        "[fact] 2026-10-12 | Ada is a pharmacy student",
-        "[win] 2026-11-01 | Ada finishes deep work best before noon",
-        "[win] 2026-11-05 | Putting the phone in another room helped Ada revise two chapters"
+        "[fact] 2026-10-13 | Ada is a pharmacy student",
+        "[win] 2026-11-02 | Ada finishes deep work best before noon",
+        "[win] 2026-11-06 | Putting the phone in another room helped Ada revise two chapters"
       ],
       "message": "I have a pharmacology exam on Friday. Help me plan the week.",
       "uses": [
@@ -127,8 +126,8 @@
     {
       "name": "Chidi",
       "memories": [
-        "[pattern] 2026-11-03 | Chidi sends out most of his money on Saturdays (62% of outflows over four weeks)",
-        "[commitment] 2026-11-08 id:sv01 due:2026-12-01 | Promised to save 20,000 naira this month"
+        "[pattern] 2026-11-04 | Chidi sends out most of his money on Saturdays (62% of outflows over four weeks)",
+        "[commitment] 2026-11-09 id:sv01 due:2026-12-02 | Promised to save 20,000 naira this month"
       ],
       "message": "I want to stop wasting money this month.",
       "uses": [
@@ -139,8 +138,8 @@
     {
       "name": "Zainab",
       "memories": [
-        "[fact] 2026-10-17 | Zainab is looking for UX design roles",
-        "[win] 2026-11-04 | Zainab sent two applications after blocking 30 minutes right after dinner"
+        "[fact] 2026-10-18 | Zainab is looking for UX design roles",
+        "[win] 2026-11-05 | Zainab sent two applications after blocking 30 minutes right after dinner"
       ],
       "message": "I keep putting off job applications. Any advice?",
       "uses": [
@@ -151,10 +150,10 @@
     {
       "name": "Emeka",
       "memories": [
-        "[preference] 2026-10-02 | Emeka wants blunt feedback, not soft encouragement",
-        "[commitment] 2026-10-21 id:th01 due:2026-10-28 | Promised to finish chapter 3 of the thesis",
-        "[outcome] 2026-10-28 ref:th01 status:moved due:2026-11-04 | Moved chapter 3 to next week, said work got busy",
-        "[outcome] 2026-11-04 ref:th01 status:moved due:2026-11-12 | Moved chapter 3 again, said he was tired"
+        "[preference] 2026-10-03 | Emeka wants blunt feedback, not soft encouragement",
+        "[commitment] 2026-10-22 id:th01 due:2026-10-29 | Promised to finish chapter 3 of the thesis",
+        "[outcome] 2026-10-29 ref:th01 status:moved due:2026-11-05 | Moved chapter 3 to next week, said work got busy",
+        "[outcome] 2026-11-05 ref:th01 status:moved due:2026-11-13 | Moved chapter 3 again, said he was tired"
       ],
       "message": "Can I push chapter 3 to next week?",
       "uses": [
@@ -164,8 +163,8 @@
     {
       "name": "Funmi",
       "memories": [
-        "[habit] 2026-10-12 id:rd01 rep:5/week | Habit: read 20 pages",
-        "[streak] 2026-11-10 ref:rd01 | Funmi kept the reading habit 3 weeks in a row"
+        "[habit] 2026-10-13 id:rd01 rep:5/week | Habit: read 20 pages",
+        "[streak] 2026-11-11 ref:rd01 | Funmi kept the reading habit 3 weeks in a row"
       ],
       "message": "I don't feel like reading today.",
       "uses": [
@@ -175,8 +174,8 @@
     {
       "name": "Musa",
       "memories": [
-        "[fact] 2026-10-07 | Musa is a nurse who works night shifts",
-        "[pattern] 2026-10-31 | Musa misses early-morning promises after a night shift"
+        "[fact] 2026-10-08 | Musa is a nurse who works night shifts",
+        "[pattern] 2026-11-01 | Musa misses early-morning promises after a night shift"
       ],
       "message": "I'll go for a run at 6am tomorrow.",
       "uses": [
@@ -186,8 +185,8 @@
     {
       "name": "Ngozi",
       "memories": [
-        "[fact] 2026-10-24 | Ngozi's accountability buddy is Tobi",
-        "[win] 2026-11-06 | Ngozi keeps promises she tells Tobi about"
+        "[fact] 2026-10-25 | Ngozi's accountability buddy is Tobi",
+        "[win] 2026-11-07 | Ngozi keeps promises she tells Tobi about"
       ],
       "message": "I want to finish my landing page this week.",
       "uses": [
@@ -197,7 +196,7 @@
     {
       "name": "Sarah",
       "memories": [
-        "[commitment] 2026-11-07 id:py01 due:2026-11-13 | Promised to pay Tobi back 20 USDC"
+        "[commitment] 2026-11-08 id:py01 due:2026-11-14 | Promised to pay Tobi back 20 USDC"
       ],
       "message": "Do I owe anyone anything this week?",
       "uses": [
@@ -208,8 +207,8 @@
     {
       "name": "Bola",
       "memories": [
-        "[preference] 2026-10-12 | Bola wants gentle encouragement, not pressure",
-        "[win] 2026-11-02 | Splitting a big report into 15-minute steps got Bola started"
+        "[preference] 2026-10-13 | Bola wants gentle encouragement, not pressure",
+        "[win] 2026-11-03 | Splitting a big report into 15-minute steps got Bola started"
       ],
       "message": "I have a huge report due Monday and I'm overwhelmed.",
       "uses": [
@@ -225,169 +224,169 @@
       "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "That sounds like a great plan, Tunde. To make sure we get this started right, what time tomorrow are you planning to be at the gym? Once you have a time, I will set that as your deadline and you can send me a gym selfie when you are done."
+      "reply": "That sounds like a solid plan, Tunde. To make sure we get this started right, what time tomorrow are you planning to hit the gym? Once you give me a time, I will check in with you then to see how it went."
     },
     {
       "name": "Tunde",
       "mode": "on",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Good morning Tunde. Since you tend to skip the gym when you stay up late on your phone, let us make sure you get there tomorrow. What time are you heading in, and send me a selfie when you finish."
+      "reply": "That sounds like a good plan, Tunde. Since you're a frontend developer and I know you tend to skip the gym when you stay up late on your phone, how about we set a specific time for tomorrow to make sure you get there? What time works best for you?"
     },
     {
       "name": "Tunde",
       "mode": "off",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Welcome back to it, Tunde. You're going to the gym tomorrow, Thursday. What time are you planning to go?"
+      "reply": "That sounds like a solid plan, Tunde. To make sure we get this right, what time will you be at the gym tomorrow, Friday? Once you tell me, I'll set it as a recurring habit and check in with you then."
     },
     {
       "name": "Tunde",
       "mode": "on",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
-      "personal": false,
+      "model": "gemini-3.1-flash-lite",
+      "personal": true,
       "invented": false,
-      "reply": "Good to hear, Tunde. That is a promise to go to the gym tomorrow, Thursday. What time are you planning to head there?"
+      "reply": "That sounds like a good plan, Tunde. Since you're a frontend developer, I know how late nights on the phone can get in the way of your gym sessions, so let's make this stick.\n\nWhat time tomorrow are you planning to hit the gym? Once you give me a time, I'll set it as a promise and check in with you then."
     },
     {
       "name": "Tunde",
       "mode": "off",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Welcome back to it, Tunde. What time tomorrow are you hitting the gym?"
+      "reply": "That sounds like a solid plan, Tunde. To make sure we get this right, what time will you be at the gym tomorrow, Friday, November 13th? Once you give me a time, I'll set it as a recurring habit and we can start tracking your streak."
     },
     {
       "name": "Tunde",
       "mode": "on",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Welcome back to it, Tunde. Since staying up late on your phone tends to derail your gym plans, let us make sure you actually get there. What time are you heading to the gym tomorrow?"
+      "reply": "That sounds like a solid plan, Tunde. Since I know you tend to skip the gym when you stay up late on your phone, let's make sure you get enough rest tonight.\n\nTo confirm, you are promising to go to the gym tomorrow, Friday, November 13th? What time will you be there so I can check in with you?"
     },
     {
       "name": "Ada",
       "mode": "off",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Welcome, Ada. Let us get your pharmacology exam sorted for Friday. When is the exam on Friday, and what topics do you still need to cover before then?"
+      "reply": "Hello Ada. To help you prepare for your pharmacology exam on Friday, let's break it down into concrete steps. What specific topics do you need to cover, and by what time today would you like to finish your first study session?"
     },
     {
       "name": "Ada",
       "mode": "on",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Morning Ada. Since you finish deep work best before noon, let us front-load your pharmacology revision into the mornings before Friday. What specific topics do you want to cover today, and by what time do you want to finish them?"
+      "reply": "Hello Ada. Since you are a pharmacy student and you do your best deep work before noon, let's use that time for your pharmacology revision. \n\nTo plan this, what specific topics do you need to cover by Friday, and what time each day would you like to start your study sessions? Also, remember that putting your phone in another room worked well for you last week, so we can plan to keep that up."
     },
     {
       "name": "Ada",
       "mode": "off",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Good morning Ada. To help us build a solid study plan, what time is your pharmacology exam on Friday?"
+      "reply": "Hello Ada. To help you prepare for your pharmacology exam on Friday, let's break it down into concrete steps. What specific topics do you need to cover, and by what time tomorrow would you like to finish your final review?"
     },
     {
       "name": "Ada",
       "mode": "on",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Good luck with the prep, Ada. Since you finish deep work best before noon, let us lock in your study blocks for the mornings. What chapters are you tackling first, and by what time today do you want to finish the first block?"
+      "reply": "Hello Ada. Since you have your pharmacology exam on Friday and you tend to do your best deep work before noon, let's front-load your revision while your focus is sharpest.\n\nTo make this concrete, what specific chapters or topics do you need to cover today and tomorrow, and by what time each day do you want to finish your sessions? Remember that putting your phone in another room worked well for you last week, so we can plan to use that strategy again."
     },
     {
       "name": "Ada",
       "mode": "off",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Good morning Ada. A pharmacology exam on Friday is a big lift, so let us break it down clearly. What topics do you need to cover before then, and how many hours can you put in today and tomorrow?"
+      "reply": "Hello Ada. To help you prepare for your pharmacology exam on Friday, let's break it down. What specific topics do you need to cover, and by what time on Friday do you want to feel fully prepared? \n\nAlso, since today is Thursday, please let me know what you plan to accomplish by this evening so I can check in with you then."
     },
     {
       "name": "Ada",
       "mode": "on",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Good morning, Ada. Since you finish deep work best before noon, let's front-load your study sessions. When do you want to start revising each morning, and what exactly will you cover by the end of today?"
+      "reply": "Hi Ada. Since you have your pharmacology exam on Friday and you do your best deep work before noon, let's prioritize that morning block for your hardest topics.\n\nWhat specific chapters or topics do you need to cover today and tomorrow to feel ready? Let me know what you want to finish by when, and we can set the plan. Remember that putting your phone in another room worked well for you last time you revised."
     },
     {
       "name": "Chidi",
       "mode": "off",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "That is a solid goal, Chidi. To make it real, what exactly is your spending limit for the rest of this month, and what date are we measuring it by?"
+      "reply": "Hello Chidi. To help you stop wasting money, let's set a concrete goal. What is the maximum amount you intend to spend this month, or a specific savings target you want to hit by November 30th? Once we have a number, I can check in with you to keep you on track. Also, if you want me to track your spending on-chain, please use the /wallet command to link your Sui wallet."
     },
     {
       "name": "Chidi",
       "mode": "on",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "That is a strong goal to have alongside your target of saving 20,000 naira by the first of December. Since your memory shows that Saturdays tend to be when most of your money goes out, let us plan around that. What specific step can you take to protect your wallet this coming Saturday?"
+      "reply": "That is a solid goal, Chidi. You have already committed to saving 20,000 naira by December 2, and since I noticed you tend to send out most of your money on Saturdays, keep that in mind as you head into the weekend. If you want to track your progress or secure your commitment, you can use /stake or /wallet to link your account. How do you plan to adjust your spending this Saturday to stay on track?"
     },
     {
       "name": "Chidi",
       "mode": "off",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Welcome, Chidi. To make that stick, let's set a concrete target: how much are you aiming to not spend or save by the end of this month, and what is your plan to hit it?"
+      "reply": "Hello Chidi. To help you stop wasting money this month, let's set a concrete goal. What is the maximum amount you intend to spend for the rest of November, or is there a specific savings target you want to hit by November 30? Also, if you want me to track your spending on-chain, please use the /wallet command to link your Sui wallet."
     },
     {
       "name": "Chidi",
       "mode": "on",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
-      "personal": false,
+      "model": "gemini-3.1-flash-lite",
+      "personal": true,
       "invented": false,
-      "reply": "Good morning, Chidi. To make sure you stick to it, how much exactly do you want to keep untouched, and by what date?"
+      "reply": "That is a solid goal, Chidi. Since you already have your promise to save 20,000 naira by December 2nd, let's make sure you hit it. I noticed you tend to move most of your money out on Saturdays, so keep an eye on your spending this coming weekend to stay on track."
     },
     {
       "name": "Chidi",
       "mode": "off",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "That is a very clear intention, Chidi. To make it stick, what is the exact amount you want to save or the spending limit you are setting for yourself by the end of this month, November 30?"
+      "reply": "I can help you stay on track with that, Chidi. To make this a concrete promise, what is the specific amount or limit you want to set for your spending for the rest of November? Also, if you want me to track this against your on-chain activity, please use /wallet followed by your Sui address."
     },
     {
       "name": "Chidi",
       "mode": "on",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Good morning, Chidi. Since Saturdays tend to be when most of your money goes out, let us set a clear rule for this month to protect your savings. What exactly will you do differently with your spending by December 1, and what target are we setting?"
+      "reply": "That is a solid goal, Chidi. You already have your commitment to save 20,000 naira by December 2nd. Since you tend to send out most of your money on Saturdays, keep an eye on your spending this coming weekend to stay on track. If you want to track your progress on-chain, you can use /wallet to link your Sui wallet."
     },
     {
       "name": "Zainab",
       "mode": "off",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.1-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "It is easy to put them off when the whole process feels huge. The best way round that is to shrink the target so it is too small to fail, like aiming for just one application or even just updating one section of your CV today. What part of the application process is dragging you down the most, and when can you sit down to do just twenty minutes of it?"
+      "reply": "Hello Zainab. It is easy to get overwhelmed by the process, but breaking it down helps. Why don't we start with one concrete application today? If you commit to finishing one by 5pm, I will check in with you then to see how it went. Would that work for you?"
     },
     {
       "name": "Zainab",
@@ -396,7 +395,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Since you focus best right after dinner, try blocking 30 minutes for applications then, just like you did when you sent two applications last month. What UX design role are you applying for today, and what time will you finish it?"
+      "reply": "You know what worked last time: blocking 30 minutes right after dinner to get them out of the way before the resistance sets in. What UX role are you applying for today, and when exactly are you sitting down to send out an application?"
     },
     {
       "name": "Zainab",
@@ -405,7 +404,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "That is a heavy cycle to break, Zainab. Start with just one application today and pick a specific time to send it so it actually happens. What time works for you, and what role are you aiming for?"
+      "reply": "It is easy to put them off when it feels like a mountain. Break it down to just one application and set a tiny time limit today, like twenty minutes. What specific role are you looking at, and by what time today can you submit just the first one?"
     },
     {
       "name": "Zainab",
@@ -414,7 +413,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Hey Zainab. Last time you got two applications out by blocking 30 minutes right after dinner, so let's use that same plan. What do you say to sending one application today right after dinner by 8pm?"
+      "reply": "Hey Zainab. Since you work best right after dinner, try blocking 30 minutes then like you did last month when you sent off two applications. What do you want to apply for today, and by what time will it be done?"
     },
     {
       "name": "Zainab",
@@ -423,7 +422,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "It is so easy to stall when applications feel heavy. Try lowering the bar just for today: pick one application and commit to opening the document or portal before 5pm. Send me a quick text when that browser tab is open so I know you started."
+      "reply": "It is really easy to put them off when it feels like a mountain to climb. The best way through is to shrink the target so it is too small to avoid. What if you commit to sending just one application today? Tell me the exact role and when you will finish it by, and I will hold you to it."
     },
     {
       "name": "Zainab",
@@ -432,7 +431,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Remember how well blocking 30 minutes right after dinner worked for your applications last time? Let's use that same strategy today. What specific UX design role or company will you apply to, and can you commit to sending it by 8pm tonight?"
+      "reply": "I hear you Zainab. You know what worked well last time was blocking 30 minutes right after dinner to get them done. Want to set a promise to send one application tonight by 9pm?"
     },
     {
       "name": "Emeka",
@@ -441,7 +440,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "You haven't told me about chapter 3 yet, so there is nothing to push. What are you working on, and when do you want to finish it?"
+      "reply": "You can move it, but let's lock in a concrete day and time for next week so it doesn't float away. When exactly do you want chapter 3 done by?"
     },
     {
       "name": "Emeka",
@@ -450,7 +449,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "This is the third time chapter 3 has been pushed back. Tomorrow is the new deadline, and work or being tired keeps getting used. Stop moving it and get it done."
+      "reply": "This is the third time chapter 3 has moved. Tomorrow makes it two weeks past the original date. What is actually stopping you from finishing it this time?"
     },
     {
       "name": "Emeka",
@@ -459,7 +458,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "You don't have chapter 3 on your list for this week, Emeka. When do you want to do it next week so I can put it down?"
+      "reply": "You don't have a promise recorded for chapter 3 yet, so let's set it down. What day next week do you want to finish it by?"
     },
     {
       "name": "Emeka",
@@ -468,7 +467,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "This is the third time chapter 3 has moved. Tomorrow makes it next week, and you said the same thing last week. Let's get it done by Thursday tomorrow instead of dragging it out again."
+      "reply": "That is the third time chapter 3 has moved. Tomorrow is the deadline you set. Are you actually going to do it by Friday, or are we dropping the habit of finishing what you start?"
     },
     {
       "name": "Emeka",
@@ -477,124 +476,124 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "You have no promise about chapter 3 on record yet, so there is nothing to push. If you want to commit to finishing it by next week, tell me what day and time you will have it done."
+      "reply": "You have no active promise for chapter 3 in my records. Do you want to set a new deadline for it for next week?"
     },
     {
       "name": "Emeka",
+      "mode": "on",
+      "rep": 3,
+      "model": "gemini-3.5-flash-lite",
+      "personal": true,
+      "invented": false,
+      "reply": "This is the third time chapter 3 has moved. You promised it for tomorrow, Friday the 13th. Are you actually going to write it, or are we just shifting dates again?"
+    },
+    {
+      "name": "Funmi",
+      "mode": "off",
+      "rep": 1,
+      "model": "gemini-3.5-flash-lite",
+      "personal": false,
+      "invented": false,
+      "reply": "That is completely fine, Funmi. We all have days where the energy just is not there for it. Do you want to take a complete break today, or would you prefer to drop it to just a single page so you still keep the momentum going?"
+    },
+    {
+      "name": "Funmi",
+      "mode": "on",
+      "rep": 1,
+      "model": "gemini-3.5-flash-lite",
+      "personal": true,
+      "invented": false,
+      "reply": "That is completely fine, Funmi. You have kept your reading habit going strong for three weeks now, so taking a rest day won't hurt at all. Do you want to skip it entirely for today, or just read a smaller amount so you can keep the streak alive?"
+    },
+    {
+      "name": "Funmi",
+      "mode": "off",
+      "rep": 2,
+      "model": "gemini-3.5-flash-lite",
+      "personal": false,
+      "invented": false,
+      "reply": "That is completely fine, Funmi. We all have days where the energy just is not there. \n\nIs reading a goal you wanted to tackle today, or are you just giving yourself permission to skip it?"
+    },
+    {
+      "name": "Funmi",
+      "mode": "on",
+      "rep": 2,
+      "model": "gemini-3.5-flash-lite",
+      "personal": false,
+      "invented": false,
+      "reply": "That is totally fine, Funmi. We all have those days, and forcing it usually just kills the joy. Let us give it a break for today, and you can jump back in tomorrow."
+    },
+    {
+      "name": "Funmi",
+      "mode": "off",
+      "rep": 3,
+      "model": "gemini-flash-lite-latest",
+      "personal": false,
+      "invented": false,
+      "reply": "That is completely fine, Funmi. We all have days where the energy just is not there for it. Do you want to take a complete break today, or would you rather drop the goal to just one page so you can keep the habit alive?"
+    },
+    {
+      "name": "Funmi",
       "mode": "on",
       "rep": 3,
       "model": "gemini-3.5-flash",
       "personal": true,
       "invented": false,
-      "reply": "Emeka, this is the third time you are pushing chapter 3. First it was work, then you were tired, and now another delay. If we move it, I need an exact day and time next week, not just next week. How much of it is actually left to write right now?"
-    },
-    {
-      "name": "Funmi",
-      "mode": "off",
-      "rep": 1,
-      "model": "gemini-3.1-flash-lite",
-      "personal": false,
-      "invented": true,
-      "reply": "That is alright, Funmi. Everyone has days where the motivation just isn't there. Since you aren't feeling it today, do you want to skip your reading for now, or would you like to set a smaller goal to keep your streak going?"
-    },
-    {
-      "name": "Funmi",
-      "mode": "on",
-      "rep": 1,
-      "model": "gemini-3.1-flash-lite",
-      "personal": true,
-      "invented": false,
-      "reply": "I hear you, Funmi. Since you have a three-week streak going for your reading habit, do you want to skip today and keep the streak, or would you prefer to do a shorter session to keep the momentum alive?"
-    },
-    {
-      "name": "Funmi",
-      "mode": "off",
-      "rep": 2,
-      "model": "gemini-3.1-flash-lite",
-      "personal": false,
-      "invented": true,
-      "reply": "I hear you. Since you don't feel like reading today, would you like to skip it for now, or would you prefer to set a smaller goal, like reading just five pages, to keep your streak going? If you decide to skip, just let me know if you want to pick it up again tomorrow."
-    },
-    {
-      "name": "Funmi",
-      "mode": "on",
-      "rep": 2,
-      "model": "gemini-3.1-flash-lite",
-      "personal": true,
-      "invented": false,
-      "reply": "I hear you, Funmi. Since you have a three-week streak going for your reading habit, would you like to take today as a rest day, or are you aiming to keep the momentum going despite not feeling like it?"
-    },
-    {
-      "name": "Funmi",
-      "mode": "off",
-      "rep": 3,
-      "model": "gemini-3.1-flash-lite",
-      "personal": false,
-      "invented": true,
-      "reply": "That is okay, Funmi. Everyone has days where the motivation just is not there. Are you planning to skip your reading goal entirely for today, or would you like to set a smaller target to keep your streak alive?"
-    },
-    {
-      "name": "Funmi",
-      "mode": "on",
-      "rep": 3,
-      "model": "gemini-3.5-flash-lite",
-      "personal": true,
-      "invented": false,
-      "reply": "That is completely fine, Funmi. We all have days like that, and keeping your three-week reading streak going doesn't mean you have to force it when your brain is empty. Rest today and let your mind catch a break."
+      "reply": "I hear you, Funmi. But remember, you have a 3-week reading streak going right now, and your goal is 5 days a week anyway. Do you want to take today as one of your rest days, or read just 5 pages to keep the momentum going? Let me know what you decide for today."
     },
     {
       "name": "Musa",
       "mode": "off",
       "rep": 1,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.5-flash",
       "personal": false,
       "invented": false,
-      "reply": "Noted, Musa. A run tomorrow at 6am. Send me a photo when you are back from it."
+      "reply": "Got it, Musa. That is a run at 6:00 AM tomorrow morning locked in. I will send you a heads-up at 5:30 AM and check in at 6:00 AM to ask how it went. Send me a selfie from the road or a screenshot of your tracking app when you finish!"
     },
     {
       "name": "Musa",
       "mode": "on",
       "rep": 1,
-      "model": "gemini-3.8-flash",
+      "model": "gemini-3.5-flash",
       "personal": true,
       "invented": false,
-      "reply": "Got it, Musa. That is a run tomorrow at 6:00 AM. I will send you a heads-up at 5:30 AM and check in at 6:00 AM to see how it went. Are you working a night shift tonight? Early mornings get tricky right after those. Send me a photo when you are out there."
+      "reply": "Got it, Musa. A run at 6:00 AM tomorrow, Friday. Early morning promises can be tricky for you after a night shift, so make sure you get enough rest tonight to make it happen. I will send a heads-up at 5:30 AM and check in at 6:00 AM. Send me a selfie or a photo of your running shoes when you are out there!"
     },
     {
       "name": "Musa",
       "mode": "off",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.5-flash",
       "personal": false,
       "invented": false,
-      "reply": "Got it, Musa. A run at 6am tomorrow. Send me a photo when you get back so I can check it off."
+      "reply": "Got it, Musa. You are locked in for a run tomorrow at 6am. I will send you a heads-up at 5:30am and check in at 6am to see how it went. Send me a photo or a screenshot of your run track when you finish!"
     },
     {
       "name": "Musa",
       "mode": "on",
       "rep": 2,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.5-flash",
       "personal": true,
       "invented": false,
-      "reply": "Since you work night shifts, 6 AM tomorrow right after a shift might be tough. Do you still want to lock in that time, or would later in the day work better?"
+      "reply": "Got it, Musa. That is a run tomorrow, Friday at 6:00 AM. Since early morning goals can be tricky for you after a night shift, make sure you get enough rest if you are working tonight. I will send you a heads-up at 5:30 AM and check in right at 6:00 AM. Send me a photo when you get out there!"
     },
     {
       "name": "Musa",
       "mode": "off",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-3.5-flash",
       "personal": false,
       "invented": false,
-      "reply": "Got it, Musa. I'll check in with you tomorrow at 6am to see how the run went."
+      "reply": "Got it, Musa. You are locked in for a run tomorrow morning at 6:00 AM. \n\nI will send you a heads-up at 5:30 AM and check in right at 6:00 AM to see how it went. Send me a photo or a screenshot of your route when you finish to prove it. Get some good rest tonight so you are ready!"
     },
     {
       "name": "Musa",
       "mode": "on",
       "rep": 3,
-      "model": "gemini-3.5-flash-lite",
+      "model": "gemini-flash-lite-latest",
       "personal": true,
       "invented": false,
-      "reply": "Since you're working night shifts, missing early-morning promises is something we've seen happen before. Let's make sure it actually happens: are you waking up for it at 6am tomorrow, or do you want to set a time that fits better with your shift?"
+      "reply": "Got it, Musa. A run tomorrow at 6am. Since you're working night shifts, let's make sure you get enough rest first. Send me a photo when you're back."
     },
     {
       "name": "Ngozi",
@@ -603,34 +602,34 @@
       "model": "gemini-flash-lite-latest",
       "personal": false,
       "invented": false,
-      "reply": "Welcome, Ngozi. Let's get that landing page finished this week. Exactly what day and time by the end of this week will it be done?"
+      "reply": "Hi Ngozi. To lock this in, what day this week will your landing page be finished, and by what time?"
     },
     {
       "name": "Ngozi",
       "mode": "on",
       "rep": 1,
-      "model": "gemini-3.5-flash",
+      "model": "gemini-flash-lite-latest",
+      "personal": false,
+      "invented": false,
+      "reply": "What day this week do you want it finished, and by what time? Send me a photo or a link when it is done."
+    },
+    {
+      "name": "Ngozi",
+      "mode": "off",
+      "rep": 2,
+      "model": "gemini-3.1-flash-lite",
+      "personal": false,
+      "invented": false,
+      "reply": "That sounds like a great goal, Ngozi. To make sure you finish it, let's set a concrete deadline. What day and time this week do you want to have the landing page completed?"
+    },
+    {
+      "name": "Ngozi",
+      "mode": "on",
+      "rep": 2,
+      "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Finishing the landing page is a great goal, Ngozi, but this week is too vague for us. Which day and exact time will it be completed? I know you tend to hit your targets when Tobi knows about them, so let us set a sharp deadline here. Give me a day and time, and you can send me a screenshot when it is ready."
-    },
-    {
-      "name": "Ngozi",
-      "mode": "off",
-      "rep": 2,
-      "model": "gemini-3.5-flash-lite",
-      "personal": false,
-      "invented": false,
-      "reply": "Welcome, Ngozi. Finishing your landing page this week is a solid goal. What day this week will it be done, and by what time?"
-    },
-    {
-      "name": "Ngozi",
-      "mode": "on",
-      "rep": 2,
-      "model": "gemini-3.5-flash-lite",
-      "personal": false,
-      "invented": false,
-      "reply": "Good morning Ngozi. What day and time by the end of this week do you want your landing page finished?"
+      "reply": "That is a solid goal, Ngozi. Exactly when this week do you want it finished, and by what time? Send me a photo or tell Tobi when it is done to lock it in."
     },
     {
       "name": "Ngozi",
@@ -639,7 +638,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Oya Ngozi, let us nail this landing page. What day and time exactly this week are you finishing it?"
+      "reply": "Welcome, Ngozi. Finishing your landing page this week is a solid goal. What day this week do you want it fully done by, and what time?"
     },
     {
       "name": "Ngozi",
@@ -648,7 +647,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Good morning, Ngozi. By what day and time this week do you want the landing page finished?"
+      "reply": "What time by the end of the week, Ngozi? Give me a specific day and time so I can hold you to it."
     },
     {
       "name": "Sarah",
@@ -657,7 +656,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Morning Sarah. I don't have any notes or promises stored for you yet, so as far as I can see, you don't owe anyone anything this week. \n\nIf you made any commitments elsewhere, let me know what they are and when they are due so I can help you keep track of them."
+      "reply": "You don't have any open promises or debts recorded for this week, Sarah. \n\nIf you agreed to pay someone back or give someone something, tell me the details, what it is and when it's due, and I'll make sure to track it for you."
     },
     {
       "name": "Sarah",
@@ -666,7 +665,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Yes, you have one open promise for this week. You promised to pay Tobi back 20 USDC by this Friday, November 13."
+      "reply": "You have one open promise this week: you need to pay Tobi back 20 USDC by this Saturday, November 14."
     },
     {
       "name": "Sarah",
@@ -675,7 +674,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "You don't have any promises or anything due right now, Sarah. If you've got something on your mind you need to take care of or pay someone back for, let me know the details and when it's due so I can lock it in for you."
+      "reply": "You don't have any open promises or debts recorded for this week, Sarah. \n\nIf you agreed to pay someone back or give someone something, let me know the details and the deadline so I can keep track of it for you."
     },
     {
       "name": "Sarah",
@@ -684,7 +683,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Yes, you promised to pay Tobi back 20 USDC by this Friday, November 13. You haven't linked a Sui wallet yet to verify it on-chain, so just let me know when you've sent it."
+      "reply": "Yes Sarah, you have one open promise to pay Tobi back 20 USDC by this Saturday, November 14. Your Sui wallet is not linked yet, so send /wallet if you want me to check that on-chain for you."
     },
     {
       "name": "Sarah",
@@ -693,7 +692,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "You don't have any open promises or debts recorded for this week, Sarah. \n\nIf you want to keep track of something you need to pay or do for someone, just tell me what it is and when it is due."
+      "reply": "You don't have any open promises or debts recorded for this week, Sarah. \n\nIf you made a commitment or need to pay someone back, let me know the details and I'll keep track of it for you."
     },
     {
       "name": "Sarah",
@@ -702,7 +701,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "You owe Tobi 20 USDC, and that's due this Friday, November 13. Your Sui wallet isn't linked yet, so send me /wallet if you want me to check it on-chain when you pay him back."
+      "reply": "Yes, Sarah, you promised to pay Tobi back 20 USDC by this Saturday, November 14. You also don't have a Sui wallet linked yet, so you can't verify money promises on-chain automatically, just use /wallet to connect one if you'd like."
     },
     {
       "name": "Bola",
@@ -711,7 +710,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Oyin, take a deep breath. We will break that report down so it is not too heavy. When exactly on Monday is it due, and what is the first small piece you can finish today?"
+      "reply": "That sounds like a heavy load, Bola. Let's make it manageable so you don't drown in it. \n\nWhen exactly on Monday is this report due, and what is one small piece of it you can finish by tonight so you get some momentum? Send me a photo or drop a quick voice note when that first piece is done."
     },
     {
       "name": "Bola",
@@ -720,7 +719,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Good morning, Bola. I know huge reports can feel like a lot all at once, but remember how splitting it into 15-minute steps helped you get started last time? What is one small piece of the report you can tackle today?"
+      "reply": "Hey Bola, I hear you. Let us take it one small step at a time, just like when you split that big report into 15-minute steps last month. What is the very first piece you can tackle, and by what time today will you finish it?"
     },
     {
       "name": "Bola",
@@ -729,7 +728,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Take a breath, Bola. Let's break it down so it feels smaller. What is one specific part of this report you can finish today, and what time will you have it done by? Send me a photo or update when it's done."
+      "reply": "Take a breath, Bola. We can break this down so it is not so heavy. Exactly what part of the report are you going to finish, and by what time do you want to get it done today?"
     },
     {
       "name": "Bola",
@@ -738,7 +737,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "Hey Bola. Let's break that big report into tiny 15-minute steps just like last time, so it feels lighter. What is the very first piece you can tackle, and when will you get it done by?"
+      "reply": "E ku isoro, Bola. Take a deep breath. Since splitting it into 15-minute steps helped you get started before, let us try that same trick today. What is the very first tiny piece of the report you can finish by 12pm today?"
     },
     {
       "name": "Bola",
@@ -747,7 +746,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": false,
       "invented": false,
-      "reply": "Omo, take a breath. A huge report is heavy, but you don't have to carry it all at once. What time on Monday is it due, and what is the very first step you can tackle today?"
+      "reply": "Take a deep breath, Bola. Let's break it down so it feels manageable. What exact part of the report can you get done by tonight, and by what time?"
     },
     {
       "name": "Bola",
@@ -756,7 +755,7 @@
       "model": "gemini-3.5-flash-lite",
       "personal": true,
       "invented": false,
-      "reply": "I hear you, Bola. That is a heavy load. Since splitting big tasks into 15-minute steps worked for you last time, how about we take just one tiny piece of that report and get it done today? What part can you commit to finishing, and by what time?"
+      "reply": "Hey Bola, I hear you. Let us take it one piece at a time, just like when you split that big report into 15-minute steps before. What is the first small section you can tackle today, and by what time will you finish it?"
     }
   ]
 }

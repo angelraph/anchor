@@ -140,7 +140,9 @@ const CASES: Case[] = [
 
 // A past a stranger can't know: "as you mentioned", "your streak", "you usually". Plain "again"
 // isn't counted: the person's own message often says it ("the gym again").
-const INVENTED = /\b(as you mentioned|last time|like before|as before|we('ve| have) (talked|discussed)|you (usually|always|tend to)|your (usual|streak)|streak (going|alive))\b/i;
+// "Your streak" counts only as a streak that already exists ("keep your streak going"), not one to start
+// ("we can start tracking your streak").
+const INVENTED = /\b(as you mentioned|last time|like before|as before|we('ve| have) (talked|discussed)|you (usually|always|tend to)|your usual|(keep|keeping|protect|break|lose) your streak|streak (going|alive))\b/i;
 
 async function reply(c: Case, withMemory: boolean): Promise<{ text: string; modelId: string }> {
   const memories = c.memories.map(mem);

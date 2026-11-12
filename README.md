@@ -25,6 +25,7 @@
 |---|---|
 | **Entry** | Total Recall (Tatum × Walrus), Track 2: Smart Agents for Real Life. Also for Best Walrus Memory and Best Use of Agent Payments. |
 | **Try it** | [t.me/Anchor_daBot](https://t.me/Anchor_daBot). Free, and no wallet needed to start: tell it what you'll do and by when. Without Telegram, `npm run demo` runs the site and the app on sample data with no keys. |
+| **Watch** | [The update in 1:38](https://x.com/RaphElevator/status/2120409865814262242), made after the deadline: what the memory benchmark and red team measured, and the app with its memory switch on sample data. |
 | **Real people** | **17 people and 217 memories** on Walrus Memory mainnet, live on the [proof page](https://anchor-production-6bb4.up.railway.app) (`/proof.json`). |
 | **Memory, measured** | The same message with memory off and on, in two runs: personal replies go from **0/30 to 26/30 and 27/30**, almost all on the lighter fallback models. [Method, every reply, and the weak spots](docs/BENCHMARK.md#1-memory-benchmark-030-personal-without-memory-26-to-27-out-of-30-with-it). |
 | **Safety, measured** | 16 poisoned-memory attacks across three batches, one never used for tuning. One run found a false claim getting through; the guard was fixed and the run repeated. Since then no money, secret or false-claim attack has got through; one harmless style request does. [All runs and limits](docs/BENCHMARK.md#2-red-team-poisoned-memories). |
@@ -50,6 +51,7 @@ Submissions closed on 10 Nov 2026 at 17:00 UTC. The work below came after, in th
 - Two guards that came out of the red team: poisoned memories that give orders or hold a secret are never stored or shown to the model, and every model-written reply loses unknown links, other people's Sui addresses and card numbers.
 - The model is told a memory is never evidence of a wallet link, a stake, a payment or a chain result. On its own it still repeated such a claim in some red-team runs; with the guards, none got through in the test.
 - The promise sweep now starts alongside the other Walrus recalls for each reply, instead of waiting for them to finish.
+- A [1:38 video](https://x.com/RaphElevator/status/2120409865814262242) of these results, built from the result files.
 - This README: the judges' table, and a fix to a line that read as if Anchor had already placed in Total Recall.
 - 12 Nov: a second run of both tests. The red team caught a planted "Anchor promised to message you at 3am" getting repeated as fact; memories that claim Anchor itself promised something are now quarantined too, and the run was repeated.
 - 12 Nov: moving your memory into your own Walrus Memory account from the app could sit on loading while every memory was copied. The app now answers once the key checks out (about 3 seconds), copies in the background, and Anchor messages you in the chat when it's done. If any memory fails, nothing switches, and a retry copies only what's missing. Live check: [`scripts/own-memory-check.ts`](scripts/own-memory-check.ts).

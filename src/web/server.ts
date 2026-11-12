@@ -114,7 +114,7 @@ export function startWebServer(api?: Api) {
 export function createWebApp(api?: Api): Hono {
   const app = new Hono();
   app.use("*", securityHeaders);
-  registerAppRoutes(app);
+  registerAppRoutes(app, () => api);
   registerChainRoutes(app, () => api);
   registerMeRoutes(app, () => api);
   app.get("/", async (c) => c.html(renderPage(proofJson(await stats()))));

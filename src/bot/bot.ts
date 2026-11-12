@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { sequentialize } from "@grammyjs/runner";
 import { downloadFile, judgePhoto, transcribe } from "../media.js";
-import { connectOwnMemory, disconnectOwnMemory } from "../memory/own.js";
+import { disconnectOwnMemory, isMoving, moveReport, startOwnMemoryMove } from "../memory/own.js";
 import { MORNING_HOUR, morningBrief } from "../morning.js";
 import { storeProof } from "../proof.js";
 import { GROUP_COMMANDS, registerGroupCommands } from "./group-commands.js";
@@ -455,6 +455,10 @@ export function createBot(): Bot {
     const parts = ctx.match.trim().split(/\s+/).filter(Boolean);
     const own = getUser(userId)?.ownMemory;
     if (parts[0]?.toLowerCase() === "off") {
+      if (isMoving(userId)) {
+        await ctx.reply("I'm still copying your memories over. Once I've messaged you that it's done, /mymemory off switches back.");
+        return;
+      }
       await ctx.reply(disconnectOwnMemory(userId) ? "Done. I'm back on Anchor's Walrus Memory account. Everything already in your own account stays yours." : "You're already on Anchor's account.");
       return;
     }
@@ -462,14 +466,25 @@ export function createBot(): Bot {
       // The message holds a secret key: take it out of the chat first.
       await ctx.deleteMessage().catch(() => undefined);
       const [accountId, key] = parts as [string, string];
+      const chatId = ctx.chat!.id;
       await withTyping(ctx, async () => {
         try {
-          const copied = await connectOwnMemory(userId, accountId, key, { copy: true });
-          await ctx.reply(`🗝 Connected. Your memory now lives in your own Walrus Memory account (${accountId.slice(0, 8)}…), in the "anchor" namespace.${copied ? ` I copied ${copied} memories over.` : ""}\n\nI deleted your message so the key isn't left in this chat. The key is stored encrypted, and you can revoke it any time on memory.walrus.xyz. /mymemory off switches back.`);
+          const { copying } = await startOwnMemoryMove(userId, accountId, key, (res) =>
+            ctx.api.sendMessage(chatId, moveReport(res, accountId)).then(() => undefined),
+          );
+          await ctx.reply(
+            copying
+              ? `✅ Your key works. I'm copying your memories into your own Walrus Memory account now. Walrus certifies each one, so give it a few minutes, and I'll message you here when it's done. Keep chatting meanwhile, nothing gets lost.\n\n(I deleted your message so the key isn't left in this chat.)`
+              : `🗝 Switched to your Walrus Memory account (${accountId.slice(0, 8)}…).\n\n(I deleted your message so the key isn't left in this chat.)`,
+          );
         } catch (err) {
           await ctx.reply(`${err instanceof Error ? err.message : "That didn't work."}\n\n(I deleted your message so the key isn't left in this chat.)`);
         }
       });
+      return;
+    }
+    if (isMoving(userId)) {
+      await ctx.reply("🗝 I'm copying your memories into your own Walrus Memory account right now. I'll message you here when it's done.");
       return;
     }
     const kb = appUrl() ? new InlineKeyboard().webApp("🗝 Connect in the app", `${appUrl()}#memory`) : undefined;

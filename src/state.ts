@@ -119,6 +119,8 @@ export interface UserState {
   lastReport?: { blobId: string; at: string; week: string };
   /** The person's own Walrus Memory account; the delegate key is stored encrypted (secrets.ts). */
   ownMemory?: { accountId: string; keySealed: string; serverUrl?: string; since: string };
+  /** Memories already copied into that own account (short hashes), so a retried move never duplicates. */
+  ownCopy?: { account: string; hashes: string[] };
   /** Morning brief: on unless set to false (/morning off). */
   morning?: boolean;
   /** Unprompted messages sent on a local day (attention.ts caps them). */

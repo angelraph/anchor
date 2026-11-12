@@ -128,7 +128,12 @@ ${demoBanner}
   if (!tg) { $("loading").hidden = true; $("gate").style.display = "block"; return; }
   tg.ready(); tg.expand(); try { tg.setHeaderColor("#000000"); tg.setBackgroundColor("#000000"); } catch {}
   const api = async (path, opts = {}) => {
-    const res = await fetch(path, { ...opts, headers: { "x-telegram-init-data": tg.initData, ...(opts.body ? { "content-type": "application/json" } : {}) } });
+    // Nothing in the app may spin forever: every call gives up after 60 s with a message.
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 60000);
+    let res;
+    try { res = await fetch(path, { ...opts, signal: ctl.signal, headers: { "x-telegram-init-data": tg.initData, ...(opts.body ? { "content-type": "application/json" } : {}) } }); }
+    catch (e) { throw new Error(ctl.signal.aborted ? "That took too long. Check your connection and try again." : "Couldn't reach Anchor. Check your connection and try again."); }
+    finally { clearTimeout(timer); }
     if (!res.ok) { let m = "Something went wrong."; try { m = (await res.json()).error || m; } catch {} throw new Error(m); }
     return res;
   };
@@ -185,8 +190,8 @@ ${demoBanner}
     if (!d.done.length) done.appendChild(el("li", "empty", "Kept and missed promises show up here."));
     for (const p of d.done) { const li = el("li"); li.appendChild(el("span", "", (icon[p.status] || "•") + " " + p.text)); li.appendChild(el("span", "chip", (p.chain ? "⛓ " : "") + (p.pic ? "📸 " : "") + (p.date || ""))); done.appendChild(li); }
 
-    $("ownStatus").textContent = d.ownMemory ? "Your memory lives in your own Walrus Memory account (" + d.ownMemory.account + ") since " + d.ownMemory.since + ". It's yours outright." : "Your memories are encrypted on Walrus in your own space inside Anchor's account, where Anchor can read them to help you. Move them into your own Walrus Memory account and they're yours outright, usable by any app you trust.";
-    $("ownForm").hidden = !!d.ownMemory; $("disconnect").hidden = !d.ownMemory;
+    $("ownStatus").textContent = d.moving ? "Copying your memories into your own Walrus Memory account now. Walrus certifies each one, so it takes a few minutes. I'll message you in the chat when it's done, and you can close this meanwhile." : d.ownMemory ?"Your memory lives in your own Walrus Memory account (" + d.ownMemory.account + ") since " + d.ownMemory.since + ". It's yours outright." : "Your memories are encrypted on Walrus in your own space inside Anchor's account, where Anchor can read them to help you. Move them into your own Walrus Memory account and they're yours outright, usable by any app you trust.";
+    $("ownForm").hidden = !!d.ownMemory || !!d.moving; $("disconnect").hidden = !d.ownMemory || !!d.moving;
     $("morning").checked = d.morning;
     $("meta").textContent = "Timezone: " + d.tzLabel + (d.wallet ? " · Wallet: " + d.wallet : "") + (d.buddies.length ? " · Buddies: " + d.buddies.join(", ") : "") + (d.groups.length ? " · Groups: " + d.groups.join(", ") : "");
     $("stopShare").hidden = !d.sharing;
@@ -213,11 +218,13 @@ ${demoBanner}
     try { answers = await (await api("/api/app/compare", { method: "POST", body: JSON.stringify({ q: text }) })).json(); showOn = false; show(); flip = setTimeout(() => { showOn = true; show(); haptic(); }, 3500); }
     catch (e) { $("answer").textContent = e.message; } finally { $("ask").disabled = false; } };
 
-  $("connect").onclick = async () => { const msg = $("ownMsg"); msg.replaceChildren(el("p", "muted", "Checking your key and copying your memories…")); $("connect").disabled = true;
-    try { const r = await (await api("/api/app/memory", { method: "POST", body: JSON.stringify({ accountId: $("acct").value, key: $("key").value }) })).json(); $("key").value = "";
-      msg.replaceChildren(el("p", "ok", "Connected. " + (r.copied ? r.copied + " memories copied to your account." : ""))); load(); }
+  $("connect").onclick = async () => { const msg = $("ownMsg"); const accountId = $("acct").value.trim(), key = $("key").value.trim();
+    if (!accountId || !key) { msg.replaceChildren(el("p", "err", "Paste both your account ID and your delegate private key.")); return; }
+    msg.replaceChildren(el("p", "muted", "Checking your key…")); $("connect").disabled = true;
+    try { const r = await (await api("/api/app/memory", { method: "POST", body: JSON.stringify({ accountId, key }) })).json(); $("key").value = ""; haptic();
+      msg.replaceChildren(el("p", "ok", r.copying ? "✅ Your key works. Copying your memories now. I'll message you in the chat when it's done." : "✅ Switched to your Walrus Memory account.")); load(); }
     catch (e) { msg.replaceChildren(el("p", "err", e.message)); } finally { $("connect").disabled = false; } };
-  $("disconnect").onclick = async () => { await api("/api/app/memory", { method: "DELETE" }).catch(() => {}); load(); };
+  $("disconnect").onclick = async () => { const msg = $("ownMsg"); try { await api("/api/app/memory", { method: "DELETE" }); msg.replaceChildren(); } catch (e) { msg.replaceChildren(el("p", "err", e.message)); } load(); };
   $("morning").onchange = (e) => { api("/api/app/morning", { method: "POST", body: JSON.stringify({ on: e.target.checked }) }).catch(() => {}); };
   $("shareBtn").onclick = async () => { haptic(); try { const { url } = await (await api("/api/app/share", { method: "POST" })).json(); const s = data.summary;
       const text = s.closed30 ? "I kept " + s.kept30 + " of my last " + s.closed30 + " promises with Anchor ⚓ It remembers what I said I'd do, and holds me to it." : "I'm using Anchor ⚓ to finally keep my promises to myself.";

@@ -13,13 +13,14 @@
  * Every /api/app call carries Telegram's signed initData (guard.ts); nothing is
  * served for a person who hasn't started the bot.
  */
+import type { Api } from "grammy";
 import type { Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { randomBytes } from "node:crypto";
 import { generateReply } from "../bot/conversation.js";
 import { config } from "../config.js";
 import { addDays, todayIn } from "../dates.js";
-import { connectOwnMemory, disconnectOwnMemory } from "../memory/own.js";
+import { disconnectOwnMemory, isMoving, moveReport, startOwnMemoryMove } from "../memory/own.js";
 import { mergeAndFilter, recall, recallCommitments } from "../memory/recall.js";
 import { progress } from "../habits.js";
 import { clause, effectiveDue, isOpen, type CommitmentState } from "../memory/types.js";
@@ -111,6 +112,7 @@ async function dashboard(userId: string) {
     tz,
     morning: u.morning !== false,
     ownMemory: u.ownMemory ? { account: `${u.ownMemory.accountId.slice(0, 8)}…${u.ownMemory.accountId.slice(-4)}`, since: u.ownMemory.since.slice(0, 10) } : null,
+    moving: isMoving(userId),
     wallet: u.wallet ? (u.wallet.name ?? `${u.wallet.address.slice(0, 6)}…${u.wallet.address.slice(-4)}`) : null,
     sharing: !!u.cardCode,
     summary,
@@ -152,7 +154,7 @@ async function dashboard(userId: string) {
 /** Share-card numbers, cached per card so a viral link costs Walrus nothing extra. */
 const cardCache = new Map<string, { at: number; html: string }>();
 
-export function registerAppRoutes(app: Hono) {
+export function registerAppRoutes(app: Hono, getApi: () => Api | undefined = () => undefined) {
   app.get("/app", (c) => {
     c.header("Cache-Control", "no-store");
     return c.html(appPage({ demo: config.DEMO_MODE }));
@@ -205,14 +207,23 @@ export function registerAppRoutes(app: Hono) {
     const { accountId, key } = (await c.req.json().catch(() => ({}))) as { accountId?: unknown; key?: unknown };
     if (typeof accountId !== "string" || typeof key !== "string") return c.json({ error: "Account ID and delegate key are both needed." }, 400);
     try {
-      const copied = await connectOwnMemory(uid, accountId.trim(), key.trim(), { copy: true });
+      const account = accountId.trim();
+      // The key is checked now; the copy runs in the background and can take minutes,
+      // so the app gets its answer right away and the chat hears when the move is done.
+      const { copying } = await startOwnMemoryMove(uid, account, key.trim(), async (res) => {
+        cache.delete(uid);
+        const chatId = getUser(uid)?.chatId;
+        const api = getApi();
+        if (api && chatId) await api.sendMessage(chatId, moveReport(res, account));
+      });
       cache.delete(uid);
-      return c.json({ ok: true, copied });
+      return c.json({ ok: true, copying });
     } catch (err) {
       return c.json({ error: err instanceof Error ? err.message : "That didn't work." }, 400);
     }
   }));
   app.delete("/api/app/memory", guarded((c, uid) => {
+    if (isMoving(uid)) return c.json({ error: "Still copying your memories. Once I've messaged you that it's done, you can switch back." }, 409);
     disconnectOwnMemory(uid);
     cache.delete(uid);
     return c.json({ ok: true });

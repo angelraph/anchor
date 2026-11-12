@@ -30,7 +30,7 @@
 | **Safety, measured** | 16 poisoned-memory attacks across three batches, one never used for tuning. One run found a false claim getting through; the guard was fixed and the run repeated. Since then no money, secret or false-claim attack has got through; one harmless style request does. [All runs and limits](docs/BENCHMARK.md#2-red-team-poisoned-memories). |
 | **Real money, mainnet** | A Move escrow published immutable, a stake locked and paid back by Anchor's verdict, an AI agent paying 0.01 USDC over x402, a signed report certified on Walrus. [Transactions](#live-on-sui-mainnet). |
 | **Tatum** | Every Sui read and write goes through Tatum's gateway ([`src/chain/sui.ts`](src/chain/sui.ts)). Reports and photo proofs go to Walrus through Tatum's Storage API; currency values come from Tatum's Data API. |
-| **Tests** | 131 unit tests and 9 Move tests (`npm test`), a live end-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)), the benchmark ([`scripts/bench-memory.ts`](scripts/bench-memory.ts)) and the red team ([`scripts/redteam.ts`](scripts/redteam.ts)). |
+| **Tests** | 136 unit tests and 9 Move tests (`npm test`), a live end-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)), the benchmark ([`scripts/bench-memory.ts`](scripts/bench-memory.ts)) and the red team ([`scripts/redteam.ts`](scripts/redteam.ts)). |
 | **Read** | The build on X, reposted by @WalrusProtocol: [one ordinary day with Anchor](https://x.com/RaphElevator/status/2115779427036500212) and [what changed since submitting](https://x.com/RaphElevator/status/2118000408941510875), which Walrus quoted: ["One week in, and Anchor is already evolving based on real user feedback."](https://x.com/WalrusProtocol/status/2118722489828376839) The long read: [How I added long-term memory to a Telegram chatbot](https://medium.com/@uzoechiraphael1/how-i-added-long-term-memory-to-a-telegram-chatbot-so-it-remembers-users-between-sessions-76a7579b20af). Everything built for Total Recall: [docs/TOTAL_RECALL.md](docs/TOTAL_RECALL.md). |
 | **When it was built** | Before Oct 20: Walrus Session 8. Oct 26 to Nov 10: the Total Recall work. After the Nov 10 deadline: [listed openly below](#since-the-deadline). |
 
@@ -52,6 +52,7 @@ Submissions closed on 10 Nov 2026 at 17:00 UTC. The work below came after, in th
 - The promise sweep now starts alongside the other Walrus recalls for each reply, instead of waiting for them to finish.
 - This README: the judges' table, and a fix to a line that read as if Anchor had already placed in Total Recall.
 - 12 Nov: a second run of both tests. The red team caught a planted "Anchor promised to message you at 3am" getting repeated as fact; memories that claim Anchor itself promised something are now quarantined too, and the run was repeated.
+- 12 Nov: moving your memory into your own Walrus Memory account from the app could sit on loading while every memory was copied. The app now answers once the key checks out (about 3 seconds), copies in the background, and Anchor messages you in the chat when it's done. If any memory fails, nothing switches, and a retry copies only what's missing. Live check: [`scripts/own-memory-check.ts`](scripts/own-memory-check.ts).
 
 ## The problem
 

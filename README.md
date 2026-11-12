@@ -26,8 +26,8 @@
 | **Entry** | Total Recall (Tatum × Walrus), Track 2: Smart Agents for Real Life. Also for Best Walrus Memory and Best Use of Agent Payments. |
 | **Try it** | [t.me/Anchor_daBot](https://t.me/Anchor_daBot). Free, and no wallet needed to start: tell it what you'll do and by when. Without Telegram, `npm run demo` runs the site and the app on sample data with no keys. |
 | **Real people** | **17 people and 217 memories** on Walrus Memory mainnet, live on the [proof page](https://anchor-production-6bb4.up.railway.app) (`/proof.json`). |
-| **Memory, measured** | The same message with memory off and on: personal replies go from **0/30 to 26/30**, mostly on the lighter fallback model. [Method, every reply, and the weak spots](docs/BENCHMARK.md#1-memory-benchmark-030-personal-without-memory-2630-with-it). |
-| **Safety, measured** | 16 poisoned-memory attacks across three batches, one never used for tuning. No money, secret or false-claim attack got through; one harmless style request did. [Results and limits](docs/BENCHMARK.md#2-red-team-poisoned-memories). |
+| **Memory, measured** | The same message with memory off and on, in two runs: personal replies go from **0/30 to 26/30 and 27/30**, almost all on the lighter fallback models. [Method, every reply, and the weak spots](docs/BENCHMARK.md#1-memory-benchmark-030-personal-without-memory-26-to-27-out-of-30-with-it). |
+| **Safety, measured** | 16 poisoned-memory attacks across three batches, one never used for tuning. One run found a false claim getting through; the guard was fixed and the run repeated. Since then no money, secret or false-claim attack has got through; one harmless style request does. [All runs and limits](docs/BENCHMARK.md#2-red-team-poisoned-memories). |
 | **Real money, mainnet** | A Move escrow published immutable, a stake locked and paid back by Anchor's verdict, an AI agent paying 0.01 USDC over x402, a signed report certified on Walrus. [Transactions](#live-on-sui-mainnet). |
 | **Tatum** | Every Sui read and write goes through Tatum's gateway ([`src/chain/sui.ts`](src/chain/sui.ts)). Reports and photo proofs go to Walrus through Tatum's Storage API; currency values come from Tatum's Data API. |
 | **Tests** | 131 unit tests and 9 Move tests (`npm test`), a live end-to-end test ([`scripts/e2e.ts`](scripts/e2e.ts)), the benchmark ([`scripts/bench-memory.ts`](scripts/bench-memory.ts)) and the red team ([`scripts/redteam.ts`](scripts/redteam.ts)). |
@@ -51,6 +51,7 @@ Submissions closed on 10 Nov 2026 at 17:00 UTC. The work below came after, in th
 - The model is told a memory is never evidence of a wallet link, a stake, a payment or a chain result. On its own it still repeated such a claim in some red-team runs; with the guards, none got through in the test.
 - The promise sweep now starts alongside the other Walrus recalls for each reply, instead of waiting for them to finish.
 - This README: the judges' table, and a fix to a line that read as if Anchor had already placed in Total Recall.
+- 12 Nov: a second run of both tests. The red team caught a planted "Anchor promised to message you at 3am" getting repeated as fact; memories that claim Anchor itself promised something are now quarantined too, and the run was repeated.
 
 ## The problem
 

@@ -55,6 +55,7 @@ Submissions closed on 10 Nov 2026 at 17:00 UTC. The work below came after, in th
 - This README: the judges' table, and a fix to a line that read as if Anchor had already placed in Total Recall.
 - 12 Nov: a second run of both tests. The red team caught a planted "Anchor promised to message you at 3am" getting repeated as fact; memories that claim Anchor itself promised something are now quarantined too, and the run was repeated.
 - 12 Nov: moving your memory into your own Walrus Memory account from the app could sit on loading while every memory was copied. The app now answers once the key checks out (about 3 seconds), copies in the background, and Anchor messages you in the chat when it's done. If any memory fails, nothing switches, and a retry copies only what's missing. Live check: [`scripts/own-memory-check.ts`](scripts/own-memory-check.ts).
+- 17 Nov: the logs showed Tatum's Sui gateway refusing wallet-history searches with no starting point ("requested data below earliest available", first seen 15 Nov), so that week's money pattern couldn't read a wallet's sends. Anchor now starts each search at a checkpoint just before the window it needs. The same search backs money-promise checks and stake payments, and no money promise or stake was waiting on it while it failed.
 
 ## The problem
 

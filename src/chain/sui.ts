@@ -6,7 +6,6 @@
  * and write Anchor makes (balances, transfers, SuiNS names, x402 payment
  * simulation and settlement) goes through this one client.
  */
-import type { SuiClientTypes } from "@mysten/sui/client";
 import { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { normalizeSuiAddress, isValidSuiAddress } from "@mysten/sui/utils";
 import { config } from "../config.js";
@@ -123,45 +122,95 @@ export interface Transfer {
   ownChange: bigint;
 }
 
+/** A raw GraphQL query through the same Tatum client, for what the SDK's helpers can't express. */
+type GqlResult<T> = { data?: T; errors?: Array<{ message: string }> };
+async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<GqlResult<T>> {
+  const res = await sui.query({ query, variables });
+  return res as GqlResult<T>;
+}
+
+/** Sui mainnet makes a checkpoint about every 0.25 s; assume 0.2 s so the window always starts early enough. */
+const MIN_CHECKPOINT_MS = 200;
+
+/**
+ * The checkpoint to start a history search from, a little before `sinceMs`.
+ * Tatum's nodes are pruned: an unbounded history search reaches below the
+ * oldest checkpoint they keep and fails outright ("requested data below
+ * earliest available"), so every search starts from here instead.
+ */
+async function checkpointBefore(sinceMs: number): Promise<number> {
+  const res = await gql<{ checkpoint?: { sequenceNumber: number | string; timestamp: string } }>("{ checkpoint { sequenceNumber timestamp } }");
+  const cp = res.data?.checkpoint;
+  if (!cp) throw new Error(`Couldn't read the latest Sui checkpoint${res.errors?.length ? `: ${res.errors[0]!.message}` : ""}`);
+  const span = Math.max(0, Date.parse(cp.timestamp) - sinceMs) + 3_600_000; // an hour of slack
+  return Math.max(0, Number(cp.sequenceNumber) - Math.ceil(span / MIN_CHECKPOINT_MS));
+}
+
+const SENT_QUERY = `query AnchorSent($filter: TransactionFilter, $last: Int, $before: String) {
+  transactions(filter: $filter, last: $last, before: $before) {
+    pageInfo { hasPreviousPage startCursor }
+    nodes { digest effects { status timestamp balanceChanges { nodes { owner { address } coinType { repr } amount } } } }
+  }
+}`;
+
+interface SentPage {
+  transactions: {
+    pageInfo: { hasPreviousPage: boolean; startCursor: string | null };
+    nodes: Array<{
+      digest: string;
+      effects: {
+        status: string;
+        timestamp: string | null;
+        balanceChanges: { nodes: Array<{ owner: { address: string } | null; coinType: { repr: string } | null; amount: string }> } | null;
+      } | null;
+    }>;
+  } | null;
+}
+
+/** "lowest available checkpoint is 237661232" → 237661232 */
+const lowestAvailable = (msg: string) => Number(/lowest available checkpoint is (\d+)/.exec(msg)?.[1] ?? NaN);
+
 /**
  * Transactions sent by `owner` since `sinceMs`, with how much of `coin` moved.
- * Pages newest-first and stops at the window start, so cost stays small.
+ * Pages newest-first from a checkpoint just before the window, so cost stays small.
  */
 export async function sentSince(owner: string, coin: CoinSymbol, sinceMs: number, maxPages = 4): Promise<Transfer[]> {
   const type = COINS[coin].type;
+  const own = normalizeSuiAddress(owner);
   const out: Transfer[] = [];
+  let afterCheckpoint = await checkpointBefore(sinceMs);
   let before: string | null = null;
   for (let page = 0; page < maxPages; page++) {
-    const res: SuiClientTypes.ListTransactionsResponse<{ balanceChanges: true }> = await sui.listTransactions({
-      filter: { sender: owner },
-      limit: 50,
-      order: "descending",
-      ...(before ? { before } : {}),
-      include: { balanceChanges: true },
-    });
+    let res: GqlResult<SentPage> = await gql<SentPage>(SENT_QUERY, { filter: { sentAddress: own, afterCheckpoint }, last: 50, before });
+    const below = lowestAvailable(res.errors?.map((e) => JSON.stringify(e)).join(" ") ?? "");
+    if (!Number.isNaN(below) && below > afterCheckpoint) {
+      // The window starts before the oldest checkpoint the node keeps: search what it has.
+      afterCheckpoint = below;
+      res = await gql<SentPage>(SENT_QUERY, { filter: { sentAddress: own, afterCheckpoint }, last: 50, before });
+    }
+    const conn: SentPage["transactions"] | undefined = res.data?.transactions;
+    if (!conn) throw new Error(`Failed to list transactions${res.errors?.length ? `: ${res.errors[0]!.message}` : ""}`);
     let older = false;
-    for (const r of res.transactions) {
-      const tx = r.Transaction ?? r.FailedTransaction;
-      if (!tx || r.$kind !== "Transaction") continue;
-      const ts = tx.timestampMs ?? Date.now();
+    // `last` returns oldest-first within the page; walk it newest-first.
+    for (const tx of [...conn.nodes].reverse()) {
+      if (tx.effects?.status !== "SUCCESS") continue;
+      const ts = tx.effects.timestamp ? Date.parse(tx.effects.timestamp) : Date.now();
       if (ts < sinceMs) {
         older = true;
         break;
       }
-      const changes = (tx.balanceChanges ?? []).filter((c) => c.coinType === type || normType(c.coinType) === normType(type));
-      const own = normalizeSuiAddress(owner);
+      const changes = (tx.effects.balanceChanges?.nodes ?? [])
+        .filter((c) => c.owner && c.coinType && (c.coinType.repr === type || normType(c.coinType.repr) === normType(type)))
+        .map((c) => ({ address: normalizeSuiAddress(c.owner!.address), amount: BigInt(c.amount) }));
       out.push({
         digest: tx.digest,
         timestampMs: ts,
-        received: changes
-          .filter((c) => normalizeSuiAddress(c.address) !== own && BigInt(c.amount) > 0n)
-          .map((c) => ({ address: normalizeSuiAddress(c.address), amount: BigInt(c.amount) })),
-        ownChange: changes.filter((c) => normalizeSuiAddress(c.address) === own).reduce((n, c) => n + BigInt(c.amount), 0n),
+        received: changes.filter((c) => c.address !== own && c.amount > 0n),
+        ownChange: changes.filter((c) => c.address === own).reduce((n, c) => n + c.amount, 0n),
       });
     }
-    if (older || !res.hasNextPage) break;
-    before = res.endCursor;
-    if (!before) break;
+    if (older || !conn.pageInfo.hasPreviousPage || !conn.pageInfo.startCursor) break;
+    before = conn.pageInfo.startCursor;
   }
   return out;
 }

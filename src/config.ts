@@ -35,6 +35,11 @@ const schema = z.object({
   ESCROW_PACKAGE_ID: z.string().default("0x119c87d56bd17fc3c5713717c8cd50312b0ef181f555723ab3bc1facf9f48e2d"),
   /** Public base URL of this server, for wallet-link and stake pages. */
   PUBLIC_URL: z.string().default(""),
+  /** Upstash Redis (free, no card): keeps Anchor's state off the host's disk, so any host works. */
+  UPSTASH_REDIS_REST_URL: z.string().default(""),
+  UPSTASH_REDIS_REST_TOKEN: z.string().default(""),
+  /** The key the state is saved under (change it to keep a test copy apart). */
+  STATE_KEY: z.string().default("anchor:state"),
   /** Largest stake Anchor will hold on one promise, in USDC. */
   STAKE_MAX_USDC: z.coerce.number().positive().default(20),
   /** Price an agent pays (x402) to read one public follow-through record, in USDC. */
@@ -65,6 +70,8 @@ function load(): Config {
     env.DATA_DIR = "./data/demo";
     delete env.ANCHOR_SUI_PRIVATE_KEY;
     delete env.TATUM_API_KEY;
+    delete env.UPSTASH_REDIS_REST_URL; // the demo never touches real state
+    delete env.UPSTASH_REDIS_REST_TOKEN;
   }
   const parsed = schema.safeParse(env);
   if (!parsed.success) {

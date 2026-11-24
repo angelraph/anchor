@@ -241,6 +241,7 @@ let timer: NodeJS.Timeout | undefined;
 function persist() {
   clearTimeout(timer);
   timer = setTimeout(flush, 250);
+  scheduleDurable();
 }
 
 export function flush() {
@@ -250,6 +251,79 @@ export function flush() {
   writeFileSync(tmp, JSON.stringify(state, null, 2));
   renameSync(tmp, file);
 }
+
+// Durable copy (store.ts): saved at most every 10 s, one save at a time, never before it was loaded.
+let durable: "off" | "loaded" = "off";
+let durableTimer: NodeJS.Timeout | undefined;
+let durableSaving: Promise<void> | undefined;
+let durableDirty = false;
+const DURABLE_EVERY_MS = 10_000;
+
+function scheduleDurable() {
+  if (durable !== "loaded") return;
+  durableDirty = true;
+  durableTimer ??= setTimeout(() => {
+    durableTimer = undefined;
+    void flushDurable();
+  }, DURABLE_EVERY_MS);
+}
+
+/** Save the durable copy now (also on shutdown). A failed save is retried at the next change. */
+export async function flushDurable(): Promise<void> {
+  if (durable !== "loaded") return;
+  if (durableSaving) {
+    await durableSaving;
+    return flushDurable();
+  }
+  if (!durableDirty) return;
+  durableDirty = false;
+  const { saveDurable } = await import("./store.js");
+  durableSaving = saveDurable(JSON.stringify(state))
+    .catch((err) => {
+      durableDirty = true; // keep it for the next try
+      console.error("[state] saving to Upstash failed, will retry:", err instanceof Error ? err.message : err);
+    })
+    .finally(() => {
+      durableSaving = undefined;
+    });
+  return durableSaving;
+}
+
+/**
+ * Load state from Upstash at startup, before anything reads it. If Upstash is
+ * empty and this machine has a state file (the first boot after moving hosts,
+ * or the old host pointed at Upstash once), that file is uploaded. If Upstash
+ * can't be reached, startup fails instead of running on an empty state that
+ * would later overwrite the real one.
+ */
+export async function initState(): Promise<"file" | "upstash"> {
+  const { durableStateEnabled, loadDurable } = await import("./store.js");
+  if (!durableStateEnabled()) return "file";
+  let saved: string | null = null;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      saved = await loadDurable();
+      break;
+    } catch (err) {
+      if (attempt >= 5) throw new Error(`state: Upstash unreachable after 5 tries (${err instanceof Error ? err.message : err}); refusing to start on an empty state`);
+      await new Promise((r) => setTimeout(r, 2_000 * attempt));
+    }
+  }
+  durable = "loaded";
+  if (saved) {
+    state = JSON.parse(saved) as StateFile;
+    flush(); // local copy for quick restarts
+    console.log(`[state] loaded from Upstash: ${Object.keys(state.users).length} people, ${Object.keys(state.stakes ?? {}).length} stakes`);
+  } else {
+    durableDirty = true;
+    await flushDurable();
+    console.log(`[state] Upstash was empty: uploaded this machine's state (${Object.keys(state.users).length} people, ${Object.keys(state.stakes ?? {}).length} stakes)`);
+  }
+  return "upstash";
+}
+
+/** Where state lives right now, for /health. */
+export const stateBackend = () => (durable === "loaded" ? "upstash" : "file");
 
 /** The user's timezone, or the server default until they set one (/timezone). */
 export function tzOf(userId: number | string): string {

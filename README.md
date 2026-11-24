@@ -235,6 +235,16 @@ npx tsx scripts/preview-web.ts    # the website only, no Telegram polling
 
 The live scripts use a separate `anchor:smoke:` namespace, but they share your Walrus account's hourly request budget (1,000 weighted requests), so don't run them repeatedly against a production account.
 
+### Deploy for free (Northflank + Upstash)
+Anchor needs one always-on container and somewhere to keep its small state. Both can be free with no card:
+1. **State:** create a free Redis database at <https://console.upstash.com> and copy its **REST URL** and **REST token**.
+2. **App:** at <https://app.northflank.com>, create a project, then **Create service → Combined service**, connect this GitHub repo (branch `main`), and choose **Dockerfile** as the build type.
+3. Under **Networking**, expose port **3000** as public HTTP. Northflank gives you an `https://…code.run` address.
+4. Under **Environment**, add the variables from `.env.example`, including `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, and set `PUBLIC_URL` to the address from step 3.
+5. Deploy. `/health` should show `"state": "upstash"`.
+
+The first boot with an empty Upstash uploads whatever state file the machine has. To move from another host, point that host at the same Upstash once, restart it, then switch it off before starting the new one. Keep **one running copy only**: Telegram long polling allows only one consumer per bot token.
+
 ### Deploy on Railway
 1. Push this repo to GitHub, then in Railway choose **New Project → Deploy from GitHub repo**. The `Dockerfile` and `railway.json` are picked up automatically.
 2. Under **Variables**, add everything from `.env.example`.

@@ -14,7 +14,7 @@ import { chainHealth } from "../chain/sui.js";
 import { config } from "../config.js";
 import { MODEL_LABEL } from "../llm/model.js";
 import { listUserNamespaces, memwal, type NamespaceStat } from "../memory/client.js";
-import { metrics } from "../state.js";
+import { metrics, stateBackend } from "../state.js";
 import { demoStats } from "../demo.js";
 import { registerChainRoutes } from "./chain-routes.js";
 import { registerAppRoutes } from "./app-routes.js";
@@ -137,7 +137,7 @@ export function createWebApp(api?: Api): Hono {
       (e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),
     );
     const chain = await chainHealth();
-    return c.json({ ok: true, memory, chain }, memory.ok ? 200 : 503);
+    return c.json({ ok: true, memory, chain, state: stateBackend() }, memory.ok ? 200 : 503);
   });
   app.onError((err, c) => {
     console.error("[web]", err);

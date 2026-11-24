@@ -17,7 +17,7 @@ import { memwal } from "./memory/client.js";
 import { drainOutbox } from "./memory/write.js";
 import { runDeadlineReminders, runWeekly } from "./reminders.js";
 import { hourIn, todayIn } from "./dates.js";
-import { flush } from "./state.js";
+import { flush, flushDurable, initState } from "./state.js";
 import { startWebServer } from "./web/server.js";
 
 /** Never print the bot token, even inside third-party error messages. */
@@ -45,6 +45,10 @@ async function main() {
     console.log("[demo] demo mode: website and app on sample data; Telegram, Gemini, Walrus and Sui are not contacted");
     return;
   }
+  // State first (Upstash when configured, so a host whose disk is wiped loses nothing).
+  const backend = await initState();
+  console.log(`[state] backend: ${backend === "upstash" ? "Upstash Redis (survives restarts on any host)" : `local file in ${config.DATA_DIR}`}`);
+
   // Walrus being slow at boot must not keep the bot offline; recall/save handle outages themselves.
   await retry("memwal health", () => memwal.health(), 3).then(
     (h) => console.log(`[memwal] relayer ${config.MEMWAL_SERVER_URL} is ${h.status ?? "up"}`),
@@ -127,6 +131,7 @@ async function main() {
   const stop = async () => {
     console.log("Shutting down…");
     flush();
+    await flushDurable().catch(() => undefined);
     if (runner.isRunning()) await runner.stop();
     process.exit(0);
   };
